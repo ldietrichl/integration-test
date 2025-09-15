@@ -1,0 +1,27 @@
+syntax = "proto3";
+option java_multiple_files = true;
+
+package ru.sber.qa.grpc;
+
+service FrameTestService {
+  rpc frameGrpcTestMessage(FrameGrpcTestRq) returns (FrameGrpcTestRs);
+}
+
+message FrameGrpcTestRq {
+  optional string rqUid = 1;
+  string rqTm = 2;
+  string id = 3;
+}
+
+message FrameGrpcTestRs {
+  optional string rqUid = 1;
+  string rsTm = 2;
+  optional State state = 3;
+  string message = 4;
+}
+
+enum State {
+  STATE_UNKNOWN = 0;
+  SUCCESS = 1;
+  FAILURE = 2;
+}

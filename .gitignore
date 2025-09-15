@@ -1,0 +1,13 @@
+# Excluded folders
+.idea/
+.gradle
+build/
+out/
+.allure/
+.sberstack/
+.gigaide/
+
+# Excluded files
+*.iws
+*.iml
+*.ipr
