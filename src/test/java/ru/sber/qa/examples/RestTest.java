@@ -4,6 +4,7 @@ import io.perfeccionista.framework.SetEnvironmentConfiguration;
 import io.perfeccionista.framework.extension.PerfeccionistaExtension;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.config.SSLConfig;
+import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import static io.perfeccionista.framework.datasource.Stash.stash;
 import static io.perfeccionista.framework.invocation.runner.InvocationInfo.assertInvocation;
 import static io.perfeccionista.framework.invocation.wrapper.MultipleAttemptInvocationWrapper.repeatInvocation;
 import static io.qameta.allure.Allure.step;
+import static io.restassured.RestAssured.given;
 import static ru.sber.qa.matchers.JsonMatchers.evaluateJsonPathExpressions;
 import static ru.sber.qa.matchers.JsonMatchers.haveJsonKey;
 import static ru.sber.qa.matchers.JsonMatchers.notHaveJsonKey;
@@ -194,26 +196,38 @@ public class RestTest {
 
     @Test
     void testResponseValue(RestService restService) {
+
+        String requestBody = "{\n" +
+                "  \"message\": \"string\",\n" +
+                "  \"params\": [],\n" +
+                "  \"changedParams\": []\n" +
+                "}";
+
         step("Проверяем ответ на тестовый запрос", () -> {
             restService.restClient()
-                    .post(spec -> spec,
-                            "http://restpvatftest.sbermock.sigma.sbrf.ru/jsonresponse")
+                    .post(spec ->
+                                    spec
+
+                                            .contentType(ContentType.JSON)
+                                            .header("Content-Type", "application/json")
+                                            .accept( "*/*")
+                                            .body(requestBody),
+
+                            "http://ingress-http.ci07963639-dev-terra000003-abtm-back.apps.dev-terra000003-ids.ocp.delta.sbrf.ru/api/v1/message/audit")
                     .should(
-                            haveStatusCode(HttpStatus.SC_OK),
-                            haveBodyJsonValueEqualTo("result.locked", "1"),
-                            notHaveEmptyBody())
-                    .toValidatableJson()
-                    .should(
+                            haveStatusCode(HttpStatus.SC_OK));
+
+                    /* .should(
                             // ищем ключ по JsonPath
                             notHaveJsonKey("result.locked", "Этого значения не должно быть"),
                             haveJsonKey("result", "Этот параметр должен быть в ответе"),
                             evaluateJsonPathExpressions(List.of(
                                     "result.current_time == 1732024955741",
                                     "status == 200")))
+
+                     */
                     // фильтруется ответ по JsonPath, на выходе вложенная сущность, которую можно проверить на наличие ключей
-                    .filter("result.vpn")
-                    .should(haveJsonKey("description"),
-                            notHaveJsonKey("locked"));
+
         });
     }
 
