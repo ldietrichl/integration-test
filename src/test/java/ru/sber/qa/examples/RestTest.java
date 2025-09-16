@@ -23,24 +23,10 @@ import static io.perfeccionista.framework.datasource.Stash.stash;
 import static io.perfeccionista.framework.invocation.runner.InvocationInfo.assertInvocation;
 import static io.perfeccionista.framework.invocation.wrapper.MultipleAttemptInvocationWrapper.repeatInvocation;
 import static io.qameta.allure.Allure.step;
-import static io.restassured.RestAssured.given;
-import static ru.sber.qa.matchers.JsonMatchers.evaluateJsonPathExpressions;
-import static ru.sber.qa.matchers.JsonMatchers.haveJsonKey;
-import static ru.sber.qa.matchers.JsonMatchers.notHaveJsonKey;
-import static ru.sber.qa.matchers.RestMatchers.haveBodyJsonValue;
-import static ru.sber.qa.matchers.RestMatchers.haveBodyJsonValueEqualTo;
-import static ru.sber.qa.matchers.RestMatchers.haveBodyWithText;
-import static ru.sber.qa.matchers.RestMatchers.haveCookie;
-import static ru.sber.qa.matchers.RestMatchers.haveCookieName;
-import static ru.sber.qa.matchers.RestMatchers.haveCookieValue;
-import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
-import static ru.sber.qa.matchers.RestMatchers.notHaveEmptyBody;
-import static ru.sber.qa.matchers.XmlMatchers.haveXmlValue;
-import static ru.sber.qa.matchers.XmlMatchers.haveXmlValueContains;
-import static ru.sber.qa.matchers.XmlMatchers.haveXmlValueEqualTo;
-import static ru.sber.qa.matchers.conditions.TextConditions.equalToText;
-import static ru.sber.qa.matchers.conditions.TextConditions.isBlank;
-import static ru.sber.qa.matchers.conditions.TextConditions.notEqualToText;
+import static ru.sber.qa.matchers.JsonMatchers.*;
+import static ru.sber.qa.matchers.RestMatchers.*;
+import static ru.sber.qa.matchers.XmlMatchers.*;
+import static ru.sber.qa.matchers.conditions.TextConditions.*;
 
 @ExtendWith(PerfeccionistaExtension.class)
 @SetEnvironmentConfiguration(ApiEnvironmentConfiguration.class)
@@ -197,11 +183,12 @@ public class RestTest {
     @Test
     void testResponseValue(RestService restService) {
 
-        String requestBody = "{\n" +
-                "  \"message\": \"string\",\n" +
-                "  \"params\": [],\n" +
-                "  \"changedParams\": []\n" +
-                "}";
+        String requestBody = """
+                {
+                  "message": "string",
+                  "params": [],
+                  "changedParams": []
+                }""";
 
         step("Проверяем ответ на тестовый запрос", () -> {
             restService.restClient()
