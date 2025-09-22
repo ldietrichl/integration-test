@@ -6,20 +6,28 @@ import io.restassured.config.RestAssuredConfig;
 import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.sber.qa.config.ApiEnvironmentConfiguration;
 import ru.sber.qa.services.rest.RestService;
+import ru.sber.qa.feeders.ExperimentsFeeder;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import static io.qameta.allure.Allure.step;
+import static ru.sber.qa.examples.experiments.TestDataHelper.experimentId;
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 
 @ExtendWith(PerfeccionistaExtension.class)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @SetEnvironmentConfiguration(ApiEnvironmentConfiguration.class)
 public class newOneSSL {
 
-    String urlIFT = "http://ingress-http.ci07963639-dev-terra000003-abtm-back.apps.dev-terra000003-ids.ocp.delta.sbrf.ru/api/v1/message/audit";
-    String urlDEV= "http://ingress-v2.ci07963639-dev-terra000003-abtm-back.apps.dev-terra000003-ids.ocp.delta.sbrf.ru";
+    String urlIFT = "https://ingress-v2.ci07963639-eift-efs1-ds-abtm-back.apps.ift-efs1-ds.delta.sbrf.ru";
+    String urlDEV= "https://ingress-v2.ci07963639-dev-terra000003-abtm-back.apps.dev-terra000003-ids.ocp.delta.sbrf.ru";
+    String url= urlIFT;
 
 
     RestAssuredConfig P12_CONFIG = RestAssuredConfig.config().sslConfig(
@@ -34,7 +42,62 @@ public class newOneSSL {
 
 
     @Test
-    void testResponseValue(RestService restService) {
+    @Order(10)
+    @DisplayName("Тест создания эксперимента")
+
+    void testCreateExperiment(RestService restService) throws IOException {
+
+        String filePath = "src/test/resources/experiments/create_exp.json";
+        String jsonBody = new String(Files.readAllBytes(Paths.get(filePath)));
+
+        String myId = ExperimentsFeeder.generateAqaMalilId();
+        jsonBody = jsonBody.replace("${myId}", myId);
+
+
+        String salt = ExperimentsFeeder.generateSalt();
+        jsonBody = jsonBody.replace("${salt}", salt);
+
+        long startDt = ExperimentsFeeder.startDt;
+        jsonBody = jsonBody.replace("${startDt}", String.valueOf(startDt));
+
+        long endDt = ExperimentsFeeder.endDt;
+        jsonBody = jsonBody.replace("${endDt}", String.valueOf(endDt));
+
+
+        String finalJsonBody = jsonBody;
+        step("Проверяем ответ на тестовый запрос", () -> {
+            var response = restService.restClient()
+                    .post(spec ->
+                                    spec
+
+                                            .config(P12_CONFIG)
+                                            .contentType(ContentType.JSON)
+                                            .header("Content-Type", "application/json")
+                                            .accept( "*/*")
+                                            .body(finalJsonBody),
+
+                            url+"/api/v1/experiments")
+
+                    .should(
+                            haveStatusCode(HttpStatus.SC_OK));
+
+            experimentId = response.toJsonPath().getLong("id");
+            System.out.println("НОВЫЙ ИД: "+ experimentId);
+
+
+
+            long experimentId = response.toJsonPath().getLong("id"); // Локальная переменная
+            System.out.println("НОВЫЙ ИД: " + experimentId);
+
+
+        });
+    }
+
+
+    @Test
+    @Order(20)
+    @DisplayName("Тест поиска эксперимента по id")
+    void testFindExperimentById(RestService restService) {
 
 
 
@@ -48,20 +111,32 @@ public class newOneSSL {
                                             .header("Content-Type", "application/json")
                                             .accept( "*/*"),
 
-                            "https://ingress-v2.ci07963639-eift-efs1-ds-abtm-back.apps.ift-efs1-ds.delta.sbrf.ru/api/v1/experiments?page=0&size=1&name=string&salt=string&exact=true&statuses=%5B%22DRAFT%22%5D")
+                            url+"/api/v1/experiments/"+ TestDataHelper.experimentId)
                     .should(
                             haveStatusCode(HttpStatus.SC_OK));
 
-                    /* .should(
-                            // ищем ключ по JsonPath
-                            notHaveJsonKey("result.locked", "Этого значения не должно быть"),
-                            haveJsonKey("result", "Этот параметр должен быть в ответе"),
-                            evaluateJsonPathExpressions(List.of(
-                                    "result.current_time == 1732024955741",
-                                    "status == 200")))
+        });
+    }
 
-                     */
-                    // фильтруется ответ по JsonPath, на выходе вложенная сущность, которую можно проверить на наличие ключей
+
+    @Test
+    @Order(30)
+    @DisplayName("Тест удаления эксперимента по id")
+    void testDeleteExperimentById(RestService restService) {
+
+        step("Проверяем ответ на тестовый запрос", () -> {
+            restService.restClient()
+                    .delete(spec ->
+                                    spec
+
+                                            .config(P12_CONFIG)
+                                            .contentType(ContentType.JSON)
+                                            .header("Content-Type", "application/json")
+                                            .accept( "*/*"),
+
+                            url+"/api/v1/experiments/"+ TestDataHelper.experimentId)
+                    .should(
+                            haveStatusCode(HttpStatus.SC_OK));
 
         });
     }

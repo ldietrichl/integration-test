@@ -1,0 +1,85 @@
+{
+  "id": 101385,
+  "name": "Du27_01/5",
+  "startDt": 1738011600000,
+  "endDt": 1740689999000,
+  "object": null,
+  "salt": "250162n86V",
+  "createdBy": 1026,
+  "createdDt": 1738007378579,
+  "updatedBy": 1,
+  "updatedDt": 1738010458130,
+  "statusChangedBy": 1,
+  "hypothesisDesc": "Du27_01/3",
+  "creator": "Абтестовый",
+  "sendings": null,
+  "budget": null,
+  "hashAlgorithm": "MURMURHASH",
+  "quantum": 10000,
+  "compareType": "FULL",
+  "metrics": [],
+  "experimentGroups": [
+    {
+      "id": 3570,
+      "symbolName": "A",
+      "name": " Целевая группа",
+      "actionTypeId": 2,
+      "groupConfig": {
+        "id": 2055,
+        "configSource": "SELECT",
+        "dynamicConfig": true,
+        "configQuery": {
+          "allCjComms": false,
+          "sorts": [],
+          "filters": [
+            {
+              "parameterCode": "cjId",
+              "operatorCode": "equal",
+              "values": [
+                "103081"
+              ]
+            }
+          ],
+          "commIdsInclude": [],
+          "commIdsExclude": []
+        },
+        "staticConfig": []
+      },
+      "size": 2000,
+      "baseline": false,
+      "configSplits": null,
+      "shareFrom": 0,
+      "shareTo": 2000
+    },
+    {
+      "id": 3571,
+      "symbolName": "B",
+      "name": " Контрольная группа",
+      "groupConfig": null,
+      "actionTypeId": 2,
+      "size": 2000,
+      "baseline": true,
+      "configSplits": null,
+      "shareFrom": 5000,
+      "shareTo": 7000
+    }
+  ],
+  "hasNotAgreedCJ": false,
+  "hasReadyToStartCJ": false,
+  "version": 4,
+  "scheduleParam": null,
+  "startCampaigns": false,
+  "autoStart": false,
+  "autoStop": false,
+  "startedBy": null,
+  "stoppedBy": null,
+  "realStartDt": null,
+  "realEndDt": null,
+  "relations": [],
+  "compareConfig": null,
+  "updateMetrics": true,
+  "purpose": "COMMON",
+  "withCampaign": false,
+  "formatId": 1,
+  "objectId": 7
+}

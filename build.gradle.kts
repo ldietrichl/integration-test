@@ -92,6 +92,12 @@ dependencies {
     testImplementation(group = "org.mockito", name = "mockito-junit-jupiter", version = "$mockitoVersion")
     testImplementation(group = "org.mockito", name = "mockito-inline", version = "$mockitoVersion")
 
+    compileOnly("org.projectlombok:lombok:1.18.30")
+    annotationProcessor("org.projectlombok:lombok:1.18.30")
+
+    testCompileOnly("org.projectlombok:lombok:1.18.30")
+    testAnnotationProcessor("org.projectlombok:lombok:1.18.30")
+
     // Зависимости для тестконтейнеров
     testImplementation("org.testcontainers:kafka:1.20.4")
     testImplementation("org.testcontainers:junit-jupiter:1.20.4")
