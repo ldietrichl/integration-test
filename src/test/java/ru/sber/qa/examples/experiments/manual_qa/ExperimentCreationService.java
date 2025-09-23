@@ -1,4 +1,4 @@
-package ru.sber.qa.examples.experiments;
+package ru.sber.qa.examples.experiments.manual_qa;
 
 import io.restassured.RestAssured;
 import io.restassured.config.RestAssuredConfig;

@@ -1,7 +1,7 @@
 package ru.sber.qa.examples.experiments;
 
 
-import dto.ExperimentRequestDto;
+import dto.experiment.ExperimentRequestDto;
 import io.perfeccionista.framework.SetEnvironmentConfiguration;
 import io.perfeccionista.framework.extension.PerfeccionistaExtension;
 import io.restassured.config.RestAssuredConfig;
@@ -15,18 +15,18 @@ import request.CreateExperimentRequestFactory;
 import ru.sber.qa.config.ApiEnvironmentConfiguration;
 import ru.sber.qa.feeders.ExperimentsFeeder;
 
+import java.util.List;
+
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 
 /**
  * Полный пример тест-класса.
  * - Формирование тела запроса через Params + Factory (без шаблонного JSON и replace)
- * - Создание эксперимента -> сохранение id -> получение по id
- *
- * ЗАМЕНИ:
- *  - url                     — на базовый URL твоего сервиса
+ * - Создание эксперимента
+ *  - url                     —  URL твоего сервиса
  *  - P12_CONFIG              — на твою RestAssured-конфигурацию
- *  - SharedState             — на твой реальный класс/хранилище id между тестами
- *  - ExperimentsFeeder.*     — на твои генераторы значений
+ *  - SharedState             — реальный класс/хранилище id между тестами
+ *  - ExperimentsFeeder.*     —  генераторы значений
  */
 
 @ExtendWith(PerfeccionistaExtension.class)
@@ -36,8 +36,8 @@ public class ExperimentApiTest {
 
 
     String urlIFT = "https://ingress-v2.ci07963639-eift-efs1-ds-abtm-back.apps.ift-efs1-ds.delta.sbrf.ru";
-    String urlDEV= "https://ingress-v2.ci07963639-dev-terra000003-abtm-back.apps.dev-terra000003-ids.ocp.delta.sbrf.ru";
-    String url= urlIFT;
+     String urlDEV= "https://ingress-v2.ci07963639-eift-efs1-ds-abtm-back.apps.dev-terra000003-ids.ocp.delta.sbrf.ru";
+    String url= urlDEV;
 
     private final CreateExperimentRequestFactory factory = new CreateExperimentRequestFactory();
 
@@ -51,7 +51,7 @@ public class ExperimentApiTest {
                     .relaxedHTTPSValidation()
     );
 
-    /** Общее хранилище для id между тестами (замени на свой существующий класс/поле). */
+    /** Общее хранилище для id между тестами. */
     public static class SharedState {
         public static Long experimentId;
     }
@@ -62,12 +62,12 @@ public class ExperimentApiTest {
     void testCreateExperiment(ru.sber.qa.services.rest.RestService restService) {
         // --- формируем параметры ---
         CreateExperimentParams params = CreateExperimentParams.builder()
-                .name(ru.sber.qa.feeders.ExperimentsFeeder.generateAqaMalilId())
-                .salt(ru.sber.qa.feeders.ExperimentsFeeder.generateSalt())
-                .startDt( ru.sber.qa.feeders.ExperimentsFeeder.startDt)
-                .endDt(ru.sber.qa.feeders.ExperimentsFeeder.endDt) // +1 день
+                .name(ExperimentsFeeder.generateAqaMalilId())
+                .salt(ExperimentsFeeder.generateSalt())
+                .startDt(ExperimentsFeeder.startDt)
+                .endDt(ExperimentsFeeder.endDt) // +1 день
                 .cjIds(java.util.List.of("103081"))
-                .hypothesisDesc("Du27_01/3")
+                .hypothesisDesc("Эксперимент создан в рамках автокейса")
                 .creator("Абтестовый")
                 .build();
 
@@ -75,8 +75,6 @@ public class ExperimentApiTest {
         ExperimentRequestDto dto = factory.buildDto(params);
         String body = factory.toJson(dto);
 
-        System.out.println("===== REQUEST BODY =====");
-        System.out.println(body);
 
         // ==== запрос на создание ====
         var response = restService.restClient()
@@ -92,7 +90,6 @@ public class ExperimentApiTest {
 
         // ==== сохраняем id для следующего теста ====
         Long experimentId = response.toJsonPath().getLong("id");
-        System.out.println("НОВЫЙ ID: " + experimentId);
         SharedState.experimentId = experimentId;
         Assertions.assertNotNull(SharedState.experimentId, "experimentId не вернулся от сервиса");
     }
@@ -115,40 +112,97 @@ public class ExperimentApiTest {
                         haveStatusCode(HttpStatus.SC_OK));
     }
 
-    /* ===== Заглушки для примера: замени своими реализациями ===== */
+    @Test
+    @Order(30)
+    @DisplayName("Тест поиска эксперимента по id")
+    void testChangeStatusExperimentById(ru.sber.qa.services.rest.RestService restService) {
+        if (SharedState.experimentId == null) {
+            throw new IllegalStateException("experimentId не установлен");
+        }
 
-    /** Твой сервис-обёртка над RestAssured. */
-    public interface RestService {
-        RestClient restClient();
+        String body = "{\n" +
+                "  \"status\": \"IN_PROGRESS\",\n" +
+                "  \"comment\": \"Сменить шаблон по продукту\",\n" +
+                "  \"slave\": true,\n" +
+                "  \"ignoreWarnings\": true,\n" +
+                "  \"startCampaigns\": true\n" +
+                "}" ;
+
+        restService.restClient()
+                .put(spec -> spec
+                                .config(P12_CONFIG)
+                                .contentType(ContentType.JSON)
+                                .accept("*/*")
+                                .body(body),
+                        url + "/api/v1/experiments/"+SharedState.experimentId+"/status")
+                .should(
+                        haveStatusCode(HttpStatus.SC_OK));
     }
 
-    /** Клиент с лямбда-конфигурацией, соответствующей твоим методам .post/.get/.should() */
-    public interface RestClient {
-        ResponseWrapper post(java.util.function.Function<RequestSpec, RequestSpec> config, String url);
-        ResponseWrapper get (java.util.function.Function<RequestSpec, RequestSpec> config, String url);
+    @Test
+    @Order(40)
+    @DisplayName("Тест удаления эксперимента по id")
+    void testDeleteExperimentById(ru.sber.qa.services.rest.RestService restService) {
+        if (SharedState.experimentId == null) {
+            throw new IllegalStateException("experimentId не установлен");
+        }
+
+        restService.restClient()
+                .delete(spec -> spec
+                                .config(P12_CONFIG)
+                                .contentType(ContentType.JSON)
+                                .accept("*/*"),
+                        url + "/api/v1/experiments/" + SharedState.experimentId)
+                .should(
+                        haveStatusCode(HttpStatus.SC_OK));
     }
 
-    /** Обертка спецификации запроса — просто тип для демонстрации. */
-    public interface RequestSpec {
-        RequestSpec config(Object cfg);
-        RequestSpec contentType(ContentType ct);
-        RequestSpec header(String name, String value);
-        RequestSpec accept(String value);
-        RequestSpec body(String body);
+    @Test
+    @Order(50)
+    @Disabled
+    @DisplayName("Создание эксперимента с двумя группами (A — целевая, B — контроль)")
+    void createTwoGroupsExperiment(ru.sber.qa.services.rest.RestService restService) {
+        // == твои «переменные из теста» ==
+        String name  =  ExperimentsFeeder.generateAqaMalilId();           // как в успешном примере
+        String salt  = ExperimentsFeeder.generateSalt();
+        long startDt = ExperimentsFeeder.startDt;
+        long endDt   = ExperimentsFeeder.endDt;
+
+        // == параметры для фабрики ==
+        CreateExperimentParams params = CreateExperimentParams.builder()
+                .name(name)
+                .salt(salt)
+                .startDt(startDt)
+                .endDt(endDt)
+                .cjIds(List.of("103081"))
+                // при необходимости — пробросить createdBy / hypothesisDesc / creator:
+                // .createdBy(1026L)
+                 .hypothesisDesc("Эксперимент создан в рамках автокейса, с двумя группами")
+                // .creator("АСтеповой")
+                // дефолты групп уже выставлены: A(size=2000, baseline=false), B(size=2000, baseline=true)
+                .build();
+
+        // == сборка JSON ==
+        ExperimentRequestDto dto = factory.buildDto(params);
+        String body = factory.toJson(dto);
+
+
+        // ==== запрос на создание ====
+        var response = restService.restClient()
+                .post(spec -> spec
+                                .config(P12_CONFIG)
+                                .contentType(ContentType.JSON)
+                                .header("Content-Type", "application/json")
+                                .accept("*/*")
+                                .body(body),
+                        url + "/api/v1/experiments")
+                .should(
+                        haveStatusCode(HttpStatus.SC_OK));
+
+        // ==== сохраняем id для следующего теста ====
+        SharedState.experimentId = response.toJsonPath().getLong("id");
+        Assertions.assertNotNull(SharedState.experimentId, "experimentId не вернулся от сервиса");
     }
 
-    /** Обертка ответа — должна совпадать с тем, что у тебя уже есть. */
-    public interface ResponseWrapper {
-        ResponseWrapper should();
-        ResponseWrapper haveStatusCode(int code);
-        io.restassured.path.json.JsonPath toJsonPath();
-    }
 
-    /** Заглушка генератора переменных — замени на твой ExperimentsFeeder. */
-    public static class ExperimentsFeeder {
-        public static String generateAqaMailId() { return "aqa-" + System.currentTimeMillis(); }
-        public static String generateSalt() { return "salt-" + System.nanoTime(); }
-        public static long startDt() { return System.currentTimeMillis() + 60_000; }
-        public static long endDt() { return System.currentTimeMillis() + 86_400_000; }
-    }
 }

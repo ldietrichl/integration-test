@@ -1,20 +1,13 @@
-package ru.sber.qa.examples.experiments;
+package ru.sber.qa.examples.experiments.manual_qa;
 
 import io.restassured.RestAssured;
 import io.restassured.config.RestAssuredConfig;
-import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
-import org.apache.http.HttpStatus;
-import ru.sber.qa.feeders.ExperimentsFeeder;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
-import static io.qameta.allure.Allure.step;
-import static ru.sber.qa.examples.experiments.TestDataHelper.experimentId;
-import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
+import static ru.sber.qa.examples.experiments.manual_qa.TestDataHelper.experimentId;
 
 public class ExperimentFindService {
 

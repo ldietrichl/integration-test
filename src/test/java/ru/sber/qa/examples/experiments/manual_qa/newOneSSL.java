@@ -1,4 +1,4 @@
-package ru.sber.qa.examples.experiments;
+package ru.sber.qa.examples.experiments.manual_qa;
 
 import io.perfeccionista.framework.SetEnvironmentConfiguration;
 import io.perfeccionista.framework.extension.PerfeccionistaExtension;
@@ -17,7 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import static io.qameta.allure.Allure.step;
-import static ru.sber.qa.examples.experiments.TestDataHelper.experimentId;
+import static ru.sber.qa.examples.experiments.manual_qa.TestDataHelper.experimentId;
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 
 @ExtendWith(PerfeccionistaExtension.class)
@@ -27,7 +27,7 @@ public class newOneSSL {
 
     String urlIFT = "https://ingress-v2.ci07963639-eift-efs1-ds-abtm-back.apps.ift-efs1-ds.delta.sbrf.ru";
     String urlDEV= "https://ingress-v2.ci07963639-dev-terra000003-abtm-back.apps.dev-terra000003-ids.ocp.delta.sbrf.ru";
-    String url= urlIFT;
+    String url= urlDEV;
 
 
     RestAssuredConfig P12_CONFIG = RestAssuredConfig.config().sslConfig(

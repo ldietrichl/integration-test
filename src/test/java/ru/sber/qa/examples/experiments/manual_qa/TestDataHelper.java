@@ -1,4 +1,4 @@
-package ru.sber.qa.examples.experiments;
+package ru.sber.qa.examples.experiments.manual_qa;
 
 public class TestDataHelper {
 
