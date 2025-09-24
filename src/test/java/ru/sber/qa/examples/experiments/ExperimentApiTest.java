@@ -10,8 +10,8 @@ import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import request.CreateExperimentParams;
-import request.CreateExperimentRequestFactory;
+import request.experiment.CreateExperimentParams;
+import request.experiment.CreateExperimentRequestFactory;
 import ru.sber.qa.config.ApiEnvironmentConfiguration;
 import ru.sber.qa.feeders.ExperimentsFeeder;
 

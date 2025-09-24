@@ -1,4 +1,4 @@
-package request;
+package request.experiment;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -16,7 +16,7 @@ public class CreateExperimentRequestFactory {
     private final ObjectMapper mapper;
 
     public CreateExperimentRequestFactory() {
-        // сериализуем null-поля (как в твоём успешном примере логов)
+        // сериализуем null-поля
         this.mapper = new ObjectMapper();
         this.mapper.setSerializationInclusion(JsonInclude.Include.ALWAYS);
     }
