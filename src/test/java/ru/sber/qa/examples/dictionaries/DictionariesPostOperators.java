@@ -2,22 +2,21 @@ package ru.sber.qa.examples.dictionaries;
 
 
 import dto.dictionaries.request.OperatorsReqDto;
+import io.perfeccionista.framework.Environment;
 import io.perfeccionista.framework.SetEnvironmentConfiguration;
 import io.perfeccionista.framework.extension.PerfeccionistaExtension;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import request.dictionaries.DictionariesParams;
 import request.dictionaries.DictionariesRequestFactory;
 import ru.sber.qa.config.ApiEnvironmentConfiguration;
+import ru.sber.qa.services.db.DatabaseService;
 import ru.sber.qa.services.rest.RestService;
 
 import java.util.List;
@@ -39,6 +38,8 @@ public class DictionariesPostOperators {
     private final DictionariesRequestFactory factory = new DictionariesRequestFactory();
 
 
+
+
     RestAssuredConfig P12_CONFIG = RestAssuredConfig.config().sslConfig(
             new SSLConfig()
                     // пароли можно и нужно шифровать, вариант с шифрованием приведен в конфиге выше
@@ -52,6 +53,7 @@ public class DictionariesPostOperators {
     public static class SharedState {
         public static Long experimentId;
     }
+
 
 
     @Test
@@ -68,7 +70,7 @@ public class DictionariesPostOperators {
         OperatorsReqDto dto = factory.buildOperatorsDto(params);
 
 
-        var response = restService.restClient()
+         restService.restClient()
                 .post(spec -> spec
                                 .config(P12_CONFIG)
                                 .contentType(ContentType.JSON)
@@ -78,48 +80,24 @@ public class DictionariesPostOperators {
                 .should(
                         haveStatusCode(HttpStatus.SC_OK));
 
-
     }
 
 
-    @ParameterizedTest(name = "[{index}] operator={0}")
-    @MethodSource("operatorCodes")
-    @DisplayName("Получить справочник точек фильтрации (по коду оператора)")
-    void testGetOperators_byCode(RestService restService,String operatorCode) {
+    @Test
+    //@Disabled
+    @DisplayName("Получить справочник точек сплиттования")
+    void testChangeStatusExperimentById1(DatabaseService dbService)  {
 
-        // 1) Формируем параметры (в запрос кладём один код из параметра)
-        DictionariesParams params = DictionariesParams.builder()
-                .operatorCodes(List.of(operatorCode))
-                .build();
+        //RestService restService = Environment.getForCurrentThread().getService(RestService.class);
 
-        // 2) Строим DTO через фабрику
-        OperatorsReqDto dto = factory.buildOperatorsDto(params);
+        //restService.restClient().
 
-        // 3) Делаем запрос и проверяем статус
-        var response = restService.restClient()
-                .post(spec -> spec
-                                .config(P12_CONFIG)
-                                .contentType(ContentType.JSON)
-                                .accept("*/*")
-                                .body(dto),
-                        url + "/api/v1/dictionaries/operators")
-                .should(haveStatusCode(HttpStatus.SC_OK));
 
-        // при необходимости — доп. проверки структуры/содержимого ответа
+        var x = dbService.dataBaseClient("dev_explab").executeSelect("select code from dictionaries.operator_dict od ").firstRow().toSimpleRow();
+        System.out.println(x);
+
+        Stream.of( x = dbService.dataBaseClient("dev_explab").executeSelect("select code from dictionaries.operator_dict od ").firstRow().toSimpleRow());
+
     }
-
-    static Stream<String> operatorCodes() {
-        return Stream.of(
-                "equal", "not_equal", "more", "less",
-                "more_equal", "less_equal", "is_null", "is_not_null",
-                "in", "not_in", "like", "not_like",
-                "like_any", "not_like_any", "like_all"
-        );
-    }
-
-
-
-
-
 
 }

@@ -80,6 +80,8 @@ dependencies {
     implementation(group = "ru.sber.qa.platform-v-at-framework", name = "journal", version = "$platformvatframeworkVersion")
     //metrics - модуль для работы с Хранилищем метрик VictoriaMetrics и Thanos
     implementation(group = "ru.sber.qa.platform-v-at-framework", name = "metrics", version = "$platformvatframeworkVersion")
+    implementation(group = "org.postgresql", name = "postgresql", version = "42.7.7")
+
 
     //allure2 - модуль для работы с Allure2
     implementation(group = "ru.sber.qa.platform-v-at-framework", name = "allure2", version = "$platformvatframeworkVersion")

@@ -37,7 +37,7 @@ public class ExperimentApiTest {
 
     String urlIFT = "https://ingress-v2.ci07963639-eift-efs1-ds-abtm-back.apps.ift-efs1-ds.delta.sbrf.ru";
      String urlDEV= "https://ingress-v2.ci07963639-eift-efs1-ds-abtm-back.apps.dev-terra000003-ids.ocp.delta.sbrf.ru";
-    String url= urlDEV;
+    String url= urlIFT;
 
     private final CreateExperimentRequestFactory factory = new CreateExperimentRequestFactory();
 

@@ -8,20 +8,23 @@ import io.restassured.config.RestAssuredConfig;
 import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import request.dictionaries.DictionariesParams;
 import request.dictionaries.DictionariesRequestFactory;
 import ru.sber.qa.config.ApiEnvironmentConfiguration;
+import ru.sber.qa.services.rest.RestService;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(PerfeccionistaExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @SetEnvironmentConfiguration(ApiEnvironmentConfiguration.class)
@@ -50,15 +53,31 @@ public class DictionariesPostSplittingPointTemplates {
     }
 
 
-    @Test
+    // список кодов, как в таблице
+    static Stream<Arguments> splittingPointCodes() {
+        return Stream.of(
+                Arguments.of("MAPPER","COMMON"),
+                Arguments.of("MAPPER","PILOT"),
+                Arguments.of("MAPPER","DCG"),
+                Arguments.of("MAPPER","CLBR"),
+                Arguments.of("OPTIMIZER","MODEL_TEST"),
+                Arguments.of("OPTIMIZER","NEW_PRODUCT")
+
+        );
+    }
+
+
+
+    @ParameterizedTest(name = "{index}) splitting={0}, template={1}")
+    @MethodSource("splittingPointCodes")
     @DisplayName("Получить справочник точек сплиттования")
-    void testChangeStatusExperimentById(ru.sber.qa.services.rest.RestService restService) {
+    void testChangeStatusExperimentById(String splitting,String template, RestService restService) {
 
 
         // 1. Формируем параметры
         DictionariesParams params = DictionariesParams.builder()
-                .splittingPointCodes(List.of("MAPPER"))
-                .templateCodes(List.of("PILOT"))
+                .splittingPointCodes(List.of(splitting))
+                .templateCodes(List.of(template))
                 .build();
 
         // 2. Строим DTO через фабрику

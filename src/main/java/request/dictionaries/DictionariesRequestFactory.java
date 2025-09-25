@@ -42,7 +42,7 @@ public class DictionariesRequestFactory {
     }
 
     /** Сериализовать в JSON-строку (включая null-поля). */
-    public String toJson(ExpressionParameterDictReqDto dto) {
+    public String toJson(OperatorsReqDto dto) {
         try {
             return mapper.writeValueAsString(dto);
         } catch (JsonProcessingException e) {

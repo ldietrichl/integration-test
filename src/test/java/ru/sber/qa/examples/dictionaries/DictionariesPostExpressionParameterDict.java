@@ -6,6 +6,9 @@ import io.perfeccionista.framework.SetEnvironmentConfiguration;
 import io.perfeccionista.framework.extension.PerfeccionistaExtension;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.config.SSLConfig;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.filter.log.RequestLoggingFilter;
+import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.DisplayName;
@@ -16,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import request.dictionaries.DictionariesParams;
 import request.dictionaries.DictionariesRequestFactory;
 import ru.sber.qa.config.ApiEnvironmentConfiguration;
+import ru.sber.qa.services.rest.RestService;
 
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 
@@ -50,7 +54,7 @@ public class DictionariesPostExpressionParameterDict {
 
     @Test
     @DisplayName("Получить справочник параметров выражений")
-    void testChangeStatusExperimentById(ru.sber.qa.services.rest.RestService restService) {
+    void testChangeStatusExperimentById(RestService restService) {
 
 
         // 1. Формируем параметры

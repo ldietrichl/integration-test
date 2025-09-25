@@ -64,9 +64,11 @@ public class DictionariesGetSplittingPointTemplates {
 
         var response = restService.restClient()
                 .get(spec -> spec
+
                                 .config(P12_CONFIG)
                                 .contentType(ContentType.JSON)
-                                .accept("*/*"),
+                                .accept("*/*")
+                                .log().all(),
                         url + "/api/v1/dictionaries/splitting-points")
                 .should(
                         haveStatusCode(HttpStatus.SC_OK));
