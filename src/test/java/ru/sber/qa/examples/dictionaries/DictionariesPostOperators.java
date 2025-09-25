@@ -13,11 +13,15 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import request.dictionaries.DictionariesParams;
 import request.dictionaries.DictionariesRequestFactory;
 import ru.sber.qa.config.ApiEnvironmentConfiguration;
+import ru.sber.qa.services.rest.RestService;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 
@@ -52,12 +56,12 @@ public class DictionariesPostOperators {
 
     @Test
     @DisplayName("Получить справочник точек сплиттования")
-    void testChangeStatusExperimentById(ru.sber.qa.services.rest.RestService restService) {
+    void testChangeStatusExperimentById(RestService restService) {
 
 
         // 1. Формируем параметры
         DictionariesParams params = DictionariesParams.builder()
-                .operatorCodes(List.of("in"))
+                .operatorCodes(List.of("in","more_equal"))
                 .build();
 
         // 2. Строим DTO через фабрику
@@ -76,6 +80,43 @@ public class DictionariesPostOperators {
 
 
     }
+
+
+    @ParameterizedTest(name = "[{index}] operator={0}")
+    @MethodSource("operatorCodes")
+    @DisplayName("Получить справочник точек фильтрации (по коду оператора)")
+    void testGetOperators_byCode(RestService restService,String operatorCode) {
+
+        // 1) Формируем параметры (в запрос кладём один код из параметра)
+        DictionariesParams params = DictionariesParams.builder()
+                .operatorCodes(List.of(operatorCode))
+                .build();
+
+        // 2) Строим DTO через фабрику
+        OperatorsReqDto dto = factory.buildOperatorsDto(params);
+
+        // 3) Делаем запрос и проверяем статус
+        var response = restService.restClient()
+                .post(spec -> spec
+                                .config(P12_CONFIG)
+                                .contentType(ContentType.JSON)
+                                .accept("*/*")
+                                .body(dto),
+                        url + "/api/v1/dictionaries/operators")
+                .should(haveStatusCode(HttpStatus.SC_OK));
+
+        // при необходимости — доп. проверки структуры/содержимого ответа
+    }
+
+    static Stream<String> operatorCodes() {
+        return Stream.of(
+                "equal", "not_equal", "more", "less",
+                "more_equal", "less_equal", "is_null", "is_not_null",
+                "in", "not_in", "like", "not_like",
+                "like_any", "not_like_any", "like_all"
+        );
+    }
+
 
 
 

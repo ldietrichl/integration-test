@@ -49,7 +49,7 @@ public class DictionariesPostExpressionParameterDict {
 
 
     @Test
-    @DisplayName("Получить справочник точек сплиттования")
+    @DisplayName("Получить справочник параметров выражений")
     void testChangeStatusExperimentById(ru.sber.qa.services.rest.RestService restService) {
 
 

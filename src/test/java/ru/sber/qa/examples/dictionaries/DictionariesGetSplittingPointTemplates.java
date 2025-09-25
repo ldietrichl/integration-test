@@ -53,7 +53,7 @@ public class DictionariesGetSplittingPointTemplates {
 
 
     @Test
-    @DisplayName("Получить справочник точек сплиттования")
+    @DisplayName("Получить справочник шаблонов точек сплитования")
     void testChangeStatusExperimentById(ru.sber.qa.services.rest.RestService restService) {
 
         List<DictionarySplittingPointsRespDto> expected = List.of(
