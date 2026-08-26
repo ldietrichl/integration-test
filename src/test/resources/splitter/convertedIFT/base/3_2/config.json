@@ -1,0 +1,60 @@
+{
+  "messageId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "requestId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "configVersion": "1774884506",
+  "forceConfigLoad": true,
+  "splittingPointCode": "MAPPER",
+  "splittingConfig": {
+    "experiments": [{
+      "id": 2,
+      "layerId": 1,
+      "salt": "24096d2M1e",
+      "objectSelectConditions": [{
+        "id": 1,
+        "rules": [
+          [{
+            "dataType": "INTEGER",
+            "paramCode": "channel",
+            "paramSource": "SPLITTING_OBJECTS",
+            "operatorCode": "in",
+            "values": [
+              "19"
+            ]
+          }, {
+            "dataType": "STRING",
+            "paramCode": "sellingProductId",
+            "paramSource": "SPLITTING_OBJECTS",
+            "operatorCode": "in",
+            "values": [
+              "1-AVDHSSS"
+            ]
+          }
+          ]
+        ]
+      }
+      ],
+      "groups": [{
+        "code": "A",
+        "shares": [{
+          "shareFrom": 0,
+          "shareTo": 10000
+        }
+        ],
+        "splittingResults": [{
+          "conditionId": 1,
+          "resultParams": [{
+            "paramCode": "actionType",
+            "paramValues": [
+              "6"
+            ],
+            "dataType": "INTEGER"
+          }
+          ]
+        }
+        ]
+      }
+      ]
+    }
+    ]
+  }
+}

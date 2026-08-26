@@ -1,0 +1,31 @@
+{
+  "requestId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "splittingId": "700",
+  "requestParams": [],
+  "splittingObjects": [{
+    "objectId": "0c879e13-4e9f-4600-9cf5-03eb3a10e7da",
+    "objectParams": [{
+      "paramCode": "commId",
+      "paramValues": ["345345"],
+      "dataType": "INTEGER"
+    }
+    ]
+  }, {
+    "objectId": "cdd20fe8-a0a7-483d-9a4f-b19f23f63ea8",
+    "objectParams": [{
+      "paramCode": "modelId",
+      "paramValues": ["8"],
+      "dataType": "INTEGER"
+    },{
+      "paramCode": "channelId",
+      "paramValues": ["19"],
+      "dataType": "INTEGER"
+    }, {
+      "paramCode": "productId",
+      "paramValues": ["2-NISSAN"],
+      "dataType": "STRING"
+    }
+    ]
+  }
+  ]
+}

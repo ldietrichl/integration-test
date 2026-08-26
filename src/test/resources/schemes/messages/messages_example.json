@@ -1,0 +1,9 @@
+{
+
+  "message": "{\"id\": \"73e7ee3d-002e-429c-b57f-89c122b6beea\",\"metamodelVersion\": 2,\"module\": \"CI07963639_ExpLab\",\"metamodelHash\": \"fe557e985ecab7d524b9e60796061fd4\",\"createdAt\": 1742868468,\"session\": \"b368a921-6027-4bf0-a3c6-b34886d05594\",\"userLogin\": \"081544872\",\"userName\": \"Иван Иванович Иванов\",\"userNode\": \"10.62.234.1:443\",\"nodeId\": \"tvlds-ter025578.delta.sbrf.ru 29.65.212.215\",\"sourceSystem\": \"CI02047903\",\"requestId\": \"cfd3fd1ad40f008fea72e06901ff722b\",\"eventCode\": \"expCreated\",\"name\": \"Создание эксперимента\"}",
+  "params": [{
+    "name": "id",
+    "value": "12345"
+  }
+  ]
+}

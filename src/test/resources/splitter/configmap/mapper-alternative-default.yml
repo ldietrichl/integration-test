@@ -1,0 +1,11 @@
+# Variant for alternative markup tests.
+# Based on mapper-current.yml. The important part is traffic-based-alternative=true and alt-markup/rollback lists.
+
+include: mapper-current.yml
+required:
+  traffic-based-alternative: true
+  alternative-markup-rule.rule-code: ALTMARKUP
+  alternative-markup-rule.proc-code: mapperAlternative
+  alternative-markup-rule.proc-params.param-code: actionType
+  alternative-markup-rule.proc-params.alt-markup-values: [0, 1, 2, 3, 4, 5, 6]
+  alternative-markup-rule.proc-params.alt-rollback-values: [5, 6]

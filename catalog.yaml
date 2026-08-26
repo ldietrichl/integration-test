@@ -1,0 +1,14 @@
+url: https://sc-ci.sber.ru/sc/QA/platform-v-at-gradle-draft
+name: QA/platform-v-at-gradle-draft
+purpose: Проект-пример на Gradle для фреймворка автотестов PlatformV-AT-Framework
+scope: Базовый проект для начала разработки автотестов
+supportModel: ACR
+authors:
+  - Разуваев Сергей@razuvaev.s.vla/Razuvaev.S.Vla@sberbank.ru
+  - Михаленков Владимир@vsermikhalenkov/VSerMikhalenkov@sberbank.ru
+  - Голубков Дмитрий@dvgolubkov/DVGolubkov@sberbank.ru
+  - Михайличенко Вадим@vvmikhaylichenko/VVMikhaylichenko@sberbank.ru
+  - Демьяненко Никита@nleodemyanenko/NLeoDemyanenko@sberbank.ru
+tags:
+  - фреймворк
+  - проект-пример

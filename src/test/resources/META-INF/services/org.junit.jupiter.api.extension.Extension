@@ -1,0 +1,2 @@
+# No JUnit extensions are required for Allure labels.
+# Labels are applied via io.qameta.allure.listener.TestLifecycleListener.

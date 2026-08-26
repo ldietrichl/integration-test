@@ -1,0 +1,31 @@
+{
+  "requestId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "splittingId": "700",
+  "requestParams": [],
+  "splittingObjects": [{
+    "objectId": "1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2",
+    "objectParams": [{
+      "paramCode": "commId",
+      "paramValues": ["250524"],
+      "dataType": "INTEGER"
+    }, {
+      "paramCode": "channelId",
+      "paramValues": ["20"],
+      "dataType": "INTEGER"
+    }
+    ]
+  }, {
+    "objectId": "46871f54-7d8c-40bb-8ca7-35c667e21789",
+    "objectParams": [{
+      "paramCode": "modelId",
+      "paramValues": ["9"],
+      "dataType": "INTEGER"
+    }, {
+      "paramCode": "channelId",
+      "paramValues": ["20"],
+      "dataType": "INTEGER"
+    }
+    ]
+  }
+  ]
+}

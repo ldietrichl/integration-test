@@ -1,0 +1,9 @@
+# Variant for layer priority tests.
+# Based on mapper-current.yml. Layer tests mostly depend on split config data itself,
+# but require MAIN and ALL procedures to be enabled on the stand.
+
+include: mapper-current.yml
+required:
+  final-exp-rule.rule-code: MAIN
+  all-result-rule: enabled
+  filtered-flag-rule.enabled: true

@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "totalPages": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "content": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "startDt": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endDt": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hypothesisDesc": {
+            "type": "string"
+          },
+          "objectName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "methodName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "statusCode": {
+            "type": "string",
+            "enum": [
+              "AGREED",
+              "AGREEMENT",
+              "DRAFT",
+              "IN_PROGRESS",
+              "NOT_AGREED",
+              "STOPPED",
+              "SUSPENDED"
+            ]
+          },
+          "updatedDt": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "creator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hasNotAgreedCJ": {
+            "type": "boolean"
+          },
+          "hasReadyToStartCJ": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "autoStart": {
+            "type": "boolean"
+          },
+          "autoStop": {
+            "type": "boolean"
+          },
+          "withCampaign": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "startDt",
+          "endDt",
+          "hypothesisDesc",
+          "methodName",
+          "statusCode",
+          "updatedDt",
+          "hasNotAgreedCJ",
+          "hasReadyToStartCJ",
+          "version",
+          "autoStart",
+          "autoStop",
+          "withCampaign"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "totalPages",
+    "content"
+  ],
+  "additionalProperties": false
+}

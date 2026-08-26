@@ -1,0 +1,31 @@
+{
+  "totalPages": 0,
+  "totalElements": 0,
+  "content": [
+    {
+      "id": 0,
+      "type": "string",
+      "name": "string",
+      "desc": "string",
+      "status": "DRAFT",
+      "salt": "string",
+      "hashAlgorithm": "MURMURHASH",
+      "quantum": 0,
+      "actionType": -1,
+      "startDt": 1688126400000,
+      "endDt": 1688126400000,
+      "autoStart": true,
+      "autoStop": true,
+      "realStartDt": 1688126400000,
+      "realEndDt": 1688126400000,
+      "createdDt": 1688126400000,
+      "createdBy": 0,
+      "updatedDt": 1688126400000,
+      "updatedBy": 0,
+      "priority": 0,
+      "version": 0,
+      "groups": "string",
+      "resultMessage": "string"
+    }
+  ]
+}

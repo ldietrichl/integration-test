@@ -1,0 +1,8 @@
+# Базовые правила REACTIONS для document-profile. Блок ALL управляется splitter.config.all-rule-code-exp-enabled.
+rules:
+  final-exp-rule:
+    rule-code: MAIN
+    proc-code: finalExpByLayerAndId
+    proc-params:
+      max-layer-priority: true
+      max-id: false

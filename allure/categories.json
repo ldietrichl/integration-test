@@ -1,0 +1,7 @@
+[
+  {
+    "name": "Ошибки поиска элементов на странице",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": "Element not found.*"
+  }
+]

@@ -1,0 +1,62 @@
+# Required ConfigMap contract for ru.sber.qa.splitter.analytictests
+#
+# This file is an executable test prerequisite description, not an automatic deploy artifact.
+# Tests attach it to Allure before loading split config. The target stand must use compatible rules.
+# If a test fails, first compare real stand ConfigMap with this resource.
+
+traffic-based-alternative: true
+
+rules:
+  final-exp-rule:
+    rule-code: MAIN
+    proc-code: mapperFinalExp
+    proc-params:
+      param-code: actionType
+      value-type: INTEGER
+      values-map:
+        "0": 0
+        "1": 10
+        "2": 60
+        "3": 40
+        "4": 50
+        "5": 20
+        "6": 30
+      alt-control:
+        - 5
+        - 6
+
+  alternative-markup-rule:
+    rule-code: ALTMARKUP
+    proc-code: mapperAlternative
+    proc-params:
+      param-code: actionType
+      value-type: INTEGER
+      alt-markup-values:
+        - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+      alt-rollback-values:
+        - 5
+        - 6
+
+  filter-rule:
+    rule-code: FILT
+    proc-code: mapperFilter
+    enabled: true
+    proc-params:
+      param-code: actionType
+      value-type: INTEGER
+      values:
+        - 2
+        - 4
+
+  filtered-flag-rule:
+    rule-code: FILTERED_FLAG
+    proc-code: filteredFlag
+    enabled: true
+    proc-params:
+      flag-code: filtered

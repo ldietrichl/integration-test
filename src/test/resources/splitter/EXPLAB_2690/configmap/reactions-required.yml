@@ -1,0 +1,9 @@
+# Контракт ConfigMap для автоматических REACTIONS-сценариев EXPLAB-2690.
+# Файл прикладывается в Allure, но не применяется к стенду автоматически.
+rules:
+  final-exp-rule:
+    rule-code: MAIN
+    proc-code: finalExpByLayerAndId
+    proc-params:
+      max-layer-priority: true
+      max-id: false

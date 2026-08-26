@@ -1,0 +1,78 @@
+# IDE and local workspace files
+.idea/
+.vscode/
+.gigaide/
+*.iws
+*.iml
+*.ipr
+
+# Gradle and build outputs
+.gradle/
+build/
+out/
+target/
+.settings/
+.classpath
+.project
+
+# Test reports and generated artifacts
+.allure/
+allure-results/
+allure-report/
+build/allure-results*/
+build/reports/
+attachments/
+*.log
+*.tmp
+
+# Local Allure CLI distribution. Keep only project categories config.
+allure/bin/
+allure/config/
+allure/lib/
+allure/plugins/
+!allure/categories.json
+
+# Patch, validation, and migration scratch files
+APPLY_PATCH.md
+MANIFEST.txt
+PATCH_FILE_LIST.txt
+VALIDATION_RESULTS.txt
+REPORT_ELIGIBILITY_SNAPSHOT.md
+REPORTING_REFACTORING_REPORT.md
+REST_REFACTORING_REPORT.md
+
+# Local environment files and secrets
+.env
+.env.*
+!.env.example
+gradle.local.properties
+gradle.*.local.properties
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.rar
+
+# Real corporate test configuration stays local.
+src/test/resources/test.properties
+src/test/resources/database.properties
+src/test/resources/container-service.properties
+src/test/resources/perfeccionista.properties
+src/test/resources/kafka-consumers.properties
+src/test/resources/kafka-producers.properties
+
+# Keep non-secret runtime config files trackable.
+!src/test/resources/allure.properties
+!src/test/resources/junit-platform.properties
+!src/test/resources/simplelogger.properties
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini

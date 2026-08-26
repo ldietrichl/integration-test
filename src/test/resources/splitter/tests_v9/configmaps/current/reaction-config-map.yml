@@ -1,0 +1,8 @@
+# Актуальная REACTIONS ConfigMap, под которую выровнены REST tests-v9.
+rules:
+  final-exp-rule:
+    rule-code: MAIN
+    proc-code: finalExpByLayerAndId
+    proc-params:
+      max-layer-priority: true
+      max-id: false

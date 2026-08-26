@@ -1,0 +1,107 @@
+[
+  {
+    "id": 1,
+    "code": "equal",
+    "name": "=",
+    "description": "равно",
+    "isMultiple": false
+  },
+  {
+    "id": 2,
+    "code": "not_equal",
+    "name": "!=",
+    "description": "не равно",
+    "isMultiple": false
+  },
+  {
+    "id": 3,
+    "code": "more",
+    "name": ">",
+    "description": "больше",
+    "isMultiple": false
+  },
+  {
+    "id": 4,
+    "code": "less",
+    "name": "<",
+    "description": "меньше",
+    "isMultiple": false
+  },
+  {
+    "id": 5,
+    "code": "more_equal",
+    "name": ">=",
+    "description": "больше или равно",
+    "isMultiple": false
+  },
+  {
+    "id": 6,
+    "code": "less_equal",
+    "name": "<=",
+    "description": "меньше или равно",
+    "isMultiple": false
+  },
+  {
+    "id": 7,
+    "code": "is_null",
+    "name": "IS NULL",
+    "description": "не задано",
+    "isMultiple": false
+  },
+  {
+    "id": 8,
+    "code": "is_not_null",
+    "name": "IS NOT NULL",
+    "description": "задано",
+    "isMultiple": false
+  },
+  {
+    "id": 9,
+    "code": "in",
+    "name": "IN",
+    "description": "равно любому",
+    "isMultiple": true
+  },
+  {
+    "id": 10,
+    "code": "not_in",
+    "name": "NOT IN",
+    "description": "не равно ни одному",
+    "isMultiple": true
+  },
+  {
+    "id": 11,
+    "code": "like",
+    "name": "LIKE",
+    "description": "содержит похожие",
+    "isMultiple": false
+  },
+  {
+    "id": 12,
+    "code": "not_like",
+    "name": "NOT LIKE",
+    "description": "не содержит похожего",
+    "isMultiple": false
+  },
+  {
+    "id": 13,
+    "code": "like_any",
+    "name": "LIKE ANY",
+    "description": "содержит любое похожее",
+    "isMultiple": true
+  },
+  {
+    "id": 14,
+    "code": "not_like_any",
+    "name": "NOT LIKE ANY",
+    "description": "не содержит ни одного похожего",
+    "isMultiple": true
+  },
+  {
+    "id": 15,
+    "code": "like_all",
+    "name": "LIKE ALL",
+    "description": "содержит все похожие",
+    "isMultiple": true
+  }
+]
