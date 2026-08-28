@@ -24,6 +24,8 @@ import java.util.List;
 @ResourceLock("explab-2696-running-cache")
 public class RunningSplitsV1Cache2696FlowTest extends AbstractRunningV1Cache2696FlowTest {
 
+    // Для этих сценариев тоггл EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED должен быть выключен
+    // или не задан явно в JVM/env.
     @BeforeEach
     void requireV2CjToggleDisabled() {
         assumeV2CjExperimentsToggleDisabledStand();
@@ -53,13 +55,15 @@ public class RunningSplitsV1Cache2696FlowTest extends AbstractRunningV1Cache2696
     @DisplayName("EXPLAB-2696-SPL-02. Running splits v1 фильтрует ответ по query ids")
     void runningSplitsShouldFilterByIds() {
         getFlowWithRest()
-                .step("Создаем running-сплит и проверяем, что ids ограничивает ответ", flow -> {
+                .step("Создаем два running-сплита и проверяем, что ids ограничивает ответ", flow -> {
                     Long expectedSplitId = createSplit(flow, "IN_PROGRESS");
+                    Long unexpectedSplitId = createSplit(flow, "IN_PROGRESS");
 
                     ValidatableResponseWrapper response = flow.restCustomSteps().splitSteps()
                             .getSplitsEnhanceRunningStatusOk(List.of(expectedSplitId));
 
                     assertArrayContainsId(response, expectedSplitId);
+                    assertArrayDoesNotContainId(response, unexpectedSplitId);
                     assertArrayContainsOnlyIds(response, List.of(expectedSplitId));
                 })
                 .run();
@@ -78,6 +82,39 @@ public class RunningSplitsV1Cache2696FlowTest extends AbstractRunningV1Cache2696
                                         RestMatchers.haveBodyWithEvaluatableJsonPathExpression("id != null"),
                                         RestMatchers.haveBodyWithEvaluatableJsonPathExpression("message != null")
                                 ))
+                .run();
+    }
+
+    @Regression
+    @Test
+    @DisplayName("EXPLAB-2696-SPL-04. Running splits v1 возвращает пустой массив для неизвестного ids")
+    void runningSplitsShouldReturnEmptyArrayForUnknownIds() {
+        getFlowWithRest()
+                .step("Запрашиваем running-сплиты по заведомо отсутствующему id", flow -> {
+                    Long unknownSplitId = Long.MAX_VALUE - 2696;
+
+                    ValidatableResponseWrapper response = flow.restCustomSteps().splitSteps()
+                            .getSplitsEnhanceRunningStatusOk(List.of(unknownSplitId));
+
+                    assertArrayIsEmpty(response);
+                })
+                .run();
+    }
+
+    @Regression
+    @Test
+    @DisplayName("EXPLAB-2696-SPL-05. Running splits v1 возвращает контракт внешнего DTO")
+    void runningSplitsShouldReturnExternalDtoContract() {
+        getFlowWithRest()
+                .step("Создаем running-сплит и проверяем ключевые поля внешнего DTO", flow -> {
+                    Long runningSplitId = createSplit(flow, "IN_PROGRESS", 4);
+
+                    ValidatableResponseWrapper response = flow.restCustomSteps().splitSteps()
+                            .getSplitsEnhanceRunningStatusOk();
+
+                    assertArrayContainsId(response, runningSplitId);
+                    assertSplitHasExternalDtoContract(response, runningSplitId);
+                })
                 .run();
     }
 }
