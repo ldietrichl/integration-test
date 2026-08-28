@@ -18,8 +18,10 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static io.qameta.allure.Allure.step;
@@ -166,11 +168,16 @@ abstract class AbstractRunningV1Cache2696FlowTest extends Flows {
     }
 
     protected Long createSplit(FlowWithRest flow, String status) {
+        return createSplit(flow, status, 1);
+    }
+
+    protected Long createSplit(FlowWithRest flow, String status, int version) {
         String unique = UUID.randomUUID().toString().substring(0, 8);
         SplitsParams params = SplitsParams.builder()
                 .name("AQA_EXPLAB_2696_SPLIT_" + unique)
                 .salt("AQA2696S" + unique)
                 .status(status)
+                .version(version)
                 .build();
 
         Long splitId = step("Создаем v1 сплит в статусе %s".formatted(status), () -> {
@@ -289,8 +296,9 @@ abstract class AbstractRunningV1Cache2696FlowTest extends Flows {
 
     protected void assertArrayContainsOnlyIds(ValidatableResponseWrapper response, List<Long> expectedIds) {
         JsonNode root = jsonArray(response);
-        for (JsonNode item : root) {
-            long actualId = item.path("id").asLong(Long.MIN_VALUE);
+        List<Long> actualIds = idsFromArray(root);
+        assertNoDuplicateIds(actualIds, response);
+        for (Long actualId : actualIds) {
             assertTrue(expectedIds.contains(actualId),
                     "Query ids должен ограничивать running-ответ. Не ожидали id=" + actualId
                             + " в ответе" + body(response));
@@ -302,6 +310,10 @@ abstract class AbstractRunningV1Cache2696FlowTest extends Flows {
                 "Не ожидали id=" + unexpectedId + " в ответе" + body(response));
     }
 
+    protected void assertArrayHasNoDuplicateIds(ValidatableResponseWrapper response) {
+        assertNoDuplicateIds(idsFromArray(jsonArray(response)), response);
+    }
+
     protected void assertExperimentHasVersionAndStatus(ValidatableResponseWrapper response,
                                                        Long experimentId,
                                                        long expectedVersion,
@@ -311,6 +323,45 @@ abstract class AbstractRunningV1Cache2696FlowTest extends Flows {
                 "Некорректная version для experimentId=" + experimentId + body(response));
         assertEquals(expectedStatus, experiment.path("status").path("code").asText(null),
                 "Некорректный status.code для experimentId=" + experimentId + body(response));
+    }
+
+    protected void assertExperimentHasExternalDtoContract(ValidatableResponseWrapper response, Long experimentId) {
+        JsonNode experiment = findById(response, experimentId);
+        assertRequiredNumber(experiment, "experimentId=" + experimentId, "id", response);
+        assertRequiredText(experiment, "experimentId=" + experimentId, "name", response);
+        assertRequiredObject(experiment, "experimentId=" + experimentId, "status", response);
+        assertEquals("IN_PROGRESS", experiment.path("status").path("code").asText(null),
+                "Некорректный status.code для experimentId=" + experimentId + body(response));
+        assertRequiredNumber(experiment, "experimentId=" + experimentId, "startDt", response);
+        assertRequiredNumber(experiment, "experimentId=" + experimentId, "endDt", response);
+        assertRequiredNumber(experiment, "experimentId=" + experimentId, "createdDt", response);
+        assertRequiredNumber(experiment, "experimentId=" + experimentId, "updatedDt", response);
+        assertRequiredText(experiment, "experimentId=" + experimentId, "salt", response);
+        assertRequiredNumber(experiment, "experimentId=" + experimentId, "quantum", response);
+        assertRequiredAnyText(experiment, "experimentId=" + experimentId, response, "hashFunction", "hashAlgorithm");
+        assertRequiredNumber(experiment, "experimentId=" + experimentId, "version", response);
+        assertRequiredArray(experiment, "experimentId=" + experimentId, "groups", response);
+        assertExperimentGroupsContract(experiment.path("groups"), experimentId, response);
+    }
+
+    protected void assertSplitHasExternalDtoContract(ValidatableResponseWrapper response, Long splitId) {
+        JsonNode split = findById(response, splitId);
+        assertRequiredNumber(split, "splitId=" + splitId, "id", response);
+        assertRequiredText(split, "splitId=" + splitId, "name", response);
+        assertRequiredObject(split, "splitId=" + splitId, "status", response);
+        assertEquals("IN_PROGRESS", split.path("status").path("code").asText(null),
+                "Некорректный status.code для splitId=" + splitId + body(response));
+        assertRequiredNumber(split, "splitId=" + splitId, "startDt", response);
+        assertRequiredNumber(split, "splitId=" + splitId, "endDt", response);
+        assertRequiredNumber(split, "splitId=" + splitId, "createdDt", response);
+        assertRequiredNumber(split, "splitId=" + splitId, "updatedDt", response);
+        assertRequiredText(split, "splitId=" + splitId, "salt", response);
+        assertRequiredNumber(split, "splitId=" + splitId, "quantum", response);
+        assertRequiredAnyText(split, "splitId=" + splitId, response, "hashFunction", "hashAlgorithm");
+        assertRequiredField(split, "splitId=" + splitId, "actionType", response);
+        assertRequiredNumber(split, "splitId=" + splitId, "version", response);
+        assertRequiredArray(split, "splitId=" + splitId, "groups", response);
+        assertSplitGroupsContract(split.path("groups"), splitId, response);
     }
 
     protected void assertEveryItemHasStatus(ValidatableResponseWrapper response, String status) {
@@ -384,6 +435,20 @@ abstract class AbstractRunningV1Cache2696FlowTest extends Flows {
         return false;
     }
 
+    private List<Long> idsFromArray(JsonNode root) {
+        List<Long> ids = new ArrayList<>();
+        for (JsonNode item : root) {
+            ids.add(item.path("id").asLong(Long.MIN_VALUE));
+        }
+        return ids;
+    }
+
+    private void assertNoDuplicateIds(List<Long> actualIds, ValidatableResponseWrapper response) {
+        Set<Long> uniqueIds = new LinkedHashSet<>(actualIds);
+        assertEquals(actualIds.size(), uniqueIds.size(),
+                "В running-ответе не должно быть дублей по id. Фактические id=" + actualIds + body(response));
+    }
+
     private JsonNode findById(ValidatableResponseWrapper response, Long id) {
         JsonNode root = jsonArray(response);
         for (JsonNode item : root) {
@@ -392,6 +457,129 @@ abstract class AbstractRunningV1Cache2696FlowTest extends Flows {
             }
         }
         return fail("Не найден id=" + id + " в ответе" + body(response));
+    }
+
+    private void assertExperimentGroupsContract(JsonNode groups,
+                                                Long experimentId,
+                                                ValidatableResponseWrapper response) {
+        boolean hasGroupConfig = false;
+        for (int index = 0; index < groups.size(); index++) {
+            JsonNode group = groups.get(index);
+            String context = "experimentId=" + experimentId + ".groups[" + index + "]";
+            assertRequiredText(group, context, "code", response);
+            assertRequiredText(group, context, "name", response);
+            assertRequiredField(group, context, "actionType", response);
+            assertRequiredNumber(group, context, "shareFrom", response);
+            assertRequiredAnyNumber(group, context, response, "shareTo", "size");
+
+            JsonNode groupConfig = group.path("groupConfig");
+            if (!groupConfig.isMissingNode() && !groupConfig.isNull()) {
+                assertTrue(groupConfig.isObject(),
+                        "Поле " + context + ".groupConfig должно быть объектом" + body(response));
+                hasGroupConfig = true;
+            }
+        }
+
+        assertTrue(hasGroupConfig,
+                "Хотя бы одна группа experiment DTO должна содержать groupConfig" + body(response));
+    }
+
+    private void assertSplitGroupsContract(JsonNode groups, Long splitId, ValidatableResponseWrapper response) {
+        for (int index = 0; index < groups.size(); index++) {
+            JsonNode group = groups.get(index);
+            String context = "splitId=" + splitId + ".groups[" + index + "]";
+            assertRequiredText(group, context, "code", response);
+            assertOptionalText(group, context, "name", response);
+            assertRequiredNumber(group, context, "shareFrom", response);
+            assertRequiredAnyNumber(group, context, response, "shareTo", "size");
+        }
+    }
+
+    private void assertRequiredField(JsonNode node,
+                                     String context,
+                                     String field,
+                                     ValidatableResponseWrapper response) {
+        JsonNode value = node == null ? null : node.path(field);
+        assertTrue(value != null && !value.isMissingNode() && !value.isNull(),
+                "В DTO отсутствует обязательное поле " + context + "." + field + body(response));
+    }
+
+    private void assertRequiredText(JsonNode node,
+                                    String context,
+                                    String field,
+                                    ValidatableResponseWrapper response) {
+        assertRequiredField(node, context, field, response);
+        JsonNode value = node.path(field);
+        assertTrue(value.isTextual() && !value.asText().isBlank(),
+                "Поле " + context + "." + field + " должно быть непустой строкой" + body(response));
+    }
+
+    private void assertRequiredAnyText(JsonNode node,
+                                       String context,
+                                       ValidatableResponseWrapper response,
+                                       String... fields) {
+        for (String field : fields) {
+            JsonNode value = node.path(field);
+            if (!value.isMissingNode() && !value.isNull() && value.isTextual() && !value.asText().isBlank()) {
+                return;
+            }
+        }
+        fail("В DTO ожидается одно из непустых текстовых полей "
+                + String.join("/", fields) + " для " + context + body(response));
+    }
+
+    private void assertOptionalText(JsonNode node,
+                                    String context,
+                                    String field,
+                                    ValidatableResponseWrapper response) {
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull()) {
+            return;
+        }
+        assertTrue(value.isTextual() && !value.asText().isBlank(),
+                "Поле " + context + "." + field + " должно быть непустой строкой" + body(response));
+    }
+
+    private void assertRequiredNumber(JsonNode node,
+                                      String context,
+                                      String field,
+                                      ValidatableResponseWrapper response) {
+        assertRequiredField(node, context, field, response);
+        assertTrue(node.path(field).isNumber(),
+                "Поле " + context + "." + field + " должно быть числом" + body(response));
+    }
+
+    private void assertRequiredAnyNumber(JsonNode node,
+                                         String context,
+                                         ValidatableResponseWrapper response,
+                                         String... fields) {
+        for (String field : fields) {
+            JsonNode value = node.path(field);
+            if (!value.isMissingNode() && !value.isNull() && value.isNumber()) {
+                return;
+            }
+        }
+        fail("В DTO ожидается одно из числовых полей "
+                + String.join("/", fields) + " для " + context + body(response));
+    }
+
+    private void assertRequiredObject(JsonNode node,
+                                      String context,
+                                      String field,
+                                      ValidatableResponseWrapper response) {
+        assertRequiredField(node, context, field, response);
+        assertTrue(node.path(field).isObject(),
+                "Поле " + context + "." + field + " должно быть объектом" + body(response));
+    }
+
+    private void assertRequiredArray(JsonNode node,
+                                     String context,
+                                     String field,
+                                     ValidatableResponseWrapper response) {
+        assertRequiredField(node, context, field, response);
+        JsonNode value = node.path(field);
+        assertTrue(value.isArray() && !value.isEmpty(),
+                "Поле " + context + "." + field + " должно быть непустым массивом" + body(response));
     }
 
 }
