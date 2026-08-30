@@ -54,7 +54,7 @@ public class SplitterConfigKafkaEmptyRules2739FlowTest extends AbstractSplitterV
         getFlowWithRest()
                 .step("Отправляем config с пустым rules[] в Kafka topic splitting-config-created", flow -> {
                     kafkaSince[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(config);
+                    kafkaFlow.sendConfig(kafkaService, config);
                 })
                 .step("Проверяем статус CONFIG_LOADED в splitting-config-requested-and-received", flow -> {
                     JsonNode status = kafkaFlow.findStatusByConfigMessageId(kafkaService,
@@ -92,3 +92,4 @@ public class SplitterConfigKafkaEmptyRules2739FlowTest extends AbstractSplitterV
                 List.of(resultWithParams(1, param("actionType", "0", "INTEGER"))));
     }
 }
+
