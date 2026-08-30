@@ -1,5 +1,36 @@
 [
   {
+    "name": "Service defect: EXPLAB-2929 complete-action deserialization",
+    "matchedStatuses": ["failed", "broken"],
+    "traceRegex": "(?s).*CompleteAction2929FlowTest.*CompleteActionRequestDto.*|(?s).*CompleteAction2929FlowTest.*Expected status code: 200.*Actual status code: 400.*"
+  },
+  {
+    "name": "Service defect: EXPLAB-2928 status_change_element schema",
+    "matchedStatuses": ["failed", "broken"],
+    "traceRegex": "(?s).*StatusChangeElementSchema2928FlowTest.*"
+  },
+  {
+    "name": "Service defect: EXPLAB-2696 running ids filter",
+    "matchedStatuses": ["failed", "broken"],
+    "traceRegex": "(?s).*RunningSplitsV1Cache2696FlowTest.*"
+  },
+  {
+    "name": "Service defect: V2 HTTP contract expects 422",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": "(?s).*Status code validation failed.*",
+    "traceRegex": "(?s).*(ChangeExperimentV2NegativeTest|CreateExperimentV2NegativeTest|DeleteExperimentV2NegativeTest|GetExperimentV2ByIdNegativeTest).*Expected status code: 422.*Actual status code: 400.*"
+  },
+  {
+    "name": "Stand/config: MAPPER scope unavailable",
+    "matchedStatuses": ["failed", "broken"],
+    "traceRegex": "(?s).*CreateChangeGetDeleteExperimentV2Test.*AccessDeniedException.*|(?s).*CreateChangeGetDeleteExperimentV2Test.*Expected status code: 200.*Actual status code: 400.*"
+  },
+  {
+    "name": "Test defect: legacy V1 error message expectation",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": "(?s).*Некорректные данные.*Некорректный запрос.*"
+  },
+  {
     "name": "Ошибки поиска элементов на странице",
     "matchedStatuses": ["broken", "failed"],
     "messageRegex": "Element not found.*"

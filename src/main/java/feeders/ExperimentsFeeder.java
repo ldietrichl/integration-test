@@ -18,7 +18,7 @@ public class ExperimentsFeeder {
         public static long startDt = tomorrow.toInstant().toEpochMilli();
 
         static ZonedDateTime nextMonth = now.plusMonths(1);
-        public static long endDt = tomorrow.toInstant().toEpochMilli();
+        public static long endDt = nextMonth.toInstant().toEpochMilli();
 
         public static long formatId = generateFormatId();
 

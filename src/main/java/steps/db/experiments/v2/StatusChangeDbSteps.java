@@ -92,6 +92,10 @@ public class StatusChangeDbSteps {
     }
 
     public ValidatableTable findElementByRequestId(String requestId) {
+        return findElementsByRequestId(requestId);
+    }
+
+    public ValidatableTable findElementsByRequestId(String requestId) {
         return client.executeSelect("""
                 SELECT *
                 FROM experiments.status_change_element

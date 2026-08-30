@@ -33,6 +33,12 @@ public abstract class AbstractStatusChangeFlowTest extends Flows {
         experimentIds.add(experimentId);
     }
 
+    protected long createTrackedExperimentV2(FlowWithDbRest flow) {
+        long experimentId = flow.restCustomSteps().experimentsV2Steps().createDefaultExperimentV2();
+        trackExperiment(experimentId);
+        return experimentId;
+    }
+
     protected void assertStatusChangeElementTableExists() {
         assertTrue(
                 statusChangeElementTableExists(),

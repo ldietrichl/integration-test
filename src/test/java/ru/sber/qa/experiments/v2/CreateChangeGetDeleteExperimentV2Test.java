@@ -7,6 +7,8 @@ import flow.Flows;
 import io.perfeccionista.framework.SetEnvironmentConfiguration;
 import io.perfeccionista.framework.extension.PerfeccionistaExtension;
 import org.apache.http.HttpStatus;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -25,8 +27,21 @@ import ru.sber.qa.allure.CriticalRegression;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @SetEnvironmentConfiguration(EnvironmentConfigWIthRestDbV2.class)
 public class CreateChangeGetDeleteExperimentV2Test extends Flows {
+    private static final String MAPPER_SCOPE_PROPERTY = "experiment.mapper.scope.available";
+    private static final String LEGACY_MAPPER_SCOPE_PROPERTY = "exlab2559.mapper.scope.available";
+    private static final String MAPPER_SCOPE_ENV = "EXPERIMENT_MAPPER_SCOPE_AVAILABLE";
+    private static final String LEGACY_MAPPER_SCOPE_ENV = "EXPLAB_2559_MAPPER_SCOPE_AVAILABLE";
+
     private static Long experimentId;
     private static ExperimentV2PostRequestDto body = ExperimentV2PostRequestDtoBuilder.buildDefaultExperimentV2PostRequestDto();
+
+    @BeforeEach
+    void requireMapperScope() {
+        Assumptions.assumeTrue(isMapperScopeAvailable(),
+                "Legacy V2 happy path создает MAPPER-эксперимент. "
+                        + "Для REACTIONS-only стенда передайте -Dexperiment.mapper.scope.available=false, "
+                        + "чтобы сценарий не считался дефектом сервиса.");
+    }
 
     @CriticalRegression
     @Test
@@ -109,5 +124,24 @@ public class CreateChangeGetDeleteExperimentV2Test extends Flows {
                                         """.formatted(experimentId))
                                 .should(DatabaseMatchers.tableHaveSize(0)))
                 .run();
+    }
+
+    private static boolean isMapperScopeAvailable() {
+        String configuredValue = firstNotBlank(
+                System.getProperty(MAPPER_SCOPE_PROPERTY),
+                System.getenv(MAPPER_SCOPE_ENV),
+                System.getProperty(LEGACY_MAPPER_SCOPE_PROPERTY),
+                System.getenv(LEGACY_MAPPER_SCOPE_ENV)
+        );
+        return configuredValue == null || java.lang.Boolean.parseBoolean(configuredValue);
+    }
+
+    private static String firstNotBlank(String... candidates) {
+        for (String candidate : candidates) {
+            if (candidate != null && !candidate.isBlank()) {
+                return candidate.trim();
+            }
+        }
+        return null;
     }
 }

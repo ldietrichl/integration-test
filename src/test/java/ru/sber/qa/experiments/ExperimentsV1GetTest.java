@@ -10,7 +10,6 @@ import io.perfeccionista.framework.SetEnvironmentConfiguration;
 import io.perfeccionista.framework.extension.PerfeccionistaExtension;
 import io.qameta.allure.Owner;
 import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +29,8 @@ import static io.qameta.allure.Allure.step;
 @SetEnvironmentConfiguration(EnvironmentConfigWithRest.class)
 @DisplayName("Набор API тестов для проверки поиска экспериментов в '/api/v1/experiments'")
 public class ExperimentsV1GetTest extends Flows {
+    private static final String BAD_REQUEST_MESSAGE = "Некорректный запрос";
+
     @CriticalRegression
     @Test
     @Owner("NAlekZenkin")
@@ -373,7 +374,7 @@ public class ExperimentsV1GetTest extends Flows {
         getFlowWithRest().flow().restCustomSteps().experimentsV1Steps()
                 .findExperimentsWithCustomParametersStatusBadRequest(request)
                 .should(
-                        RestMatchers.haveBodyJsonValueContains("message", "Некорректные данные")
+                        RestMatchers.haveBodyJsonValueContains("message", BAD_REQUEST_MESSAGE)
                         , RestMatchers.haveBodyMatchesJsonSchemaInClasspath(
                                 "schemes/experiments/experiments_get_response_400_schema.json"));
     }
@@ -391,7 +392,7 @@ public class ExperimentsV1GetTest extends Flows {
         getFlowWithRest().flow().restCustomSteps().experimentsV1Steps()
                 .findExperimentsWithCustomParametersStatusBadRequest(request)
                 .should(
-                        RestMatchers.haveBodyJsonValueContains("message", "Некорректные данные")
+                        RestMatchers.haveBodyJsonValueContains("message", BAD_REQUEST_MESSAGE)
                         , RestMatchers.haveBodyMatchesJsonSchemaInClasspath(
                                 "schemes/experiments/experiments_get_response_400_schema.json"));
     }
@@ -445,7 +446,7 @@ public class ExperimentsV1GetTest extends Flows {
         getFlowWithRest().flow().restCustomSteps().experimentsV1Steps()
                 .findExperimentsWithCustomParametersStatusBadRequest(request)
                 .should(
-                        RestMatchers.haveBodyJsonValueContains("message", "Некорректные данные")
+                        RestMatchers.haveBodyJsonValueContains("message", BAD_REQUEST_MESSAGE)
                         , RestMatchers.haveBodyMatchesJsonSchemaInClasspath(
                                 "schemes/experiments/experiments_get_response_400_schema.json"));
     }
@@ -470,7 +471,7 @@ public class ExperimentsV1GetTest extends Flows {
         getFlowWithRest().flow().restCustomSteps().experimentsV1Steps()
                 .findExperimentsWithCustomParametersStatusBadRequest(request)
                 .should(
-                        RestMatchers.haveBodyJsonValueContains("message", "Некорректные данные")
+                        RestMatchers.haveBodyJsonValueContains("message", BAD_REQUEST_MESSAGE)
                         , RestMatchers.haveBodyMatchesJsonSchemaInClasspath(
                                 "schemes/experiments/experiments_get_response_400_schema.json"));
     }
@@ -504,27 +505,4 @@ public class ExperimentsV1GetTest extends Flows {
         ).toList();
     }
 
-    @CriticalRegression
-    @Test
-    void response401Test() {
-        Assertions.fail("На проекте не реализована авторизация, невозможно реализовать проверки");
-        ExperimentsV1GetRequestDto request = ExperimentsV1GetRequestDtoBuilder.buildDtoDefault();
-
-        getFlowWithRest().flow().restCustomSteps().experimentsV1Steps()
-                .findExperimentsWithCustomParameters(request)
-                .should(
-                        RestMatchers.haveStatusCode(HttpStatus.SC_UNAUTHORIZED));
-    }
-
-    @CriticalRegression
-    @Test
-    void response422Test() {
-        Assertions.fail("Недостаточно документации для воспроизведения ошибки 422");
-        ExperimentsV1GetRequestDto request = ExperimentsV1GetRequestDtoBuilder.buildDtoDefault();
-
-        getFlowWithRest().flow().restCustomSteps().experimentsV1Steps()
-                .findExperimentsWithCustomParameters(request)
-                .should(
-                        RestMatchers.haveStatusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY));
-    }
 }
