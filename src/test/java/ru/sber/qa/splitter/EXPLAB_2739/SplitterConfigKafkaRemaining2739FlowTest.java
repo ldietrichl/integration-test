@@ -63,7 +63,7 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Отправляем валидный config в Kafka", flow -> {
                     since[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(config);
+                    kafkaFlow.sendConfig(kafkaService, config);
                 })
                 .step("Проверяем status CONFIG_LOADED", flow ->
                         assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, config.getMessageId(), since[0]),
@@ -91,14 +91,14 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Загружаем текущую версию через Kafka", flow -> {
                     long seedSince = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(currentConfig);
+                    kafkaFlow.sendConfig(kafkaService, currentConfig);
                     assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, currentConfig.getMessageId(), seedSince),
                             currentConfig,
                             "CONFIG_LOADED");
                 })
                 .step("Отправляем старую версию с forceConfigLoad=false", flow -> {
                     since[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(oldConfig);
+                    kafkaFlow.sendConfig(kafkaService, oldConfig);
                 })
                 .step("Проверяем CONFIG_NOT_LOADED и NOT_LOADED_OLD_VERSION", flow -> {
                     assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, oldConfig.getMessageId(), since[0]),
@@ -132,14 +132,14 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Загружаем текущую версию через Kafka", flow -> {
                     long seedSince = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(currentConfig);
+                    kafkaFlow.sendConfig(kafkaService, currentConfig);
                     assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, currentConfig.getMessageId(), seedSince),
                             currentConfig,
                             "CONFIG_LOADED");
                 })
                 .step("Отправляем старую версию с forceConfigLoad=true", flow -> {
                     since[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(forcedOldConfig);
+                    kafkaFlow.sendConfig(kafkaService, forcedOldConfig);
                 })
                 .step("Проверяем CONFIG_LOADED для forced old version", flow ->
                         assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, forcedOldConfig.getMessageId(), since[0]),
@@ -168,12 +168,12 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Загружаем текущую MAPPER версию через Kafka", flow -> {
                     long seedSince = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(currentConfig);
+                    kafkaFlow.sendConfig(kafkaService, currentConfig);
                     assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, currentConfig.getMessageId(), seedSince),
                             currentConfig,
                             "CONFIG_LOADED");
                 })
-                .step("Отправляем Kafka config для чужой точки REACTIONS", flow -> kafkaFlow.sendConfig(foreignConfig))
+                .step("Отправляем Kafka config для чужой точки REACTIONS", flow -> kafkaFlow.sendConfig(kafkaService, foreignConfig))
                 .step("Проверяем, что MAPPER split остался на исходной версии", flow -> {
                     ValidatableResponseWrapper response = split(flow, EndpointMode.MAPPER, splitRequest);
                     assertBasicResponseContract(response, splitRequest, currentVersion);
@@ -192,7 +192,7 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Отправляем config с REQUEST_PARAMS", flow -> {
                     since[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(config);
+                    kafkaFlow.sendConfig(kafkaService, config);
                 })
                 .step("Проверяем CONFIG_NOT_LOADED и monitoring REQUEST_PARAMS_WITH_PRECALC_ENABLED", flow -> {
                     assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, config.getMessageId(), since[0]),
@@ -219,7 +219,7 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Отправляем structurally invalid payload", flow -> {
                     since[0] = System.currentTimeMillis();
-                    kafkaFlow.sendRaw(messageId, payload);
+                    kafkaFlow.sendRaw(kafkaService, messageId, payload);
                 })
                 .step("Проверяем monitoring VALIDATION_FAILED", flow -> {
                     JsonNode monitoring = kafkaFlow.findMonitoringByMessageIdAndResult(kafkaService,
@@ -252,7 +252,7 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Отправляем config без salt", flow -> {
                     since[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(config);
+                    kafkaFlow.sendConfig(kafkaService, config);
                 })
                 .step("Проверяем CONFIG_NOT_LOADED и monitoring VALIDATION_FAILED", flow -> {
                     assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, config.getMessageId(), since[0]),
@@ -280,7 +280,7 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Загружаем seed config через Kafka", flow -> {
                     long seedSince = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(seed);
+                    kafkaFlow.sendConfig(kafkaService, seed);
                     assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, seed.getMessageId(), seedSince),
                             seed,
                             "CONFIG_LOADED");
@@ -290,7 +290,7 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
                                 precalc.getSoConfigVersion()))
                 .step("Отправляем reload config через Kafka", flow -> {
                     since[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(reload);
+                    kafkaFlow.sendConfig(kafkaService, reload);
                 })
                 .step("Проверяем status CONFIG_LOADED и monitoring LOADED_WITH_PRECALC", flow -> {
                     assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, reload.getMessageId(), since[0]),
@@ -331,7 +331,7 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Отправляем config с пересекающимися shares", flow -> {
                     since[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(config);
+                    kafkaFlow.sendConfig(kafkaService, config);
                 })
                 .step("Проверяем rejection status", flow ->
                         assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, config.getMessageId(), since[0]),
@@ -361,7 +361,7 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Отправляем config с experiments=[] через Kafka", flow -> {
                     since[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(config);
+                    kafkaFlow.sendConfig(kafkaService, config);
                 })
                 .step("Проверяем CONFIG_LOADED", flow ->
                         assertStatus(kafkaFlow.findStatusByConfigMessageId(kafkaService, config.getMessageId(), since[0]),
@@ -385,7 +385,7 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Отправляем валидный config", flow -> {
                     since[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(config);
+                    kafkaFlow.sendConfig(kafkaService, config);
                 })
                 .step("Проверяем status contract", flow -> {
                     JsonNode status = kafkaFlow.findStatusByConfigMessageId(kafkaService, config.getMessageId(), since[0]);
@@ -412,7 +412,7 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
         getFlowWithRest()
                 .step("Отправляем config, который должен быть rejected", flow -> {
                     since[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(config);
+                    kafkaFlow.sendConfig(kafkaService, config);
                 })
                 .step("Проверяем common monitoring contract", flow -> {
                     JsonNode monitoring = kafkaFlow.findMonitoringByMessageIdAndResult(kafkaService,
@@ -526,3 +526,4 @@ public class SplitterConfigKafkaRemaining2739FlowTest extends AbstractSplitterV9
     }
 
 }
+

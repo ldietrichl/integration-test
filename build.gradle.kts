@@ -1,5 +1,8 @@
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.testing.Test
+import java.io.File
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Properties
 
 val gradleLocalProperties = Properties()
@@ -8,11 +11,47 @@ if (gradleLocalPropertiesFile.isFile) {
     gradleLocalPropertiesFile.inputStream().use { gradleLocalProperties.load(it) }
 }
 
-fun optionalLocalProperty(name: String): String? =
-    (project.findProperty(name) as String?) ?: gradleLocalProperties.getProperty(name)
+val secureLocalProperties = Properties()
+listOf(
+    rootProject.file("secure.local.properties"),
+    rootProject.file("secure.local.override.properties")
+).filter { it.isFile }
+    .forEach { file -> file.inputStream().use { secureLocalProperties.load(it) } }
 
-fun firstNotBlank(vararg candidates: String?): String? =
-    candidates.firstOrNull { !it.isNullOrBlank() }?.trim()
+fun usableLocalProperty(value: String?): String? =
+    value?.trim()
+        ?.takeUnless { it.isBlank() }
+        ?.takeUnless { it.startsWith("<SET_ME_") && it.endsWith(">") }
+
+fun optionalLocalProperty(name: String): String? =
+    usableLocalProperty(project.findProperty(name) as String?)
+        ?: usableLocalProperty(gradleLocalProperties.getProperty(name))
+        ?: usableLocalProperty(secureLocalProperties.getProperty(name))
+        ?: usableLocalProperty(System.getenv(name))
+
+fun optionalEnv(name: String): String? =
+    usableLocalProperty(System.getenv(name))
+
+fun optionalConfigProperty(name: String): String? =
+    optionalLocalProperty(name)
+
+fun configValue(name: String, vararg envNames: String, defaultValue: String? = null): String? =
+    optionalConfigProperty(name)
+        ?: envNames.asSequence().mapNotNull(::optionalEnv).firstOrNull()
+        ?: defaultValue
+
+fun configFlag(name: String, vararg envNames: String, defaultValue: Boolean = false): Boolean {
+    val value = configValue(name, *envNames)
+        ?: return defaultValue
+    return value.equals("true", ignoreCase = true) ||
+            value.equals("yes", ignoreCase = true) ||
+            value == "1"
+}
+
+fun fileFromProjectOrAbsolute(pathValue: String): File {
+    val candidate = File(pathValue)
+    return if (candidate.isAbsolute) candidate else rootProject.file(pathValue)
+}
 
 // Версии зависимостей
 val perfeccionistaVersion = project.properties["perfeccionistaVersion"] as String?
@@ -130,6 +169,8 @@ dependencies {
 
     testCompileOnly("org.projectlombok:lombok:1.18.30")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.30")
+    implementation(group = "ru.sber.qa.platform-v-at-framework", name = "sbermock", version  = "$platformvatframeworkVersion")
+
 }
 
 
@@ -249,23 +290,6 @@ tasks.named<Test>("test") {
                 .filter { it.isNotEmpty() && !it.startsWith("#") }
                 .forEach { filter.excludeTestsMatching(it) }
         }
-        val mapperScopeAvailable = firstNotBlank(
-            System.getProperty("experiment.mapper.scope.available"),
-            System.getenv("EXPERIMENT_MAPPER_SCOPE_AVAILABLE"),
-            System.getProperty("exlab2559.mapper.scope.available"),
-            System.getenv("EXPLAB_2559_MAPPER_SCOPE_AVAILABLE")
-        )
-        if (mapperScopeAvailable?.equals("false", ignoreCase = true) == true) {
-            filter.excludeTestsMatching("ru.sber.qa.experiments.EXPLAB_2559.*")
-            filter.excludeTestsMatching("ru.sber.qa.experiments.v2.CreateChangeGetDeleteExperimentV2Test.*")
-        }
-        val v2CjToggleTestsEnabled = firstNotBlank(
-            System.getProperty("experiment.v2.cj.toggle.tests.enabled"),
-            System.getenv("EXPERIMENT_V2_CJ_TOGGLE_TESTS_ENABLED")
-        )
-        if (v2CjToggleTestsEnabled?.equals("false", ignoreCase = true) == true) {
-            filter.excludeTestsMatching("ru.sber.qa.experiments.EXPLAB_2696.RunningV1CacheV2CjEnabled2696FlowTest.*")
-        }
     }
 }
 
@@ -294,6 +318,265 @@ tasks.register<Copy>("copyAllureCategories") {
     into("${buildDir}/allure-results/")
 }
 
+fun isRequestedTask(taskName: String): Boolean =
+    gradle.startParameter.taskNames.any { requested ->
+        requested == taskName || requested == ":$taskName" || requested.endsWith(":$taskName")
+    }
+
+fun isTestOpsUploadRequested(): Boolean =
+    configFlag("allureUploadEnabled", "ALLURE_UPLOAD_ENABLED") ||
+            isRequestedTask("testOpsUpload") ||
+            isRequestedTask("testAndUploadToTestOps") ||
+            isRequestedTask("bypassTestsAndUploadToTestOps")
+
+fun findExecutableOnPath(executableName: String): File? {
+    val windows = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+    val names = if (windows && !executableName.endsWith(".exe", ignoreCase = true)) {
+        listOf("$executableName.exe", executableName)
+    } else {
+        listOf(executableName)
+    }
+
+    return (System.getenv("PATH") ?: "")
+        .split(File.pathSeparator)
+        .asSequence()
+        .filter { it.isNotBlank() }
+        .flatMap { directory -> names.asSequence().map { name -> File(directory, name) } }
+        .firstOrNull { it.isFile }
+}
+
+fun resolveAllurectlExecutable(): String {
+    configValue("allurectlPath", "ALLURECTL_PATH")?.let { configuredPath ->
+        val configuredFile = fileFromProjectOrAbsolute(configuredPath)
+        if (configuredFile.isFile) {
+            return configuredFile.absolutePath
+        }
+        throw GradleException("Configured allurectl executable not found: ${configuredFile.absolutePath}")
+    }
+
+    val localName = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) {
+        "allurectl.exe"
+    } else {
+        "allurectl"
+    }
+    val localAllurectl = rootProject.file("allure/bin/$localName")
+    if (localAllurectl.isFile) {
+        return localAllurectl.absolutePath
+    }
+
+    findExecutableOnPath("allurectl")?.let { return it.absolutePath }
+
+    throw GradleException(
+        "allurectl executable not found. Set ALLURECTL_PATH/-PallurectlPath, " +
+                "or place allurectl into ${rootProject.file("allure/bin").absolutePath}."
+    )
+}
+
+fun parsePositiveInt(value: String, name: String): Int =
+    value.toIntOrNull()?.takeIf { it > 0 }
+        ?: throw GradleException("$name must be a positive integer, but was: $value")
+
+val testOpsLaunchTimestamp: String =
+    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+
+fun testOpsLaunchName(): String {
+    val baseName = configValue(
+        "allureLaunchName",
+        "ALLURE_LAUNCH_NAME",
+        defaultValue = "ExpLab Gradle"
+    )!!
+    return "$baseName $testOpsLaunchTimestamp"
+}
+
+val validateTestOpsUploadConfig by tasks.registering {
+    group = "verification"
+    description = "Validate Allure TestOps upload settings before running tests"
+    onlyIf {
+        isTestOpsUploadRequested()
+    }
+
+    doLast {
+        val endpoint = configValue(
+            "allureEndpoint",
+            "ALLURE_ENDPOINT",
+            defaultValue = "https://testops.sigma.sbrf.ru"
+        )!!.trimEnd('/')
+        val projectId = parsePositiveInt(
+            configValue("allureProjectId", "ALLURE_PROJECT_ID", defaultValue = "3359")!!,
+            "allureProjectId/ALLURE_PROJECT_ID"
+        )
+        val projectUrl = configValue("allureProjectUrl", "ALLURE_PROJECT_URL")
+            ?: "$endpoint/project/$projectId"
+        val launchName = testOpsLaunchName()
+        val dryRun = configFlag("allureDryRun", "DRY_RUN")
+
+        println("TestOps upload preflight")
+        println("Endpoint   : $endpoint")
+        println("Project    : $projectId")
+        println("Project URL: $projectUrl")
+        println("Launch     : $launchName")
+        if (dryRun) {
+            println("Dry-run    : enabled")
+            return@doLast
+        }
+
+        configValue("allureToken", "ALLURE_TOKEN")
+            ?: throw GradleException(
+                "ALLURE_TOKEN is not set. Export it before running TestOps upload tasks."
+            )
+
+        println("allurectl  : ${resolveAllurectlExecutable()}")
+    }
+}
+
+val testOpsUpload by tasks.registering {
+    group = "verification"
+    description = "Upload existing Allure results to Allure TestOps via allurectl"
+    dependsOn(validateTestOpsUploadConfig)
+    dependsOn("copyAllureCategories")
+    onlyIf {
+        isTestOpsUploadRequested()
+    }
+
+    doLast {
+        val endpoint = configValue(
+            "allureEndpoint",
+            "ALLURE_ENDPOINT",
+            defaultValue = "https://testops.sigma.sbrf.ru"
+        )!!.trimEnd('/')
+        val projectId = parsePositiveInt(
+            configValue("allureProjectId", "ALLURE_PROJECT_ID", defaultValue = "3359")!!,
+            "allureProjectId/ALLURE_PROJECT_ID"
+        )
+        val projectUrl = configValue("allureProjectUrl", "ALLURE_PROJECT_URL")
+            ?: "$endpoint/project/$projectId"
+        val resultsDir = fileFromProjectOrAbsolute(
+            configValue(
+                "allureResultsDir",
+                "ALLURE_RESULTS_DIR",
+                "ALLURE_RESULTS",
+                defaultValue = "build/allure-results"
+            )!!
+        )
+        val uploadBatch = parsePositiveInt(
+            configValue(
+                "allureUploadBatch",
+                "ALLURE_UPLOAD_BATCH",
+                "ALLURE_IMPORT_BATCH",
+                defaultValue = "100"
+            )!!,
+            "allureUploadBatch/ALLURE_UPLOAD_BATCH"
+        )
+        val launchName = testOpsLaunchName()
+        val launchTags = configValue("allureLaunchTags", "ALLURE_LAUNCH_TAGS")
+            ?.split(',')
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            .orEmpty()
+        val dryRun = configFlag("allureDryRun", "DRY_RUN")
+        val insecure = configFlag(
+            "allureInsecure",
+            "ALLURE_INSECURE",
+            defaultValue = endpoint.contains("sigma.sbrf.ru", ignoreCase = true)
+        )
+
+        if (!resultsDir.isDirectory) {
+            throw GradleException(
+                "Allure results directory not found: ${resultsDir.absolutePath}. " +
+                        "Run test or bypassTests first."
+            )
+        }
+
+        val allResultFiles = resultsDir.listFiles()
+            ?.filter { it.isFile }
+            .orEmpty()
+        val testResultFiles = allResultFiles.filter { it.name.endsWith("-result.json") }
+        if (testResultFiles.isEmpty()) {
+            throw GradleException("No *-result.json files found in ${resultsDir.absolutePath}.")
+        }
+
+        println("Endpoint  : $endpoint")
+        println("Project   : $projectId")
+        println("Project URL: $projectUrl")
+        println("Results   : ${resultsDir.absolutePath}")
+        println("Launch    : $launchName")
+        if (launchTags.isNotEmpty()) {
+            println("Tags      : ${launchTags.joinToString(", ")}")
+        }
+        println("Found ${allResultFiles.size} file(s), ${testResultFiles.size} test result(s).")
+
+        if (dryRun) {
+            println("[dry-run] Would upload ${allResultFiles.size} file(s) via allurectl.")
+            return@doLast
+        }
+
+        val token = configValue("allureToken", "ALLURE_TOKEN")
+            ?: throw GradleException(
+                "ALLURE_TOKEN is not set. Export it as an environment variable before uploading to TestOps."
+            )
+        val allurectl = resolveAllurectlExecutable()
+
+        val uploadArgs = mutableListOf(
+            "upload",
+            resultsDir.absolutePath,
+            "--endpoint",
+            endpoint,
+            "--project-id",
+            projectId.toString(),
+            "--launch-name",
+            launchName,
+            "--size",
+            uploadBatch.toString()
+        )
+        if (launchTags.isNotEmpty()) {
+            uploadArgs.addAll(listOf("--launch-tags", launchTags.joinToString(",")))
+        }
+        if (insecure) {
+            uploadArgs.add("--insecure")
+        }
+
+        val uploadEnvironment = mutableMapOf<String, String>(
+            "ALLURE_ENDPOINT" to endpoint,
+            "ALLURE_PROJECT_ID" to projectId.toString(),
+            "ALLURE_PROJECT_URL" to projectUrl,
+            "ALLURE_TOKEN" to token,
+            "ALLURE_LAUNCH_NAME" to launchName,
+            "ALLURE_RESULTS" to resultsDir.absolutePath
+        )
+        if (insecure) {
+            uploadEnvironment["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
+        }
+
+        project.exec {
+            executable = allurectl
+            args(uploadArgs)
+            environment(uploadEnvironment)
+        }
+    }
+}
+
+val testAndUploadToTestOps by tasks.registering {
+    group = "verification"
+    description = "Run functional tests and upload produced Allure results to TestOps"
+    dependsOn(tasks.named("test"))
+}
+
+val bypassTestsAndUploadToTestOps by tasks.registering {
+    group = "verification"
+    description = "Run TestOps registration-only bypass tests and upload produced Allure results"
+    dependsOn(bypassTests)
+}
+
+tasks.named<Test>("test") {
+    dependsOn(validateTestOpsUploadConfig)
+    finalizedBy(testOpsUpload)
+}
+
+bypassTests.configure {
+    dependsOn(validateTestOpsUploadConfig)
+    finalizedBy(testOpsUpload)
+}
+
 tasks {
     // Для компиляции ставим кодировку UTF-8
     withType<JavaCompile> {
@@ -318,15 +601,15 @@ tasks {
             "EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED",
             "exlab2696.running.cache.wait.timeout.ms",
             "exlab2696.running.cache.wait.poll.ms",
-            "experiment.mapper.scope.available",
-            "exlab2559.mapper.scope.available",
-            "experiment.v2.cj.toggle.tests.enabled",
             "exlab2930.processor.timeout.seconds",
             "exlab2930.processor.stability.seconds"
         )
         System.getProperties().stringPropertyNames()
             .filter { it in forwardedTestSystemProperties }
             .forEach { systemProperty(it, System.getProperty(it)) }
+        secureLocalProperties.stringPropertyNames()
+            .mapNotNull { name -> optionalLocalProperty(name)?.let { name to it } }
+            .forEach { (name, value) -> systemProperty(name, value) }
         finalizedBy("copyAllureCategories")
     }
 }

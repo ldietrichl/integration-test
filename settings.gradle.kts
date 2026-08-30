@@ -9,11 +9,24 @@ pluginManagement {
             gradleLocalPropertiesFile.inputStream().use { gradleLocalProperties.load(it) }
         }
 
+        val secureLocalProperties = java.util.Properties()
+        listOf(file("secure.local.properties"), file("secure.local.override.properties"))
+            .filter { it.isFile }
+            .forEach { secureFile -> secureFile.inputStream().use { secureLocalProperties.load(it) } }
+
+        fun usableSettingProperty(value: String?): String? =
+            value?.trim()
+                ?.takeUnless { it.isBlank() }
+                ?.takeUnless { it.startsWith("<SET_ME_") && it.endsWith(">") }
+
         fun optionalSettingProperty(name: String): String? =
-            providers.gradleProperty(name).orNull ?: gradleLocalProperties.getProperty(name)
+            usableSettingProperty(providers.gradleProperty(name).orNull)
+                ?: usableSettingProperty(gradleLocalProperties.getProperty(name))
+                ?: usableSettingProperty(secureLocalProperties.getProperty(name))
+                ?: usableSettingProperty(System.getenv(name))
 
         // Получаем значения tokenName и tokenPassword из /Users/<username>/.gradle/gradle.properties,
-        // -P параметров, ignored gradle.local.properties или legacy-полей проекта.
+        // -P параметров, ignored gradle.local.properties, secure.local.* или legacy-полей проекта.
         val tokenName = optionalSettingProperty("tokenName")
             ?: optionalSettingProperty("nexusUserSigma")
             ?: ""

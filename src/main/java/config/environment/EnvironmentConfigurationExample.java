@@ -1,5 +1,6 @@
 package config.environment;
 
+import config.services.core.SecureAwareConfigurationService;
 import config.services.data.CustomAllureDataSourceServiceConfiguration;
 import config.services.db.CustomDatabaseServiceConfiguration;
 import config.services.rest.CustomAllure2RestServiceConfiguration;
@@ -18,8 +19,8 @@ import io.perfeccionista.framework.service.ConfiguredServiceHolder;
 import io.perfeccionista.framework.service.ServiceConfigurationManager;
 import io.perfeccionista.framework.value.ValueService;
 import org.jetbrains.annotations.NotNull;
-import ru.sber.qa.services.ContainerService;
-import ru.sber.qa.services.DefaultContainerServiceConfiguration;
+import ru.sber.qa.containers.services.ContainerService;
+import ru.sber.qa.containers.services.DefaultContainerServiceConfiguration;
 import ru.sber.qa.services.configuration.ConfigurationService;
 import ru.sber.qa.services.configuration.DefaultConfigurationServiceConfiguration;
 import ru.sber.qa.services.db.DatabaseService;
@@ -34,7 +35,9 @@ public class EnvironmentConfigurationExample extends DefaultEnvironmentConfigura
     public @NotNull ServiceConfigurationManager getServiceConfigurations() {
         return super.getServiceConfigurations()
                 .put(ConfiguredServiceHolder.of(
-                        ConfigurationService.class, new DefaultConfigurationServiceConfiguration()))
+                        ConfigurationService.class,
+                        SecureAwareConfigurationService.class,
+                        new DefaultConfigurationServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(FixtureService.class, new DefaultFixtureServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(ValueService.class))
                 .put(ConfiguredServiceHolder.of(

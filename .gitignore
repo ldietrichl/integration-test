@@ -7,6 +7,8 @@
 *.ipr
 
 # Gradle and build outputs
+# Gradle project files are trackable: *.gradle, *.gradle.kts and gradle/wrapper/**.
+# Only Gradle local cache/output directories stay ignored.
 .gradle/
 build/
 out/
@@ -18,7 +20,9 @@ target/
 # Test reports and generated artifacts
 .allure/
 allure-results/
+allure-results*/
 allure-report/
+allure-report*/
 build/allure-results*/
 build/reports/
 attachments/
@@ -34,6 +38,7 @@ allure/plugins/
 
 # Patch, validation, and migration scratch files
 APPLY_PATCH.md
+README_APPLY_OVERLAY.md
 MANIFEST.txt
 PATCH_FILE_LIST.txt
 VALIDATION_RESULTS.txt
@@ -47,6 +52,8 @@ REST_REFACTORING_REPORT.md
 !.env.example
 gradle.local.properties
 gradle.*.local.properties
+secure.local.override.properties
+secure.*.override.properties
 *.p12
 *.pfx
 *.jks
@@ -58,14 +65,6 @@ gradle.*.local.properties
 *.cer
 *.der
 *.rar
-
-# Real corporate test configuration stays local.
-src/test/resources/test.properties
-src/test/resources/database.properties
-src/test/resources/container-service.properties
-src/test/resources/perfeccionista.properties
-src/test/resources/kafka-consumers.properties
-src/test/resources/kafka-producers.properties
 
 # Keep non-secret runtime config files trackable.
 !src/test/resources/allure.properties
