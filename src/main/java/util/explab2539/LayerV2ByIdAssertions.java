@@ -9,24 +9,22 @@ public final class LayerV2ByIdAssertions {
     private LayerV2ByIdAssertions() {
     }
 
-    public static void shouldHaveSplittingPointObject(ValidatableResponseWrapper response,
-                                                      Long expectedLayerId,
-                                                      String expectedCode,
-                                                      String expectedName) {
+    public static void shouldHaveSplittingPointScalarFields(ValidatableResponseWrapper response,
+                                                            Long expectedLayerId,
+                                                            String expectedCode,
+                                                            String expectedName) {
         response.should(
                 RestMatchers.haveStatusCode(HttpStatus.SC_OK),
                 RestMatchers.haveBodyWithEvaluatableJsonPathExpression("id == " + expectedLayerId),
-                RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingPoint != null"),
-                RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingPoint.code == '" + expectedCode + "'"),
-                RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingPoint.name == '" + expectedName + "'")
+                RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingPointCode == '" + expectedCode + "'"),
+                RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingPointName == '" + expectedName + "'")
         );
     }
 
-    public static void shouldNotExposeDeprecatedSplittingPointScalarFields(ValidatableResponseWrapper response) {
+    public static void shouldNotExposeSplittingPointObject(ValidatableResponseWrapper response) {
         response.should(
                 RestMatchers.haveStatusCode(HttpStatus.SC_OK),
-                RestMatchers.haveBodyWithEvaluatableJsonPathExpression("!containsKey('splittingPointCode')"),
-                RestMatchers.haveBodyWithEvaluatableJsonPathExpression("!containsKey('splittingPointName')")
+                RestMatchers.haveBodyWithEvaluatableJsonPathExpression("containsKey('splittingPoint') == false")
         );
     }
 }

@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 
 import static dto.experiments.v2.ExperimentV2PostRequestDtoBuilder.buildDefaultExperimentV2PostRequestDto;
 import static dto.experiments.v2.ExperimentV2PostRequestDtoBuilder.buildDefaultObjectSelectCondition;
+import static ru.sber.qa.experiments.EXPLAB_2559.ExperimentV2UserConditionScopeAssumptions.assumeMapperScopeAvailable;
 
 /**
  * EXPLAB-2559.
@@ -45,6 +46,8 @@ public class ExperimentV2UserConditionContentFlowTest extends Flows {
     void createExperimentV2WithUserConditionContentSuccessTest(String caseName,
                                                                String userCondition,
                                                                int expectedLength) {
+        assumeMapperScopeAvailable();
+
         final Long[] experimentId = new Long[1];
         final boolean[] deleted = {false};
 

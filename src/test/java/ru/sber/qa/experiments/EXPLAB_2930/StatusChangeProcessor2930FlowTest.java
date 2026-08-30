@@ -185,7 +185,10 @@ public class StatusChangeProcessor2930FlowTest extends AbstractStatusChangeFlowT
                             .pollInSameThread()
                             .pollInterval(POLL_INTERVAL)
                             .atMost(PROCESSOR_TIMEOUT)
-                            .untilAsserted(() -> assertEquals(1, db.countRequests(transactionId)));
+                            .untilAsserted(() -> {
+                                assertEquals(1, db.countRequests(transactionId));
+                                assertEquals(1, db.countElements(transactionId));
+                            });
 
                     Map<String, Object> remaining = db.findElementsByTransactionId(transactionId)
                             .singleRow("Незавершенная группа не должна удаляться вместе с завершенной")

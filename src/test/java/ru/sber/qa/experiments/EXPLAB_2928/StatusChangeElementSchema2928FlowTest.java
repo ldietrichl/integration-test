@@ -113,13 +113,16 @@ public class StatusChangeElementSchema2928FlowTest extends AbstractStatusChangeF
 
         String transactionId = newTransactionId();
         String requestId = newRequestId();
+        long[] expId = new long[1];
 
-        getFlowWithDb()
+        getFlowWithDbRest()
+                .step("Создаем V2 эксперимент для FK-safe подготовки данных", flow ->
+                        expId[0] = createTrackedExperimentV2(flow))
                 .step("Создаем незавершенный элемент смены статуса", flow ->
                         flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
                                 transactionId,
                                 requestId,
-                                syntheticExpId(),
+                                expId[0],
                                 null,
                                 null
                         ))
@@ -133,6 +136,54 @@ public class StatusChangeElementSchema2928FlowTest extends AbstractStatusChangeF
                     assertNull(row.get("result_details"));
                     assertNotNull(row.get("created_dt"));
                     assertNotNull(row.get("updated_dt"));
+                })
+                .run();
+    }
+
+    @CriticalRegression
+    @Test
+    @DisplayName("EXPLAB-2928-DB-06. DONE и ERROR сохраняются как значения result")
+    void doneAndErrorResultsShouldBeStored() {
+        assumeStatusChangeElementTableExists();
+
+        String transactionId = newTransactionId();
+        String doneRequestId = newRequestId();
+        String errorRequestId = newRequestId();
+        long[] expId = new long[1];
+
+        getFlowWithDbRest()
+                .step("Создаем V2 эксперимент для FK-safe подготовки данных", flow ->
+                        expId[0] = createTrackedExperimentV2(flow))
+                .step("Создаем элементы с результатами DONE и ERROR", flow -> {
+                    flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
+                            transactionId,
+                            doneRequestId,
+                            expId[0],
+                            "DONE",
+                            null
+                    );
+                    flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
+                            transactionId,
+                            errorRequestId,
+                            expId[0],
+                            "ERROR",
+                            "external error"
+                    );
+                })
+                .step("Проверяем чтение DONE и ERROR из status_change_element", flow -> {
+                    Map<String, Object> doneRow = flow.dbCustomSteps().statusChangeDbSteps()
+                            .findElementByRequestId(doneRequestId)
+                            .singleRow()
+                            .toSimpleRow();
+                    Map<String, Object> errorRow = flow.dbCustomSteps().statusChangeDbSteps()
+                            .findElementByRequestId(errorRequestId)
+                            .singleRow()
+                            .toSimpleRow();
+
+                    assertEquals("DONE", String.valueOf(doneRow.get("result")));
+                    assertNull(doneRow.get("result_details"));
+                    assertEquals("ERROR", String.valueOf(errorRow.get("result")));
+                    assertEquals("external error", String.valueOf(errorRow.get("result_details")));
                 })
                 .run();
     }
@@ -202,6 +253,91 @@ public class StatusChangeElementSchema2928FlowTest extends AbstractStatusChangeF
                 .run();
     }
 
+    @Regression
+    @Test
+    @DisplayName("EXPLAB-2928-DB-09/12. request_id и transaction_id индексированы")
+    void lookupColumnsShouldBeIndexed() {
+        assumeStatusChangeElementTableExists();
+
+        getFlowWithDb()
+                .step("Проверяем индексы status_change_element", flow -> {
+                    List<Map<String, Object>> indexes = flow.dbExpLabClient().executeSelect("""
+                            SELECT indexname, indexdef
+                            FROM pg_indexes
+                            WHERE schemaname = 'experiments'
+                              AND tablename = 'status_change_element'
+                            """).toSimpleTable();
+
+                    assertAll(
+                            () -> assertTrue(hasIndexOnColumn(indexes, "request_id"),
+                                    "request_id должен быть индексирован для поиска callback"),
+                            () -> assertTrue(hasUniqueIndexOnColumn(indexes, "request_id"),
+                                    "request_id должен быть уникальным для детерминированного findByRequestId"),
+                            () -> assertTrue(hasIndexOnColumn(indexes, "transaction_id"),
+                                    "transaction_id должен быть индексирован для группировки и удаления processor'ом")
+                    );
+                })
+                .run();
+    }
+
+    @Regression
+    @Test
+    @DisplayName("EXPLAB-2928-DB-10. Удаление по transaction_id не затрагивает соседние группы")
+    void deleteByTransactionIdShouldRemoveOnlyTargetTransaction() {
+        assumeStatusChangeElementTableExists();
+
+        String targetTransactionId = newTransactionId();
+        String untouchedTransactionId = newTransactionId();
+        long[] expId = new long[1];
+
+        getFlowWithDbRest()
+                .step("Создаем V2 эксперимент для FK-safe подготовки данных", flow ->
+                        expId[0] = createTrackedExperimentV2(flow))
+                .step("Создаем элементы в двух transaction_id", flow -> {
+                    flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
+                            targetTransactionId,
+                            newRequestId(),
+                            expId[0],
+                            null,
+                            null
+                    );
+                    flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
+                            targetTransactionId,
+                            newRequestId(),
+                            expId[0],
+                            null,
+                            null
+                    );
+                    flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
+                            untouchedTransactionId,
+                            newRequestId(),
+                            expId[0],
+                            null,
+                            null
+                    );
+                })
+                .step("Удаляем только целевую transaction_id", flow ->
+                        flow.dbCustomSteps().statusChangeDbSteps().deleteFixture(targetTransactionId))
+                .step("Проверяем, что соседняя transaction_id не удалена", flow -> {
+                    assertEquals(0, flow.dbCustomSteps().statusChangeDbSteps()
+                            .countElements(targetTransactionId));
+                    assertEquals(1, flow.dbCustomSteps().statusChangeDbSteps()
+                            .countElements(untouchedTransactionId));
+                })
+                .run();
+    }
+
+    private static boolean hasIndexOnColumn(List<Map<String, Object>> rows, String column) {
+        return rows.stream().anyMatch(row -> indexDefinition(row).contains(column.toLowerCase()));
+    }
+
+    private static boolean hasUniqueIndexOnColumn(List<Map<String, Object>> rows, String column) {
+        return rows.stream().anyMatch(row -> {
+            String indexDefinition = indexDefinition(row);
+            return indexDefinition.startsWith("create unique index") && indexDefinition.contains(column.toLowerCase());
+        });
+    }
+
     private static boolean hasForeignKey(
             List<Map<String, Object>> rows,
             String column,
@@ -214,5 +350,9 @@ public class StatusChangeElementSchema2928FlowTest extends AbstractStatusChangeF
                         && foreignSchema.equals(String.valueOf(row.get("foreign_table_schema")))
                         && foreignTable.equals(String.valueOf(row.get("foreign_table_name")))
                         && foreignColumn.equals(String.valueOf(row.get("foreign_column_name"))));
+    }
+
+    private static String indexDefinition(Map<String, Object> row) {
+        return String.valueOf(row.get("indexdef")).toLowerCase();
     }
 }

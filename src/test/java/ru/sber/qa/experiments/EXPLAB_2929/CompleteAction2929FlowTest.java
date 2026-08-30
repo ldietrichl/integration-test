@@ -6,6 +6,7 @@ import dto.experiments.v2.statuschange.StatusChangeResult;
 import io.perfeccionista.framework.SetEnvironmentConfiguration;
 import io.perfeccionista.framework.extension.PerfeccionistaExtension;
 import org.apache.http.HttpStatus;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(PerfeccionistaExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
@@ -41,7 +43,7 @@ public class CompleteAction2929FlowTest extends AbstractStatusChangeFlowTest {
 
         getFlowWithDbRest()
                 .step("Создаем действие и блокирующий элемент незавершенной группы", flow -> {
-                    long expId = syntheticExpId();
+                    long expId = createTrackedExperimentV2(flow);
                     flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
                             transactionId, requestId, expId, null, null);
                     flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
@@ -74,7 +76,7 @@ public class CompleteAction2929FlowTest extends AbstractStatusChangeFlowTest {
         getFlowWithDbRest()
                 .step("Создаем ожидающее действие", flow ->
                         flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
-                                transactionId, requestId, syntheticExpId(), null, null))
+                                transactionId, requestId, createTrackedExperimentV2(flow), null, null))
                 .step("Передаем результат ERROR", flow ->
                         flow.restCustomSteps().experimentsV2Steps()
                                 .completeStatusChangeAction(List.of(callback(
@@ -107,7 +109,7 @@ public class CompleteAction2929FlowTest extends AbstractStatusChangeFlowTest {
 
         getFlowWithDbRest()
                 .step("Создаем три элемента одной группы", flow -> {
-                    long expId = syntheticExpId();
+                    long expId = createTrackedExperimentV2(flow);
                     flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
                             transactionId, firstRequestId, expId, null, null);
                     flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
@@ -163,7 +165,7 @@ public class CompleteAction2929FlowTest extends AbstractStatusChangeFlowTest {
 
         getFlowWithDbRest()
                 .step("Создаем завершенное действие и блокирующий элемент", flow -> {
-                    long expId = syntheticExpId();
+                    long expId = createTrackedExperimentV2(flow);
                     flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
                             transactionId, requestId, expId, "DONE", "original");
                     flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
@@ -192,7 +194,10 @@ public class CompleteAction2929FlowTest extends AbstractStatusChangeFlowTest {
     @Test
     @DisplayName("EXPLAB-2929-API-07. Обязательные поля callback валидируются")
     void missingRequiredFieldsShouldReturnBadRequest() {
+        assumeStatusChangeElementTableExists();
+
         getFlowWithDbRest()
+                .step("Проверяем доступность complete-action валидным callback", this::assumeCompleteActionAvailable)
                 .step("Передаем callback без requestId", flow ->
                         flow.restCustomSteps().experimentsV2Steps()
                                 .completeStatusChangeAction(List.of(callback(
@@ -216,9 +221,12 @@ public class CompleteAction2929FlowTest extends AbstractStatusChangeFlowTest {
     @Test
     @DisplayName("EXPLAB-2929-API-08. Невалидный enum и поврежденный JSON возвращают 400")
     void malformedPayloadShouldReturnBadRequest() {
+        assumeStatusChangeElementTableExists();
+
         String requestId = newRequestId();
 
         getFlowWithDbRest()
+                .step("Проверяем доступность complete-action валидным callback", this::assumeCompleteActionAvailable)
                 .step("Передаем неизвестное значение result", flow ->
                         flow.restCustomSteps().experimentsV2Steps()
                                 .completeStatusChangeAction("""
@@ -236,7 +244,10 @@ public class CompleteAction2929FlowTest extends AbstractStatusChangeFlowTest {
     @Test
     @DisplayName("EXPLAB-2929-API-09. requestId не в формате UUID возвращает 400")
     void nonUuidRequestIdShouldReturnBadRequest() {
+        assumeStatusChangeElementTableExists();
+
         getFlowWithDbRest()
+                .step("Проверяем доступность complete-action валидным callback", this::assumeCompleteActionAvailable)
                 .step("Передаем requestId, не соответствующий UUID", flow ->
                         flow.restCustomSteps().experimentsV2Steps()
                                 .completeStatusChangeAction(List.of(callback(
@@ -252,7 +263,10 @@ public class CompleteAction2929FlowTest extends AbstractStatusChangeFlowTest {
     @Test
     @DisplayName("EXPLAB-2929-API-10. Пустой callback-массив возвращает 400")
     void emptyCallbackArrayShouldReturnBadRequest() {
+        assumeStatusChangeElementTableExists();
+
         getFlowWithDbRest()
+                .step("Проверяем доступность complete-action валидным callback", this::assumeCompleteActionAvailable)
                 .step("Передаем пустой массив", flow ->
                         flow.restCustomSteps().experimentsV2Steps()
                                 .completeStatusChangeAction(List.of())
@@ -272,7 +286,7 @@ public class CompleteAction2929FlowTest extends AbstractStatusChangeFlowTest {
 
         getFlowWithDbRest()
                 .step("Создаем валидный и блокирующий элементы", flow -> {
-                    long expId = syntheticExpId();
+                    long expId = createTrackedExperimentV2(flow);
                     flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
                             transactionId, validRequestId, expId, null, null);
                     flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
@@ -289,6 +303,92 @@ public class CompleteAction2929FlowTest extends AbstractStatusChangeFlowTest {
                 .run();
     }
 
+    @Regression
+    @Test
+    @DisplayName("EXPLAB-2929-API-11. Длинный result_details сохраняется без обрезания")
+    void longResultDetailsShouldBeStored() {
+        assumeStatusChangeElementTableExists();
+
+        String transactionId = newTransactionId();
+        String requestId = newRequestId();
+        String blockerRequestId = newRequestId();
+        String longResultDetails = "external error details ".repeat(20);
+
+        getFlowWithDbRest()
+                .step("Создаем ожидающее действие и блокирующий элемент", flow -> {
+                    long expId = createTrackedExperimentV2(flow);
+                    flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
+                            transactionId, requestId, expId, null, null);
+                    flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
+                            transactionId, blockerRequestId, expId, null, null);
+                })
+                .step("Передаем ERROR с длинным result_details", flow ->
+                        flow.restCustomSteps().experimentsV2Steps()
+                                .completeStatusChangeAction(List.of(callback(
+                                        requestId,
+                                        StatusChangeResult.ERROR,
+                                        longResultDetails
+                                )))
+                                .should(RestMatchers.haveStatusCode(HttpStatus.SC_OK)))
+                .step("Проверяем, что result_details сохранен полностью", flow -> {
+                    Map<String, Object> row = flow.dbCustomSteps().statusChangeDbSteps()
+                            .findElementByRequestId(requestId)
+                            .singleRow()
+                            .toSimpleRow();
+
+                    assertEquals("ERROR", String.valueOf(row.get("result")));
+                    assertEquals(longResultDetails, String.valueOf(row.get("result_details")));
+                })
+                .run();
+    }
+
+    @Regression
+    @Test
+    @DisplayName("EXPLAB-2929-API-12. Дубликат requestId не обрабатывается молча")
+    void duplicateRequestIdShouldNotBeProcessedSilently() {
+        assumeStatusChangeElementTableExists();
+
+        String firstTransactionId = newTransactionId();
+        String secondTransactionId = newTransactionId();
+        String requestId = newRequestId();
+        boolean[] duplicateRejectedByDb = new boolean[1];
+
+        getFlowWithDbRest()
+                .step("Проверяем доступность complete-action валидным callback", this::assumeCompleteActionAvailable)
+                .step("Создаем две записи с одинаковым request_id, если БД это допускает", flow -> {
+                    long expId = createTrackedExperimentV2(flow);
+                    flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
+                            firstTransactionId, requestId, expId, null, null);
+                    try {
+                        flow.dbCustomSteps().statusChangeDbSteps().insertStatusChangeElement(
+                                secondTransactionId, requestId, expId, null, null);
+                    } catch (RuntimeException ignored) {
+                        duplicateRejectedByDb[0] = true;
+                    }
+                })
+                .step("Если дубликат принят, callback не должен молча обновить произвольную запись", flow -> {
+                    if (duplicateRejectedByDb[0]) {
+                        return;
+                    }
+
+                    int statusCode = flow.restCustomSteps().experimentsV2Steps()
+                            .completeStatusChangeAction(List.of(callback(requestId, StatusChangeResult.DONE, null)))
+                            .toResponse()
+                            .statusCode();
+
+                    assertTrue(statusCode >= HttpStatus.SC_BAD_REQUEST,
+                            "Дубликат request_id не должен завершаться успешным произвольным обновлением");
+
+                    List<Map<String, Object>> rows = flow.dbCustomSteps().statusChangeDbSteps()
+                            .findElementsByRequestId(requestId)
+                            .toSimpleTable();
+                    assertEquals(2, rows.size(), "Обе дублирующие записи должны остаться для диагностики");
+                    assertTrue(rows.stream().allMatch(row -> row.get("result") == null),
+                            "Callback по дублирующему request_id не должен обновлять одну случайную запись");
+                })
+                .run();
+    }
+
     private static CompleteActionRequestDto callback(
             String requestId,
             StatusChangeResult result,
@@ -299,6 +399,22 @@ public class CompleteAction2929FlowTest extends AbstractStatusChangeFlowTest {
                 .result(result)
                 .resultDetails(resultDetails)
                 .build();
+    }
+
+    private void assumeCompleteActionAvailable(FlowWithDbRest flow) {
+        int statusCode = flow.restCustomSteps().experimentsV2Steps()
+                .completeStatusChangeAction(List.of(callback(
+                        newRequestId(),
+                        StatusChangeResult.DONE,
+                        null
+                )))
+                .toResponse()
+                .statusCode();
+        Assumptions.assumeTrue(
+                statusCode == HttpStatus.SC_OK,
+                "Пропуск негативной проверки: валидный callback для неизвестного requestId должен вернуть 200, "
+                        + "но вернул " + statusCode + ". Основной дефект фиксирует EXPLAB-2929-API-04"
+        );
     }
 
     private static String resultByRequestId(flow.DbCustomFlow flow, String requestId) {

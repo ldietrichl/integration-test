@@ -45,15 +45,9 @@ public class ExperimentV2PostRequestDtoBuilder {
     public static ExperimentV2PostRequestDto.ObjectSelectCondition buildDefaultObjectSelectCondition() {
         return ExperimentV2PostRequestDto.ObjectSelectCondition.builder()
                 .number(1)
-                .userCondition("""
-                        productId in (\"1-AVDHSSS\") AND cjId in (42001)""")
+                .userCondition("cjId in (42001)")
                 .formCode("MAPPER_OBJECT_SELECT")
-                .rules(List.of(List.of(ExperimentV2PostRequestDto.ObjectSelectCondition.Rule.builder()
-                                .dataType("STRING")
-                                .parameterCode("productId")
-                                .operatorCode("in")
-                                .values(List.of("1-AVDHSSS"))
-                                .build(),
+                .rules(List.of(List.of(
                         ExperimentV2PostRequestDto.ObjectSelectCondition.Rule.builder()
                                 .dataType("INTEGER")
                                 .parameterCode("cjId")

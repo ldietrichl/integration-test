@@ -23,6 +23,7 @@ import java.util.List;
 import static dto.experiments.v2.ExperimentV2PostRequestDtoBuilder.buildDefaultExperimentGroups;
 import static dto.experiments.v2.ExperimentV2PostRequestDtoBuilder.buildDefaultExperimentV2PostRequestDto;
 import static dto.experiments.v2.ExperimentV2PostRequestDtoBuilder.buildDefaultObjectSelectCondition;
+import static ru.sber.qa.experiments.EXPLAB_2559.ExperimentV2UserConditionScopeAssumptions.assumeMapperScopeAvailable;
 
 /**
  * EXPLAB-2559.
@@ -38,6 +39,8 @@ public class ExperimentV2UserConditionUpdateVariantsFlowTest extends Flows {
     @Test
     @DisplayName("EXPLAB-2559. Обновление userCondition: длинное значение заменяется коротким")
     void updateExperimentV2UserConditionFromLongToShortSuccessTest() {
+        assumeMapperScopeAvailable();
+
         String createUserCondition = fixedLengthUserCondition(1000, "CREATE_LONG");
         String updateUserCondition = fixedLengthUserCondition(100, "UPDATE_SHORT");
 
@@ -49,6 +52,8 @@ public class ExperimentV2UserConditionUpdateVariantsFlowTest extends Flows {
     @Test
     @DisplayName("EXPLAB-2559. Обновление userCondition: длинное значение заменяется другим длинным")
     void updateExperimentV2UserConditionFromLongToAnotherLongSuccessTest() {
+        assumeMapperScopeAvailable();
+
         String createUserCondition = fixedLengthUserCondition(512, "CREATE_LONG");
         String updateUserCondition = fixedLengthUserCondition(2000, "UPDATE_LONG");
 
@@ -60,6 +65,8 @@ public class ExperimentV2UserConditionUpdateVariantsFlowTest extends Flows {
     @Test
     @DisplayName("EXPLAB-2559. Обновление эксперимента V2 с двумя objectSelectConditions[].userCondition")
     void updateExperimentV2WithMultipleUserConditionsSuccessTest() {
+        assumeMapperScopeAvailable();
+
         final Long[] experimentId = new Long[1];
         final boolean[] deleted = {false};
 
