@@ -25,6 +25,7 @@ import java.util.List;
 import static dto.experiments.v2.ExperimentV2PostRequestDtoBuilder.buildDefaultExperimentGroups;
 import static dto.experiments.v2.ExperimentV2PostRequestDtoBuilder.buildDefaultExperimentV2PostRequestDto;
 import static dto.experiments.v2.ExperimentV2PostRequestDtoBuilder.buildDefaultObjectSelectCondition;
+import static ru.sber.qa.experiments.EXPLAB_2559.ExperimentV2UserConditionScopeAssumptions.assumeMapperScopeAvailable;
 
 /**
  * EXPLAB-2559.
@@ -42,6 +43,8 @@ public class ExperimentV2UserConditionLengthFlowTest extends Flows {
     @ValueSource(ints = {255, 256, 257, 300, 512, 1000, 2000})
     @DisplayName("EXPLAB-2559. Создание эксперимента V2 с разной длиной userCondition")
     void createExperimentV2WithUserConditionBoundaryLengthsSuccessTest(int userConditionLength) {
+        assumeMapperScopeAvailable();
+
         final Long[] experimentId = new Long[1];
         final boolean[] deleted = {false};
         String userCondition = fixedLengthUserCondition(userConditionLength, "BOUNDARY");
@@ -96,6 +99,8 @@ public class ExperimentV2UserConditionLengthFlowTest extends Flows {
     @Test
     @DisplayName("EXPLAB-2559. Обновление эксперимента V2 длинным userCondition")
     void updateExperimentV2WithLongUserConditionSuccessTest() {
+        assumeMapperScopeAvailable();
+
         final Long[] experimentId = new Long[1];
         final boolean[] deleted = {false};
         String createUserCondition = fixedLengthUserCondition(100, "CREATE");
@@ -156,6 +161,8 @@ public class ExperimentV2UserConditionLengthFlowTest extends Flows {
     @Test
     @DisplayName("EXPLAB-2559. Создание эксперимента V2 с двумя длинными objectSelectConditions[].userCondition")
     void createExperimentV2WithMultipleLongUserConditionsSuccessTest() {
+        assumeMapperScopeAvailable();
+
         final Long[] experimentId = new Long[1];
         final boolean[] deleted = {false};
         String firstUserCondition = fixedLengthUserCondition(300, "FIRST");

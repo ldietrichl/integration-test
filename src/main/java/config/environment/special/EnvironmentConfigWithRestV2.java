@@ -24,7 +24,7 @@ import ru.sber.qa.services.rest.RestService;
 public class EnvironmentConfigWithRestV2 extends DefaultEnvironmentConfiguration {
     @Override
     public @NotNull ServiceConfigurationManager getServiceConfigurations() {
-        return getServiceConfigurations()
+        return super.getServiceConfigurations()
                 // Служебные сервисы
                 .put(ConfiguredServiceHolder.of(
                         ConfigurationService.class, new DefaultConfigurationServiceConfiguration()))

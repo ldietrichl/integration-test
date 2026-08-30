@@ -11,6 +11,9 @@ if (gradleLocalPropertiesFile.isFile) {
 fun optionalLocalProperty(name: String): String? =
     (project.findProperty(name) as String?) ?: gradleLocalProperties.getProperty(name)
 
+fun firstNotBlank(vararg candidates: String?): String? =
+    candidates.firstOrNull { !it.isNullOrBlank() }?.trim()
+
 // Версии зависимостей
 val perfeccionistaVersion = project.properties["perfeccionistaVersion"] as String?
 val platformvatframeworkVersion = project.properties["platformvatframeworkVersion"] as String?
@@ -246,6 +249,23 @@ tasks.named<Test>("test") {
                 .filter { it.isNotEmpty() && !it.startsWith("#") }
                 .forEach { filter.excludeTestsMatching(it) }
         }
+        val mapperScopeAvailable = firstNotBlank(
+            System.getProperty("experiment.mapper.scope.available"),
+            System.getenv("EXPERIMENT_MAPPER_SCOPE_AVAILABLE"),
+            System.getProperty("exlab2559.mapper.scope.available"),
+            System.getenv("EXPLAB_2559_MAPPER_SCOPE_AVAILABLE")
+        )
+        if (mapperScopeAvailable?.equals("false", ignoreCase = true) == true) {
+            filter.excludeTestsMatching("ru.sber.qa.experiments.EXPLAB_2559.*")
+            filter.excludeTestsMatching("ru.sber.qa.experiments.v2.CreateChangeGetDeleteExperimentV2Test.*")
+        }
+        val v2CjToggleTestsEnabled = firstNotBlank(
+            System.getProperty("experiment.v2.cj.toggle.tests.enabled"),
+            System.getenv("EXPERIMENT_V2_CJ_TOGGLE_TESTS_ENABLED")
+        )
+        if (v2CjToggleTestsEnabled?.equals("false", ignoreCase = true) == true) {
+            filter.excludeTestsMatching("ru.sber.qa.experiments.EXPLAB_2696.RunningV1CacheV2CjEnabled2696FlowTest.*")
+        }
     }
 }
 
@@ -298,6 +318,9 @@ tasks {
             "EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED",
             "exlab2696.running.cache.wait.timeout.ms",
             "exlab2696.running.cache.wait.poll.ms",
+            "experiment.mapper.scope.available",
+            "exlab2559.mapper.scope.available",
+            "experiment.v2.cj.toggle.tests.enabled",
             "exlab2930.processor.timeout.seconds",
             "exlab2930.processor.stability.seconds"
         )

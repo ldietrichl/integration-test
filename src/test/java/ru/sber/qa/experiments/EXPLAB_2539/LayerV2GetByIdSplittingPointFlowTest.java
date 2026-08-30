@@ -13,8 +13,8 @@ import request.explab2539.layers.LayerV2ByIdTestDataFactory;
 import ru.sber.qa.allure.CriticalRegression;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 
-import static util.explab2539.LayerV2ByIdAssertions.shouldHaveSplittingPointObject;
-import static util.explab2539.LayerV2ByIdAssertions.shouldNotExposeDeprecatedSplittingPointScalarFields;
+import static util.explab2539.LayerV2ByIdAssertions.shouldHaveSplittingPointScalarFields;
+import static util.explab2539.LayerV2ByIdAssertions.shouldNotExposeSplittingPointObject;
 
 @ExtendWith(PerfeccionistaExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
@@ -24,52 +24,52 @@ public class LayerV2GetByIdSplittingPointFlowTest extends AbstractLayerV2ByIdFlo
 
     @CriticalRegression
     @Test
-    @DisplayName("EXPLAB-2539-LAY-01. GET /api/v2/experiments/layers/{id} для MAPPER возвращает splittingPoint {code,name}")
-    void getMapperLayerByIdShouldReturnSplittingPointObject() {
+    @DisplayName("EXPLAB-2539-LAY-01. GET /api/v2/experiments/layers/{id} для MAPPER возвращает splittingPointCode/splittingPointName")
+    void getMapperLayerByIdShouldReturnSplittingPointScalarFields() {
         String prefix = LayerV2ByIdTestDataFactory.uniquePrefix();
         var fixture = LayerV2ByIdTestDataFactory.mapperLayer(prefix);
         Long[] createdLayerId = new Long[1];
 
         getFlowWithRest()
                 .step("Создаем слой MAPPER через v2 DTO", flow -> createdLayerId[0] = createLayer(flow, fixture))
-                .step("Получаем слой по id через v2 и проверяем объект splittingPoint", flow -> {
+                .step("Получаем слой по id через v2 и проверяем scalar-поля splittingPoint", flow -> {
                     ValidatableResponseWrapper response = flow.restCustomSteps().layerV2Steps().getLayerById(createdLayerId[0]);
-                    shouldHaveSplittingPointObject(response, createdLayerId[0], "MAPPER", "Маппер");
+                    shouldHaveSplittingPointScalarFields(response, createdLayerId[0], "MAPPER", "Маппер");
                 })
                 .run();
     }
 
     @CriticalRegression
     @Test
-    @DisplayName("EXPLAB-2539-LAY-02. GET /api/v2/experiments/layers/{id} для REACTIONS возвращает splittingPoint {code,name}")
-    void getReactionsLayerByIdShouldReturnSplittingPointObject() {
+    @DisplayName("EXPLAB-2539-LAY-02. GET /api/v2/experiments/layers/{id} для REACTIONS возвращает splittingPointCode/splittingPointName")
+    void getReactionsLayerByIdShouldReturnSplittingPointScalarFields() {
         String prefix = LayerV2ByIdTestDataFactory.uniquePrefix();
         var fixture = LayerV2ByIdTestDataFactory.reactionsLayer(prefix);
         Long[] createdLayerId = new Long[1];
 
         getFlowWithRest()
                 .step("Создаем слой REACTIONS через v2 DTO", flow -> createdLayerId[0] = createLayer(flow, fixture))
-                .step("Получаем слой по id через v2 и проверяем объект splittingPoint", flow -> {
+                .step("Получаем слой по id через v2 и проверяем scalar-поля splittingPoint", flow -> {
                     ValidatableResponseWrapper response = flow.restCustomSteps().layerV2Steps().getLayerById(createdLayerId[0]);
-                    shouldHaveSplittingPointObject(response, createdLayerId[0], "REACTIONS", "Модуль реакций");
+                    shouldHaveSplittingPointScalarFields(response, createdLayerId[0], "REACTIONS", "Сервис реакций");
                 })
                 .run();
     }
 
     @CriticalRegression
     @Test
-    @DisplayName("EXPLAB-2539-LAY-03. GET layer by id не отдает deprecated scalar поля splittingPointCode/splittingPointName")
-    void getLayerByIdShouldNotExposeDeprecatedSplittingPointScalarFields() {
+    @DisplayName("EXPLAB-2539-LAY-03. GET layer by id не отдает устаревший объект splittingPoint")
+    void getLayerByIdShouldNotExposeSplittingPointObject() {
         String prefix = LayerV2ByIdTestDataFactory.uniquePrefix();
         var fixture = LayerV2ByIdTestDataFactory.mapperLayer(prefix);
         Long[] createdLayerId = new Long[1];
 
         getFlowWithRest()
                 .step("Создаем слой MAPPER через v2 DTO", flow -> createdLayerId[0] = createLayer(flow, fixture))
-                .step("Получаем слой по id через v2 и проверяем отсутствие deprecated scalar-полей", flow -> {
+                .step("Получаем слой по id через v2 и проверяем отсутствие устаревшего объекта splittingPoint", flow -> {
                     ValidatableResponseWrapper response = flow.restCustomSteps().layerV2Steps().getLayerById(createdLayerId[0]);
-                    shouldHaveSplittingPointObject(response, createdLayerId[0], "MAPPER", "Маппер");
-                    shouldNotExposeDeprecatedSplittingPointScalarFields(response);
+                    shouldHaveSplittingPointScalarFields(response, createdLayerId[0], "MAPPER", "Маппер");
+                    shouldNotExposeSplittingPointObject(response);
                 })
                 .run();
     }
