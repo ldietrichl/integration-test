@@ -99,71 +99,6 @@ $env:JAVA_TOOL_OPTIONS = "-Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsu
 .\gradlew.bat allureReport
 ```
 
-## Регресс splitter-service
-
-Splitter-регресс запускается отдельными Gradle tasks. В корпоративной среде локальные контейнеры, локальные ConfigMap-файлы из `BACK` и helper-скрипты не нужны: тесты должны ходить в уже поднятые корпоративные splitter-сервисы.
-
-Перед запуском проверьте:
-
-- `env` указывает на нужный корпоративный стенд.
-- `rest.<env>.gateway.base-uri` настроен на общий ingress.
-- Если MAPPER и REACTIONS опубликованы разными сервисами или версиями SDK, заданы отдельные endpoints:
-  - `rest.<env>.splitter-mapper.base-uri`
-  - `rest.<env>.splitter-reactions.base-uri`
-- Kafka producer/consumer properties выбранного стенда заполнены в `src/test/resources/kafka-*.properties`, `secure.local.override.properties`, environment variables или JVM `-D`.
-- Для отчета задается отдельный `allure.results.directory`, если нужно сохранить несколько прогонов вместе.
-
-REST config-load режим:
-
-```powershell
-$env:JAVA_TOOL_OPTIONS = "-Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.stderr.encoding=UTF-8"
-
-.\gradlew.bat clean splitterRestRegression `
-  -PincludeDisabledTests=true `
-  -Psplitter.test.profile=current `
-  -Dsplitter.config.load.mode=rest `
-  -Dallure.results.directory=build\allure-results-splitter-regression
-```
-
-Kafka config-load режим:
-
-```powershell
-$env:JAVA_TOOL_OPTIONS = "-Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.stderr.encoding=UTF-8"
-
-.\gradlew.bat splitterKafkaRegression `
-  -PincludeDisabledTests=true `
-  -Psplitter.test.profile=current `
-  -Dsplitter.config.load.mode=kafka `
-  -Dallure.results.directory=build\allure-results-splitter-regression
-```
-
-Если нужно получить один общий отчет по двум режимам, не удаляйте `build\allure-results-splitter-regression` между REST и Kafka запуском. После второго запуска соберите отчет через Allure CLI, который скачивает Gradle Allure plugin:
-
-```powershell
-.\gradlew.bat downloadAllure
-
-.\build\allure\commandline\bin\allure.bat generate `
-  build\allure-results-splitter-regression `
-  --clean `
-  -o build\reports\allure-report\splitter-rest-kafka-regression
-```
-
-Ожидаемое поведение фильтрации:
-
-- `splitterRestRegression` запускает только splitter-сценарии, применимые к REST config-load.
-- `splitterKafkaRegression` запускает только splitter-сценарии, применимые к Kafka config-load.
-- Сценарии неподходящего режима исключаются до test discovery и не попадают в Allure как skipped, broken или unknown.
-- Параметр `splitter.config.load.mode` добавляется в Allure result, поэтому REST и Kafka результаты одного сценария не схлопываются в retry.
-- Если корпоративный splitter не публикует status topic `splitting-config-requested-and-received`, перед Kafka-прогоном задайте `-Dsplitter.config.kafka.status.required=false`; status-only сценарии будут исключены из отчета до запуска.
-
-Для корпоративной проверки состава tasks:
-
-```powershell
-.\gradlew.bat tasks --all
-```
-
-В списке должны быть `splitterRestRegression` и `splitterKafkaRegression`.
-
 ## Allure
 
 HTML-отчет после Gradle-запуска:
@@ -196,4 +131,3 @@ Compress-Archive `
 - EXPLAB-2929 может продолжать падать до исправления десериализации `CompleteActionRequestDto` на сервисе.
 - EXPLAB-2696 требует отдельные прогоны под `toggle=false` и `toggle=true`.
 - EXPLAB-2559 нужно запускать пользователем со scope на `MAPPER` или тестовыми данными под доступный splitting point.
-- Splitter REST/Kafka regression запускается отдельными tasks и не должен смешиваться с локальной контейнерной инфраструктурой на корпоративном стенде.
