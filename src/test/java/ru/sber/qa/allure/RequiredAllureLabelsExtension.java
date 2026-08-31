@@ -2,6 +2,7 @@ package ru.sber.qa.allure;
 
 import io.qameta.allure.listener.TestLifecycleListener;
 import io.qameta.allure.model.Label;
+import io.qameta.allure.model.Parameter;
 import io.qameta.allure.model.TestResult;
 
 import java.io.IOException;
@@ -52,6 +53,7 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
     private static final Set<String> ALLOWED_TEST_STAGES = Set.of(
             "code", "dev", "devBarier", "st", "ift", "lt", "psi", "prom"
     );
+    private static final Set<String> ALLOWED_SPLITTER_CONFIG_LOAD_MODES = Set.of("rest", "kafka");
     private static final Pattern JSON_FULL_NAME_PATTERN = Pattern.compile(
             "\"fullName\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
 
@@ -87,6 +89,7 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
         replaceLabel(testResult, "functionalArea", service);
         replaceLabel(testResult, "serviceUnderTest", service);
         replaceLabel(testResult, "testStage", testStage);
+        applySplitterConfigLoadMode(testResult, service, testClass, testMethod);
 
         if (regression) {
             replaceLabel(testResult, "regress", "true");
@@ -421,6 +424,37 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
         return "abtm-backend";
     }
 
+    private static void applySplitterConfigLoadMode(
+            TestResult testResult,
+            String service,
+            Optional<Class<?>> testClass,
+            Optional<Method> testMethod) {
+        if (!"splitter-service".equals(service)) {
+            return;
+        }
+
+        String mode = firstNotBlank(
+                System.getProperty("splitter.config.load.mode"),
+                System.getenv("SPLITTER_CONFIG_LOAD_MODE"),
+                readPropertyFromTestProperties("splitter.config.load.mode"),
+                "rest"
+        ).trim().replace('-', '_').toLowerCase(Locale.ROOT);
+        if (!ALLOWED_SPLITTER_CONFIG_LOAD_MODES.contains(mode)) {
+            throw new IllegalArgumentException("Unsupported splitter.config.load.mode value: '"
+                    + mode + "'. Allowed values: " + ALLOWED_SPLITTER_CONFIG_LOAD_MODES);
+        }
+
+        addParameter(testResult, "splitter.config.load.mode", mode);
+        replaceLabel(testResult, "splitterConfigLoadMode", mode);
+
+        String historyId = Optional.ofNullable(testResult.getHistoryId())
+                .filter(value -> !value.isBlank())
+                .orElseGet(() -> resolveCanonicalFullName(testResult, testClass, testMethod));
+        if (!historyId.isBlank() && !historyId.endsWith("::splitter.config.load.mode=" + mode)) {
+            testResult.setHistoryId(historyId + "::splitter.config.load.mode=" + mode);
+        }
+    }
+
     private static Optional<Class<?>> resolveTestClass(TestResult testResult) {
         Optional<String> fullName = Optional.ofNullable(testResult.getFullName())
                 .filter(value -> !value.isBlank());
@@ -504,6 +538,17 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
         if (!existing.contains(value)) {
             testResult.getLabels().add(new Label().setName(name).setValue(value));
         }
+    }
+
+    private static void addParameter(TestResult testResult, String name, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        List<Parameter> parameters = new ArrayList<>(Optional.ofNullable(testResult.getParameters())
+                .orElseGet(List::of));
+        parameters.removeIf(parameter -> name.equals(parameter.getName()));
+        parameters.add(new Parameter().setName(name).setValue(value));
+        testResult.setParameters(parameters);
     }
 
     private static void removeLabel(TestResult testResult, String name) {
