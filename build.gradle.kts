@@ -371,6 +371,23 @@ tasks.named<Test>("test") {
     applyReportEligibilityExclusions()
 }
 
+fun splitterConfigLoadModeNotice(mode: String): String {
+    val apiConfigLoad = if (mode == "rest") "true" else "false"
+    val flow = if (mode == "rest") "REST API" else "Kafka consumer"
+    return """
+
+        Splitter regression mode: $mode
+        Required splitter config load flow: $flow
+        Set config map/deployment flag before this run:
+          MAPPER:    splitter.config.api-config-load=$apiConfigLoad
+          REACTIONS: splitter.config.api-config-load=$apiConfigLoad
+        Environment variable equivalent:
+          MAPPER:    SPLITTER_CONFIG_API_CONFIG_LOAD=$apiConfigLoad
+          REACTIONS: SPLITTER_CONFIG_API_CONFIG_LOAD=$apiConfigLoad
+
+    """.trimIndent()
+}
+
 fun Test.configureSplitterRegressionTask(mode: String) {
     group = "verification"
     dependsOn(tasks.named("testClasses"))
@@ -379,6 +396,9 @@ fun Test.configureSplitterRegressionTask(mode: String) {
     applyReportEligibilityExclusions()
     systemProperty("splitter.config.load.mode", mode)
     filter.includeTestsMatching("ru.sber.qa.splitter.*")
+    doFirst("printSplitterConfigLoadModeNotice") {
+        logger.lifecycle(splitterConfigLoadModeNotice(mode))
+    }
 }
 
 val splitterRestRegression by tasks.registering(Test::class) {
