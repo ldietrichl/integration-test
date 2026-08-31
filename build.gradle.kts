@@ -716,6 +716,7 @@ tasks {
         System.getProperties().stringPropertyNames()
             .filter {
                 it in forwardedTestSystemProperties ||
+                        it.startsWith("SECURE_") ||
                         it.startsWith("kafka_") ||
                         it.startsWith("rest.") ||
                         it.startsWith("splitter.config.kafka.") ||
