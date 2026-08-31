@@ -126,6 +126,19 @@ val allureResultsDirectory = fileFromProjectOrAbsolute(
         ?: "build/allure-results"
 )
 
+fun resolveAllureUploadResultsDirectory(): File =
+    fileFromProjectOrAbsolute(
+        configValue(
+            "allureResultsDir",
+            "ALLURE_RESULTS_DIR",
+            "ALLURE_RESULTS",
+            "ALLURE_RESULTS_DIRECTORY"
+        )
+            ?: usableLocalProperty(System.getProperty("allure.results.directory"))
+            ?: optionalConfigProperty("allure.results.directory")
+            ?: "build/allure-results"
+    )
+
 plugins {
     java
     id("io.qameta.allure") version "2.11.2"
@@ -430,10 +443,25 @@ allure {
     }
 }
 
-tasks.register<Copy>("copyAllureCategories") {
-    delete("${buildDir}/copy-categories/")
-    from("${projectDir}/allure/categories.json")
-    into(allureResultsDirectory)
+tasks.register("copyAllureCategories") {
+    doLast {
+        val categoriesFile = file("${projectDir}/allure/categories.json")
+        if (!categoriesFile.isFile) {
+            return@doLast
+        }
+
+        val destinations = linkedSetOf(allureResultsDirectory)
+        if (isTestOpsUploadRequested()) {
+            destinations.add(resolveAllureUploadResultsDirectory())
+        }
+
+        destinations.forEach { destination ->
+            project.copy {
+                from(categoriesFile)
+                into(destination)
+            }
+        }
+    }
 }
 
 fun isRequestedTask(taskName: String): Boolean =
@@ -568,14 +596,7 @@ val testOpsUpload by tasks.registering {
         )
         val projectUrl = configValue("allureProjectUrl", "ALLURE_PROJECT_URL")
             ?: "$endpoint/project/$projectId"
-        val resultsDir = fileFromProjectOrAbsolute(
-            configValue(
-                "allureResultsDir",
-                "ALLURE_RESULTS_DIR",
-                "ALLURE_RESULTS",
-                defaultValue = "build/allure-results"
-            )!!
-        )
+        val resultsDir = resolveAllureUploadResultsDirectory()
         val uploadBatch = parsePositiveInt(
             configValue(
                 "allureUploadBatch",
@@ -601,7 +622,8 @@ val testOpsUpload by tasks.registering {
         if (!resultsDir.isDirectory) {
             throw GradleException(
                 "Allure results directory not found: ${resultsDir.absolutePath}. " +
-                        "Run test or bypassTests first."
+                        "Run test/bypassTests/splitter regression first, " +
+                        "or set allureResultsDir/ALLURE_RESULTS_DIR/allure.results.directory."
             )
         }
 

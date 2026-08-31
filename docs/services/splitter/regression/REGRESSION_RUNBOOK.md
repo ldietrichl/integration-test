@@ -110,6 +110,28 @@ $env:JAVA_TOOL_OPTIONS = "-Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsu
 build/reports/allure-report/splitter-rest-kafka-regression/index.html
 ```
 
+## Выгрузка в TestOps
+
+После двух прогонов `testOpsUpload` может загрузить тот же общий каталог результатов. Старые параметры `allureResultsDir`, `ALLURE_RESULTS_DIR` и `ALLURE_RESULTS` сохраняются; для splitter-регресса можно использовать тот же `allure.results.directory`, который передавался в REST/Kafka tasks.
+
+Пример выгрузки общего REST+Kafka результата:
+
+```powershell
+.\gradlew.bat testOpsUpload `
+  "-Dallure.results.directory=build\allure-results-splitter-rest-kafka" `
+  "-DallureLaunchName=Splitter REST+Kafka regression" `
+  "-DallureLaunchTags=splitter,rest,kafka"
+```
+
+Если в корпоративном контуре принят отдельный параметр для upload, команда остается совместимой:
+
+```powershell
+.\gradlew.bat testOpsUpload `
+  "-DallureResultsDir=build\allure-results-splitter-rest-kafka" `
+  "-DallureLaunchName=Splitter REST+Kafka regression" `
+  "-DallureLaunchTags=splitter,rest,kafka"
+```
+
 ## Правила фильтрации
 
 - `splitterRestRegression` запускает splitter-сценарии, применимые к REST config-load.
