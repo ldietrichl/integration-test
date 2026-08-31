@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import constants.Endpoints;
 
 import config.services.core.RestEndpointResolver;
@@ -32,6 +33,7 @@ import static io.qameta.allure.Allure.step;
 
 @ExtendWith(PerfeccionistaExtension.class)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
+@AnyConfigLoadMode
 public class SplitterHappyPassPost {
     private static final String splitterBaseUri = RestEndpointResolver.baseUri(RestServiceEndpoint.SPLITTER);
 

@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2690;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -22,13 +23,14 @@ import java.util.List;
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
-@DisplayName("EXPLAB-2690. REACTIONS: множество итоговых экспериментов максимального приоритета")
+@DisplayName("EXPLAB-2690. REACTIONS: итоговый эксперимент по layerPriority и expId")
+@AnyConfigLoadMode
 public class SplitterReactionsFinalExperiments2690FlowTest extends AbstractExplab2690FlowTest {
 
     @CriticalRegression
     @Test
-    @DisplayName("EXPLAB-2690-07. MAIN содержит все сработавшие эксперименты максимального layerPriority")
-    void reactionsMainShouldContainAllWorkedExperimentsOfMaximumLayerPriority() {
+    @DisplayName("EXPLAB-2690-07. MAIN содержит выбранный эксперимент максимального layerPriority с min expId")
+    void reactionsMainShouldContainSelectedExperimentOfMaximumLayerPriority() {
         long version = SplitterVersionProvider.next();
         LoadConfigRequestDto config = configFor(EndpointMode.REACTIONS, version,
                 reactionExperiment(269071, 1, 1, "101"),
@@ -41,14 +43,19 @@ public class SplitterReactionsFinalExperiments2690FlowTest extends AbstractExpla
         getFlowWithRest()
                 .step("Загружаем REACTIONS config: один exp с priority=1 и три exp с priority=3",
                         flow -> loadConfig(flow, EndpointMode.REACTIONS, config))
-                .step("Проверяем, что MAIN содержит все три сработавших эксперимента максимального приоритета",
+                .step("Проверяем, что MAIN содержит один exp максимального приоритета с min expId",
                         flow -> {
                             ValidatableResponseWrapper response = split(flow, EndpointMode.REACTIONS, request);
                             assertBasicResponseContract(response, request, version);
-                            assertRuleExpIdsExactly(response, REACTIONS_OBJECT_ID, "MAIN", 269072L, 269073L, 269074L);
+                            assertRuleExpIdsExactly(response, REACTIONS_OBJECT_ID, "MAIN", 269072L);
                             assertRuleExpsHaveMandatoryFields(response, REACTIONS_OBJECT_ID, "MAIN");
                             assertEveryRuleExpUsesWorkedGroup(response, REACTIONS_OBJECT_ID, "MAIN");
-                            assertRuleExpsHaveNoExpFlags(response, REACTIONS_OBJECT_ID, "MAIN");
+                            if (findRule(response, REACTIONS_OBJECT_ID, "ALL", false) != null) {
+                                assertRuleExpIdsExactly(response, REACTIONS_OBJECT_ID, "ALL",
+                                        269071L, 269072L, 269073L, 269074L);
+                                assertEveryRuleExpUsesWorkedGroup(response, REACTIONS_OBJECT_ID, "ALL");
+                                assertAllExpFlagsHaveAlternativeValue(response, REACTIONS_OBJECT_ID, "false");
+                            }
                             assertNoAlternativeTrueAnywhere(response);
                         })
                 .run();

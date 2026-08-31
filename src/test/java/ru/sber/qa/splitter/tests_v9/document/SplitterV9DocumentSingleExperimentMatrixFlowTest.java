@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.tests_v9.document;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -26,6 +27,7 @@ import java.util.stream.Stream;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("Tests-v9. Тест 1/2: один эксперимент, группы A/B/C")
+@AnyConfigLoadMode
 public class SplitterV9DocumentSingleExperimentMatrixFlowTest extends AbstractSplitterV9FlowTest {
 
     private static final long EXP_ID = 1L;

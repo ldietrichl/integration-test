@@ -25,8 +25,31 @@ final class TestPropertiesLoader {
     }
 
     static String optional(String key) {
+        String systemValue = System.getProperty(key);
+        if (systemValue != null && !systemValue.isBlank()) {
+            return SecurePropertyResolver.resolve(systemValue).trim();
+        }
+
+        String environmentValue = System.getenv(toEnvironmentName(key));
+        if (environmentValue != null && !environmentValue.isBlank()) {
+            return SecurePropertyResolver.resolve(environmentValue).trim();
+        }
+
         String value = PROPERTIES.getProperty(key);
         return value == null ? null : SecurePropertyResolver.resolve(value).trim();
+    }
+
+    private static String toEnvironmentName(String key) {
+        StringBuilder result = new StringBuilder(key.length());
+        for (int i = 0; i < key.length(); i++) {
+            char current = key.charAt(i);
+            if (Character.isLetterOrDigit(current)) {
+                result.append(Character.toUpperCase(current));
+            } else {
+                result.append('_');
+            }
+        }
+        return result.toString();
     }
 
     private static Properties load() {

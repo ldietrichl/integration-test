@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.NewTest;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import com.fasterxml.jackson.databind.JsonNode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.common.ParamDto;
@@ -60,6 +61,7 @@ import static util.SplitterPrecalcAssertions.shouldHaveSplittingResultsSize;
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
+@AnyConfigLoadMode
 public class SplitterExplab2414GroupConditionBindingTest extends AbstractNewSplitterFlowTest {
 
     private static final int SO_CONFIG_VERSION = 1;

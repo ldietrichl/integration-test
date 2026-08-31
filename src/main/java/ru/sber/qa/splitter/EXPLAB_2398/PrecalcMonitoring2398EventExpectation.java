@@ -10,16 +10,16 @@ final class PrecalcMonitoring2398EventExpectation {
 
     private final String requestId;
     private final String result;
-    private final int soConfigVersion;
+    private final long soConfigVersion;
     private final Map<String, Long> counters = new LinkedHashMap<>();
 
-    private PrecalcMonitoring2398EventExpectation(String requestId, String result, int soConfigVersion) {
+    private PrecalcMonitoring2398EventExpectation(String requestId, String result, long soConfigVersion) {
         this.requestId = requestId;
         this.result = result;
         this.soConfigVersion = soConfigVersion;
     }
 
-    static PrecalcMonitoring2398EventExpectation event(String requestId, String result, int soConfigVersion) {
+    static PrecalcMonitoring2398EventExpectation event(String requestId, String result, long soConfigVersion) {
         return new PrecalcMonitoring2398EventExpectation(requestId, result, soConfigVersion);
     }
 
@@ -36,7 +36,7 @@ final class PrecalcMonitoring2398EventExpectation {
         return result;
     }
 
-    int soConfigVersion() {
+    long soConfigVersion() {
         return soConfigVersion;
     }
 

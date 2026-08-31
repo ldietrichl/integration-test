@@ -11,6 +11,12 @@ if (gradleLocalPropertiesFile.isFile) {
     gradleLocalPropertiesFile.inputStream().use { gradleLocalProperties.load(it) }
 }
 
+val testRuntimeProperties = Properties()
+val testRuntimePropertiesFile = rootProject.file("src/test/resources/test.properties")
+if (testRuntimePropertiesFile.isFile) {
+    testRuntimePropertiesFile.inputStream().use { testRuntimeProperties.load(it) }
+}
+
 val secureLocalProperties = Properties()
 listOf(
     rootProject.file("secure.local.properties"),
@@ -35,8 +41,12 @@ fun optionalEnv(name: String): String? =
 fun optionalConfigProperty(name: String): String? =
     optionalLocalProperty(name)
 
+fun optionalTestRuntimeProperty(name: String): String? =
+    usableLocalProperty(testRuntimeProperties.getProperty(name))
+
 fun configValue(name: String, vararg envNames: String, defaultValue: String? = null): String? =
-    optionalConfigProperty(name)
+    usableLocalProperty(System.getProperty(name))
+        ?: optionalConfigProperty(name)
         ?: envNames.asSequence().mapNotNull(::optionalEnv).firstOrNull()
         ?: defaultValue
 
@@ -46,6 +56,32 @@ fun configFlag(name: String, vararg envNames: String, defaultValue: Boolean = fa
     return value.equals("true", ignoreCase = true) ||
             value.equals("yes", ignoreCase = true) ||
             value == "1"
+}
+
+fun isGradleTaskRequested(taskName: String): Boolean =
+    gradle.startParameter.taskNames.any { requested ->
+        requested == taskName || requested == ":$taskName" || requested.endsWith(":$taskName")
+    }
+
+fun resolveSplitterConfigLoadMode(): String {
+    val restTaskRequested = isGradleTaskRequested("splitterRestRegression")
+    val kafkaTaskRequested = isGradleTaskRequested("splitterKafkaRegression")
+    val requestedTaskMode = when {
+        kafkaTaskRequested && !restTaskRequested -> "kafka"
+        restTaskRequested && !kafkaTaskRequested -> "rest"
+        else -> null
+    }
+    val raw = System.getProperty("splitter.config.load.mode")
+        ?: optionalConfigProperty("splitter.config.load.mode")
+        ?: configValue("splitterConfigLoadMode", "SPLITTER_CONFIG_LOAD_MODE")
+        ?: requestedTaskMode
+        ?: optionalTestRuntimeProperty("splitter.config.load.mode")
+        ?: "rest"
+    val mode = raw.trim().replace('-', '_').lowercase()
+    if (mode != "rest" && mode != "kafka") {
+        throw GradleException("Unsupported splitter.config.load.mode=$raw. Expected one of: rest, kafka")
+    }
+    return mode
 }
 
 fun fileFromProjectOrAbsolute(pathValue: String): File {
@@ -75,6 +111,20 @@ val localLibJars = fileTree(localLibDir) {
     include("**/*.jar")
 }
 val useLocalLibs = localLibsRequested && localLibDir.exists() && localLibJars.files.isNotEmpty()
+val includeDisabledTests = configFlag("includeDisabledTests", "INCLUDE_DISABLED_TESTS")
+val includeManualTests = configFlag("includeManualTests", "INCLUDE_MANUAL_TESTS")
+val includeSplitterDataOperatorTests =
+    configFlag("includeSplitterDataOperatorTests", "INCLUDE_SPLITTER_DATA_OPERATOR_TESTS")
+val splitterConfigLoadMode = resolveSplitterConfigLoadMode()
+val splitterTestProfile = usableLocalProperty(System.getProperty("splitter.test.profile"))
+    ?: configValue("splitter.test.profile", "SPLITTER_TEST_PROFILE", defaultValue = "current")!!
+val splitterConfigKafkaStatusRequired =
+    configValue("splitter.config.kafka.status.required", "SPLITTER_CONFIG_KAFKA_STATUS_REQUIRED", defaultValue = "true")!!
+val allureResultsDirectory = fileFromProjectOrAbsolute(
+    usableLocalProperty(System.getProperty("allure.results.directory"))
+        ?: optionalConfigProperty("allure.results.directory")
+        ?: "build/allure-results"
+)
 
 plugins {
     java
@@ -169,7 +219,9 @@ dependencies {
 
     testCompileOnly("org.projectlombok:lombok:1.18.30")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.30")
-    implementation(group = "ru.sber.qa.platform-v-at-framework", name = "sbermock", version  = "$platformvatframeworkVersion")
+    if (!useLocalLibs) {
+        implementation(group = "ru.sber.qa.platform-v-at-framework", name = "sbermock", version = "$platformvatframeworkVersion")
+    }
 
 }
 
@@ -205,6 +257,10 @@ configurations.named(bypassTestsSourceSet.runtimeOnlyConfigurationName) {
 
 val reportEligibilityOutputDir = layout.buildDirectory.dir("report-eligibility")
 val reportExclusionsFile = reportEligibilityOutputDir.map { it.file("excluded-tests.txt") }
+val reportExclusionsWithDisabledIncludedFile =
+    reportEligibilityOutputDir.map { it.file("excluded-tests-include-disabled.txt") }
+val reportSplitterConfigLoadModeExclusionsFile =
+    reportEligibilityOutputDir.map { it.file("excluded-tests-splitter-config-load-mode.txt") }
 
 val auditReportingTags by tasks.registering {
     group = "verification"
@@ -235,6 +291,11 @@ val generateReportEligibility by tasks.registering(JavaExec::class) {
     dependsOn(tasks.named(bypassToolSourceSet.classesTaskName))
     classpath = bypassToolSourceSet.runtimeClasspath
     mainClass.set("ru.sber.qa.tools.reporting.TestReportEligibilityScanner")
+    systemProperty("splitter.config.load.mode", splitterConfigLoadMode)
+    systemProperty("splitter.test.profile", splitterTestProfile)
+    systemProperty("splitter.config.kafka.status.required", splitterConfigKafkaStatusRequired)
+    systemProperty("includeManualTests", includeManualTests.toString())
+    systemProperty("includeSplitterDataOperatorTests", includeSplitterDataOperatorTests.toString())
     args(
         file("src/test/java").absolutePath,
         file("config/reporting/outdated-tests.properties").absolutePath,
@@ -242,6 +303,11 @@ val generateReportEligibility by tasks.registering(JavaExec::class) {
     )
     inputs.dir("src/test/java")
     inputs.file("config/reporting/outdated-tests.properties")
+    inputs.property("splitter.config.load.mode", splitterConfigLoadMode)
+    inputs.property("splitter.test.profile", splitterTestProfile)
+    inputs.property("splitter.config.kafka.status.required", splitterConfigKafkaStatusRequired)
+    inputs.property("includeManualTests", includeManualTests)
+    inputs.property("includeSplitterDataOperatorTests", includeSplitterDataOperatorTests)
     outputs.dir(reportEligibilityOutputDir)
 }
 
@@ -277,13 +343,19 @@ val bypassTests by tasks.registering(Test::class) {
 }
 
 
-// Functional reports must contain only eligible tests. Exclusions are applied before test discovery,
-// therefore disabled/no-assertion/outdated cases do not become skipped entries in Allure.
-tasks.named<Test>("test") {
+fun Test.applyReportEligibilityExclusions() {
     dependsOn(generateReportEligibility)
     filter.setFailOnNoMatchingTests(false)
     doFirst {
-        val exclusions = reportExclusionsFile.get().asFile
+        if (includeDisabledTests) {
+            systemProperty("junit.jupiter.conditions.deactivate", "org.junit.*DisabledCondition")
+        }
+
+        val exclusions = if (includeDisabledTests) {
+            reportExclusionsWithDisabledIncludedFile.get().asFile
+        } else {
+            reportExclusionsFile.get().asFile
+        }
         if (exclusions.exists()) {
             exclusions.readLines()
                 .map(String::trim)
@@ -291,6 +363,32 @@ tasks.named<Test>("test") {
                 .forEach { filter.excludeTestsMatching(it) }
         }
     }
+}
+
+// Functional reports must contain only eligible tests. Exclusions are applied before test discovery,
+// therefore disabled/no-assertion/outdated cases do not become skipped entries in Allure.
+tasks.named<Test>("test") {
+    applyReportEligibilityExclusions()
+}
+
+fun Test.configureSplitterRegressionTask(mode: String) {
+    group = "verification"
+    dependsOn(tasks.named("testClasses"))
+    testClassesDirs = sourceSets.getByName("test").output.classesDirs
+    classpath = sourceSets.getByName("test").runtimeClasspath
+    applyReportEligibilityExclusions()
+    systemProperty("splitter.config.load.mode", mode)
+    filter.includeTestsMatching("ru.sber.qa.splitter.*")
+}
+
+val splitterRestRegression by tasks.registering(Test::class) {
+    description = "Run report-eligible splitter tests with REST config load flow"
+    configureSplitterRegressionTask("rest")
+}
+
+val splitterKafkaRegression by tasks.registering(Test::class) {
+    description = "Run report-eligible splitter tests with Kafka config load flow"
+    configureSplitterRegressionTask("kafka")
 }
 
 // Настраиваем Allure-plugin для локальных отчетов
@@ -315,7 +413,7 @@ allure {
 tasks.register<Copy>("copyAllureCategories") {
     delete("${buildDir}/copy-categories/")
     from("${projectDir}/allure/categories.json")
-    into("${buildDir}/allure-results/")
+    into(allureResultsDirectory)
 }
 
 fun isRequestedTask(taskName: String): Boolean =
@@ -586,8 +684,16 @@ tasks {
     withType<Test> {
         useJUnitPlatform()
         systemProperty("file.encoding", "UTF-8")
+        systemProperty("splitter.config.load.mode", splitterConfigLoadMode)
+        systemProperty("splitter.test.profile", splitterTestProfile)
+        systemProperty("allure.results.directory", allureResultsDirectory.absolutePath)
         systemProperty("report.outdated.tests.file", file("config/reporting/outdated-tests.properties").absolutePath)
-        systemProperty("report.exclusions.file", reportExclusionsFile.get().asFile.absolutePath)
+        val reportExclusions = if (includeDisabledTests) {
+            reportExclusionsWithDisabledIncludedFile
+        } else {
+            reportExclusionsFile
+        }
+        systemProperty("report.exclusions.file", reportExclusions.get().asFile.absolutePath)
         testLogging {
             showStandardStreams = true
             events("PASSED", "SKIPPED", "FAILED", "STANDARD_OUT", "STANDARD_ERROR")
@@ -597,6 +703,9 @@ tasks {
             showStackTraces = true
         }
         val forwardedTestSystemProperties = setOf(
+            "env",
+            "allure.testStage",
+            "testStage",
             "encryption.password",
             "EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED",
             "exlab2696.running.cache.wait.timeout.ms",
@@ -605,7 +714,20 @@ tasks {
             "exlab2930.processor.stability.seconds"
         )
         System.getProperties().stringPropertyNames()
-            .filter { it in forwardedTestSystemProperties }
+            .filter {
+                it in forwardedTestSystemProperties ||
+                        it.startsWith("kafka_") ||
+                        it.startsWith("rest.") ||
+                        it.startsWith("splitter.config.kafka.") ||
+                        it.startsWith("splitter.config.load.") ||
+                        it.startsWith("splitter.config.load.monitoring.") ||
+                        it.startsWith("splitter.endpoint.") ||
+                        it.startsWith("splitter.local.") ||
+                        it.startsWith("splitter.mapper.endpoint.") ||
+                        it.startsWith("splitter.precalc.monitoring.") ||
+                        it.startsWith("splitter.kap.") ||
+                        it.startsWith("splitter.reactions.endpoint.")
+            }
             .forEach { systemProperty(it, System.getProperty(it)) }
         secureLocalProperties.stringPropertyNames()
             .mapNotNull { name -> optionalLocalProperty(name)?.let { name to it } }

@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2690;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -16,6 +17,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import ru.sber.qa.allure.CriticalRegression;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
+import ru.sber.qa.splitter.support.SplitterTestProfileOnly;
 import util.support.SplitterVersionProvider;
 
 import java.util.List;
@@ -26,11 +28,13 @@ import java.util.stream.Stream;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("EXPLAB-2690. MAPPER: MAIN альтернативы использует связанную с объектом группу")
+@AnyConfigLoadMode
 public class SplitterMapperAlternative2690FlowTest extends AbstractExplab2690FlowTest {
 
     @CriticalRegression
     @ParameterizedTest(name = "{0}")
     @MethodSource("alternativeCases")
+    @SplitterTestProfileOnly("mapper-alternative-contract")
     @DisplayName("EXPLAB-2690-04. expGroup — группа связи объекта, finalExpGroup — реально сработавшая группа")
     void alternativeMainShouldUseObjectLinkedGroupAndExposeActualWorkedGroup(AlternativeCase testCase) {
         long version = SplitterVersionProvider.next();

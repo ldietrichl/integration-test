@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2690;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -27,6 +28,7 @@ import java.util.stream.Stream;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("EXPLAB-2690. MAPPER: объект без выбранного MAIN выглядит несвязанным")
+@AnyConfigLoadMode
 public class SplitterMapperNoMain2690FlowTest extends AbstractExplab2690FlowTest {
 
     @CriticalRegression

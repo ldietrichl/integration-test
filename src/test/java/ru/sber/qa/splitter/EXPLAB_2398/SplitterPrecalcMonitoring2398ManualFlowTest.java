@@ -1,6 +1,7 @@
 package ru.sber.qa.splitter.EXPLAB_2398;
 
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import ru.sber.qa.allure.ManualTest;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.precalc.SplitterPrecalcRequestDto;
@@ -26,6 +27,7 @@ import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @ManualTest
+@AnyConfigLoadMode
 public class SplitterPrecalcMonitoring2398ManualFlowTest extends AbstractPrecalcMonitoring2398FlowTest {
 
     @CriticalRegression

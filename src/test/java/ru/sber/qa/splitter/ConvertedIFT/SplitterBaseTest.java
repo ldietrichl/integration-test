@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.ConvertedIFT;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import constants.Endpoints;
 
 import config.services.core.RestEndpointResolver;
@@ -31,6 +32,7 @@ import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 @ExtendWith(PerfeccionistaExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
+@AnyConfigLoadMode
 public class SplitterBaseTest {
     private static final String splitterBaseUri = RestEndpointResolver.baseUri(RestServiceEndpoint.SPLITTER);
      String endpointConfig=Endpoints.Splitter.SPLITTER_CONFIG;
@@ -38,6 +40,7 @@ public class SplitterBaseTest {
 
 
     /** Общее хранилище для id между тестами. */
+@AnyConfigLoadMode
     public static class SharedState {
     }
 

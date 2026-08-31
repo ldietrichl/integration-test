@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.Operators;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import constants.Endpoints;
 
 import config.services.core.RestEndpointResolver;
@@ -32,6 +33,7 @@ import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 @ExtendWith(PerfeccionistaExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
+@AnyConfigLoadMode
 public class SplitterLogicOperatorsLinkRulesTest {
     private static final String splitterBaseUri = RestEndpointResolver.baseUri(RestServiceEndpoint.SPLITTER);
      String endpointConfig=Endpoints.Splitter.SPLITTER_CONFIG;
@@ -39,6 +41,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
 
 
     /** Общее хранилище для id между тестами. */
+@AnyConfigLoadMode
     public static class SharedState {
     }
 
@@ -90,7 +93,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqPos),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
                                         ;
         });
 
@@ -105,7 +108,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectResults.size() == 0"))
+                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' }.objectResults.size() == 0"))
                     ;
         });
     }
@@ -157,7 +160,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqPos),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
                     ;
         });
 
@@ -172,7 +175,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectResults.size() == 0"))
+                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' }.objectResults.size() == 0"))
                     ;
         });
     }
@@ -225,7 +228,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqPos),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
                     ;
         });
 
@@ -240,7 +243,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectResults.size() == 0"))
+                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' }.objectResults.size() == 0"))
                     ;
         });
     }
@@ -293,9 +296,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
+                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
+                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
                     ;
         });
 
@@ -309,7 +312,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"))
                     ;
         });
 
@@ -364,9 +367,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
+                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
+                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
                     ;
         });
 
@@ -380,7 +383,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
                     ;
         });
 
@@ -435,9 +438,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
+                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
+                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
                     ;
         });
 
@@ -451,7 +454,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"))
                     ;
         });
 
@@ -509,11 +512,11 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
+                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"),
+                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[2].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
+                                    "splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
                     ;
         });
 
@@ -527,7 +530,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_1),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"))
                     ;
         });
 
@@ -541,7 +544,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_2),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
                     ;
         });
 
@@ -555,7 +558,8 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_3),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectResults.size() == 0"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
+                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' }.objectResults.size() == 0"))
                     ;
         });
 
@@ -613,11 +617,11 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
+                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"),
+                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[2].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
+                                    "splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
                     ;
         });
 
@@ -632,9 +636,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
+                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[1].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
+                                    "splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
                     ;
         });
 
@@ -648,7 +652,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_2),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
                     ;
         });
 
@@ -662,7 +666,8 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_3),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectResults.size() == 0"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
+                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' }.objectResults.size() == 0"))
                     ;
         });
 
@@ -716,9 +721,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
+                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
+                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
                     ;
         });
 
@@ -732,7 +737,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
                     ;
         });
 
@@ -790,9 +795,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectId == 'cdd20fe8-a0a7-483d-9a4f-b19f23f63ea8'"),
+                                    "splittingResults.find { it.objectId == 'cdd20fe8-a0a7-483d-9a4f-b19f23f63ea8' } != null"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[1].objectId == '0c879e13-4e9f-4600-9cf5-03eb3a10e7da'"))
+                                    "splittingResults.find { it.objectId == '0c879e13-4e9f-4600-9cf5-03eb3a10e7da' } != null"))
                     ;
         });
 
@@ -807,7 +812,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults[0].objectId == 'cdd20fe8-a0a7-483d-9a4f-b19f23f63ea8'"))
+                                    "splittingResults.find { it.objectId == 'cdd20fe8-a0a7-483d-9a4f-b19f23f63ea8' } != null"))
                     ;
         });
 
@@ -821,7 +826,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_2),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '0c879e13-4e9f-4600-9cf5-03eb3a10e7da'"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '0c879e13-4e9f-4600-9cf5-03eb3a10e7da' } != null"))
                     ;
         });
 
@@ -835,11 +840,11 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_3),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectResults.size() == 0"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
+                                    "splittingResults.find { it.objectId == '0c879e13-4e9f-4600-9cf5-03eb3a10e7da' }.objectResults.size() == 0"))
                     ;
         });
 
     }
-
 }
 

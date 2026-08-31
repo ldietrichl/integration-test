@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2690;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -25,14 +26,15 @@ import java.util.stream.Stream;
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
-@DisplayName("EXPLAB-2690. REACTIONS: группы другого объекта не образуют альтернативный MAIN")
+@DisplayName("EXPLAB-2690. REACTIONS: shared experiment выбирает worked final group")
+@AnyConfigLoadMode
 public class SplitterReactionsNoAlternative2690FlowTest extends AbstractExplab2690FlowTest {
 
     @CriticalRegression
     @ParameterizedTest(name = "{0}")
     @MethodSource("reactionsCases")
-    @DisplayName("EXPLAB-2690-06. REACTIONS выбирает MAIN только при срабатывании группы, связанной с текущим объектом")
-    void reactionsShouldNotSelectAlternativeMain(ReactionsCase testCase) {
+    @DisplayName("EXPLAB-2690-06. REACTIONS выбирает MAIN для linked object с фактически сработавшей finalExpGroup")
+    void reactionsShouldUseWorkedFinalGroupForLinkedObjects(ReactionsCase testCase) {
         long version = SplitterVersionProvider.next();
         LoadConfigRequestDto config = reactionsAlternativeTopologyConfig(version);
         String splittingId = splittingIdForRange(testCase.id(), SALT_2690, testCase.rangeFrom(), testCase.rangeTo());
@@ -65,14 +67,24 @@ public class SplitterReactionsNoAlternative2690FlowTest extends AbstractExplab26
                 testCase.expectedActionType(),
                 testCase.expectedResult());
         assertEveryRuleExpUsesWorkedGroup(response, testCase.matchedObjectId(), "MAIN");
-        assertMainHasNoExpFlags(response, testCase.matchedObjectId());
+        if (findRule(response, testCase.matchedObjectId(), "ALL", false) != null) {
+            assertRuleExpIdsExactly(response, testCase.matchedObjectId(), "ALL", 269006L);
+            assertEveryRuleExpUsesWorkedGroup(response, testCase.matchedObjectId(), "ALL");
+            assertAllExpFlagsHaveAlternativeValue(response, testCase.matchedObjectId(), "false");
+        }
 
-        // Второй объект связан с этим же экспериментом, но не со сработавшей группой.
-        // Для REACTIONS это не альтернатива: MAIN не должен формироваться.
-        assertObjectStrictlyEmptyOrAbsent(response, testCase.nonMatchedObjectId());
-        if (hasObject(response, testCase.nonMatchedObjectId())) {
-            assertRuleAbsent(response, testCase.nonMatchedObjectId(), "MAIN");
-            assertRuleAbsent(response, testCase.nonMatchedObjectId(), "ALL");
+        assertResultExp(response,
+                testCase.linkedObjectId(),
+                "MAIN",
+                269006L,
+                testCase.linkedConditionId(),
+                testCase.linkedGroup(),
+                testCase.workedGroup(),
+                testCase.linkedActionType(),
+                testCase.linkedResult());
+        if (findRule(response, testCase.linkedObjectId(), "ALL", false) != null) {
+            assertEveryRuleExpUsesWorkedGroup(response, testCase.linkedObjectId(), "ALL");
+            assertAllExpFlagsHaveAlternativeValue(response, testCase.linkedObjectId(), "false");
         }
         assertNoAlternativeTrueAnywhere(response);
     }
@@ -93,10 +105,12 @@ public class SplitterReactionsNoAlternative2690FlowTest extends AbstractExplab26
         return Stream.of(
                 Arguments.of(new ReactionsCase(
                         "EXPLAB-2690-06-A-WORKED", 0, 5000, "A",
-                        LEFT_OBJECT_ID, 1, "1", "101", RIGHT_OBJECT_ID)),
+                        LEFT_OBJECT_ID, 1, "1", "101",
+                        RIGHT_OBJECT_ID, 2, "B", "3", "202")),
                 Arguments.of(new ReactionsCase(
                         "EXPLAB-2690-06-B-WORKED", 5000, 10000, "B",
-                        RIGHT_OBJECT_ID, 2, "3", "202", LEFT_OBJECT_ID))
+                        RIGHT_OBJECT_ID, 2, "3", "202",
+                        LEFT_OBJECT_ID, 1, "A", "1", "101"))
         );
     }
 
@@ -108,7 +122,11 @@ public class SplitterReactionsNoAlternative2690FlowTest extends AbstractExplab26
                                  int matchedConditionId,
                                  String expectedActionType,
                                  String expectedResult,
-                                 String nonMatchedObjectId) {
+                                 String linkedObjectId,
+                                 int linkedConditionId,
+                                 String linkedGroup,
+                                 String linkedActionType,
+                                 String linkedResult) {
         @Override
         public String toString() {
             return id;

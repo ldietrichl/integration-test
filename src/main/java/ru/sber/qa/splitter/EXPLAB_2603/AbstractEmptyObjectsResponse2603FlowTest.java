@@ -68,15 +68,16 @@ abstract class AbstractEmptyObjectsResponse2603FlowTest extends AbstractAnalytic
                 return steps.splitterSteps().split(request);
             }
         },
-        EMPTY_OBJECTS_EXCLUDED("REACTIONS") {
+        // EXPLAB-2603 checks the MAPPER response contract; included/excluded is controlled by app config.
+        EMPTY_OBJECTS_EXCLUDED("MAPPER") {
             @Override
             ValidatableResponseWrapper load(RestCustomSteps steps, LoadConfigRequestDto request) {
-                return steps.splitterSteps().loadReactionsConfig(request);
+                return steps.splitterSteps().loadConfig(request);
             }
 
             @Override
             ValidatableResponseWrapper split(RestCustomSteps steps, SplitRequestDto request) {
-                return steps.splitterSteps().splitReactions(request);
+                return steps.splitterSteps().split(request);
             }
         };
 

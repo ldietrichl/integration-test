@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.tests_v9.document;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -27,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("Tests-v9 / EXPLAB-2690. MAPPER: отсутствие технического MAIN")
+@AnyConfigLoadMode
 public class SplitterV9DocumentMapperMainPresenceAndAllCleanupFlowTest extends AbstractSplitterV9FlowTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

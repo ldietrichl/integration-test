@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2835;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.GroupDto;
@@ -28,6 +29,7 @@ import java.util.List;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("EXPLAB-2835. Split: empty rules")
+@AnyConfigLoadMode
 public class SplitterEmptyRules2835FlowTest extends AbstractSplitterV9FlowTest {
 
     private static final long EMPTY_RULES_EXP_ID = 283501L;

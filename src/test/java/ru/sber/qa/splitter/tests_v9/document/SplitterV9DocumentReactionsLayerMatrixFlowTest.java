@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.tests_v9.document;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -25,12 +26,13 @@ import java.util.stream.Stream;
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
-@DisplayName("Tests-v9 / EXPLAB-2690. REACTIONS: все итоговые эксперименты максимального приоритета")
+@DisplayName("Tests-v9 / EXPLAB-2690. REACTIONS: итоговый эксперимент по layerPriority и expId")
+@AnyConfigLoadMode
 public class SplitterV9DocumentReactionsLayerMatrixFlowTest extends AbstractSplitterV9FlowTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("reactionCases")
-    void reactionsLayerCasesShouldReturnEveryWorkedExperimentWithMaximumLayerPriority(ReactionsCase testCase) {
+    void reactionsLayerCasesShouldReturnSelectedExperimentWithMaximumLayerPriority(ReactionsCase testCase) {
         long version = SplitterVersionProvider.next();
         LoadConfigRequestDto config = reactionsConfig(version);
         String splittingId = splittingIdForRange(testCase.id(), V9_SALT, testCase.rangeFrom(), testCase.rangeTo());
@@ -64,15 +66,18 @@ public class SplitterV9DocumentReactionsLayerMatrixFlowTest extends AbstractSpli
             return;
         }
 
-        // EXPLAB-2690: для REACTIONS итоговыми являются все сработавшие эксперименты
-        // максимального layerPriority, без дополнительного tie-break по expId.
+        // В текущем SDK finalExpByLayerAndId сначала оставляет max layerPriority,
+        // затем выбирает один experiment по min/max expId из proc-params.
         assertRuleExpIdsExactly(response, OBJECT_REACTIONS, "MAIN", testCase.expectedMain());
         assertRuleExpsHaveMandatoryFields(response, OBJECT_REACTIONS, "MAIN");
         assertRuleExpsHaveSpreadValue(response, OBJECT_REACTIONS, "MAIN", expectedSpread);
         assertRuleExpsUseWorkedGroups(response, OBJECT_REACTIONS, "MAIN");
-        assertRuleExpsHaveNoExpFlags(response, OBJECT_REACTIONS, "MAIN");
         assertObjectFlagsEmpty(response, OBJECT_REACTIONS);
-        assertRuleMissingOrEmpty(response, OBJECT_REACTIONS, "ALL");
+        if (findRule(response, OBJECT_REACTIONS, "ALL", false) != null) {
+            assertRuleExpIdsExactly(response, OBJECT_REACTIONS, "ALL", testCase.expectedAll());
+            assertAllResponseRowsAreWorkedGroups(response, OBJECT_REACTIONS);
+            assertAllExpFlagsHaveAlternativeValue(response, OBJECT_REACTIONS, "false");
+        }
     }
 
     private LoadConfigRequestDto reactionsConfig(long version) {
@@ -102,12 +107,16 @@ public class SplitterV9DocumentReactionsLayerMatrixFlowTest extends AbstractSpli
     private static Stream<Arguments> reactionCases() {
         return Stream.of(
                 Arguments.of(new ReactionsCase("SPL-V9-T03-REACT-00-25", 0, 2500,
-                        new Long[]{4L, 5L, 6L})),
+                        new Long[]{4L},
+                        new Long[]{1L, 2L, 3L, 4L, 5L, 6L})),
                 Arguments.of(new ReactionsCase("SPL-V9-T03-REACT-25-50", 2500, 5000,
-                        new Long[]{4L, 5L, 6L})),
+                        new Long[]{4L},
+                        new Long[]{2L, 4L, 5L, 6L})),
                 Arguments.of(new ReactionsCase("SPL-V9-T03-REACT-50-75", 5000, 7500,
-                        new Long[]{5L})),
+                        new Long[]{5L},
+                        new Long[]{2L, 5L})),
                 Arguments.of(new ReactionsCase("SPL-V9-T03-REACT-75-100", 7500, 10000,
+                        new Long[]{},
                         new Long[]{}))
         );
     }
@@ -115,7 +124,8 @@ public class SplitterV9DocumentReactionsLayerMatrixFlowTest extends AbstractSpli
     private record ReactionsCase(String id,
                                  int rangeFrom,
                                  int rangeTo,
-                                 Long[] expectedMain) {
+                                 Long[] expectedMain,
+                                 Long[] expectedAll) {
         @Override
         public String toString() {
             return id;

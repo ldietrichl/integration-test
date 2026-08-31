@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import constants.Endpoints;
 
 import config.services.core.RestEndpointResolver;
@@ -18,11 +19,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import ru.sber.qa.matchers.RestMatchers;
 import ru.sber.qa.services.rest.RestService;
 import ru.sber.qa.allure.CriticalRegression;
+import util.support.SplitterVersionProvider;
 
 import java.util.UUID;
 
 import static io.qameta.allure.Allure.step;
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
+import static util.SplitterAssertions.shouldBeBadRequestError;
 
 /**
  * Набор интеграционных тестов, собранный по функциональному тест-плану для AB Splitter.
@@ -37,6 +40,7 @@ import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 @ExtendWith(PerfeccionistaExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
+@AnyConfigLoadMode
 public class SplitterFunctionalPlanTest {
     private static final String splitterBaseUri = RestEndpointResolver.baseUri(RestServiceEndpoint.SPLITTER);
 
@@ -44,8 +48,7 @@ public class SplitterFunctionalPlanTest {
     String endpointConfig = Endpoints.Splitter.SPLITTER_CONFIG;
     String endpointReq = Endpoints.Splitter.SPLITTER_SPLIT;
 
-    private static final long BASE_VERSION = 4_000_000_000L
-            + ((System.currentTimeMillis() / 1000L) % 1_000_000L) * 100L;
+    private static final long BASE_VERSION = SplitterVersionProvider.nextVersion();
 
     private static final String OBJECT_ONE = """
             {
@@ -896,12 +899,9 @@ public class SplitterFunctionalPlanTest {
         });
 
         step("Отправляем невалидный запрос без requestId", () -> {
-            restService.restClient()
+            shouldBeBadRequestError(restService.restClient()
                     .post(spec -> spec.contentType(ContentType.JSON).accept("application/json").body(invalidRequestBody),
-                            splitterBaseUri + endpointReq)
-                    .should(haveStatusCode(HttpStatus.SC_BAD_REQUEST),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("status == 400"),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("error == 'Bad Request'"));
+                            splitterBaseUri + endpointReq));
         });
     }
 

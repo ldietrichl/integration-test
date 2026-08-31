@@ -9,12 +9,10 @@ public abstract class AbstractNewSplitterFlowTest extends Flows {
 
     @BeforeEach
     void writeSplitterRuntimeMetadataToAllure() {
-        Allure.parameter("splitter.environment", SplitterRuntimeMetadata.environment());
-        Allure.parameter("splitter.url", SplitterRuntimeMetadata.splitterBaseUri());
-        Allure.parameter("splitter.version", SplitterRuntimeMetadata.version());
-        Allure.parameter("splitter.versionUrl", SplitterRuntimeMetadata.versionUrl());
-        Allure.parameter("splitter.configUrl", SplitterRuntimeMetadata.configUrl());
-        Allure.parameter("splitter.splitUrl", SplitterRuntimeMetadata.splitUrl());
-        Allure.parameter("splitter.precalculateUrl", SplitterRuntimeMetadata.precalculateUrl());
+        Allure.addAttachment(
+                "Splitter runtime metadata",
+                "text/plain",
+                SplitterRuntimeMetadata.summary(),
+                ".txt");
     }
 }

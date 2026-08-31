@@ -1,6 +1,7 @@
 package ru.sber.qa.splitter.tests_v9.without_main_false;
 
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import ru.sber.qa.allure.ManualTest;
 import com.fasterxml.jackson.databind.JsonNode;
 import config.environment.EnvironmentConfigurationExample;
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ResourceLock("splitter-config")
 @ManualTest
 @DisplayName("Tests-v9. MAPPER: SPLITTER_ALLOW_RESULT_WITHOUT_MAIN=false")
+@AnyConfigLoadMode
 public class SplitterV9AllowResultWithoutMainFalseFlowTest extends AbstractSplitterV9FlowTest {
 
     @Test

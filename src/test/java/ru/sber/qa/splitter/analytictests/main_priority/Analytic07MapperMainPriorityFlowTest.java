@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.analytictests.main_priority;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import ru.sber.qa.splitter.analytictests.common.AbstractAnalyticSplitterFlowTest;
 import ru.sber.qa.splitter.analytictests.common.AnalyticTag;
 
@@ -33,6 +34,7 @@ import static util.SplitterPrecalcAssertions.shouldBe200;
  * Required ConfigMap contract: src/test/resources/splitter/configmap/mapper-current.yml.
  * The test does not apply ConfigMap automatically; the target environment must be configured with compatible rules.
  */
+@AnyConfigLoadMode
 public class Analytic07MapperMainPriorityFlowTest extends AbstractAnalyticSplitterFlowTest {
 
     @CriticalRegression

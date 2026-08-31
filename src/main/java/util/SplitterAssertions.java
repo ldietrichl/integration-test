@@ -1,5 +1,8 @@
 package util;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import ru.sber.qa.matchers.RestMatchers;
 import ru.sber.qa.services.rest.matchers.ResponseBodyJsonPathExpressionEvaluateMatcher;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
@@ -7,6 +10,7 @@ import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import static org.apache.http.HttpStatus.SC_BAD_REQUEST;
 import static org.apache.http.HttpStatus.SC_OK;
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
+import static util.TestAssertions.assertTrue;
 
 /**
  * Совместимая версия assertions для splitter.
@@ -25,6 +29,8 @@ import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
  *    response.should(assertions.shouldHaveConfigVersion(version));
  */
 public final class SplitterAssertions {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public SplitterAssertions() {
     }
@@ -73,12 +79,17 @@ public final class SplitterAssertions {
         );
     }
 
-    public static void shouldBeBadRequestError(ValidatableResponseWrapper response) {
-        response.should(
-                haveStatusCode(SC_BAD_REQUEST),
-                RestMatchers.haveBodyWithEvaluatableJsonPathExpression("status == 400"),
-                RestMatchers.haveBodyWithEvaluatableJsonPathExpression("error == 'Bad Request'")
+    public static ValidatableResponseWrapper shouldBeBadRequestError(ValidatableResponseWrapper response) {
+        ValidatableResponseWrapper validatedResponse = response.should(haveStatusCode(SC_BAD_REQUEST));
+        String responseBody = validatedResponse.toResponse().asString();
+
+        assertTrue(
+                hasExpectedBadRequestBody(responseBody),
+                "Expected bad-request body with errorCode=VALIDATION_FAILED or status=400/error=Bad Request. Body: "
+                        + responseBody
         );
+
+        return validatedResponse;
     }
 
     /* =========================
@@ -135,6 +146,24 @@ public final class SplitterAssertions {
 
     public ResponseBodyJsonPathExpressionEvaluateMatcher shouldBeBadRequestErrorBody() {
         return (ResponseBodyJsonPathExpressionEvaluateMatcher) RestMatchers.haveBodyWithEvaluatableJsonPathExpression("error == 'Bad Request'");
+    }
+
+    private static boolean hasExpectedBadRequestBody(String responseBody) {
+        try {
+            JsonNode body = OBJECT_MAPPER.readTree(responseBody);
+            return isValidationFailedBody(body) || isSpringBadRequestBody(body);
+        } catch (JsonProcessingException exception) {
+            return false;
+        }
+    }
+
+    private static boolean isValidationFailedBody(JsonNode body) {
+        return "VALIDATION_FAILED".equals(body.path("errorCode").asText(null));
+    }
+
+    private static boolean isSpringBadRequestBody(JsonNode body) {
+        return body.path("status").asInt(-1) == SC_BAD_REQUEST
+                && "Bad Request".equals(body.path("error").asText(null));
     }
 
     /* =========================

@@ -22,7 +22,8 @@ import java.util.stream.Stream;
 /**
  * Builds the list of tests that must be excluded before JUnit discovery reaches Allure.
  *
- * <p>A test is excluded when it is explicitly outdated, disabled, or has no verification evidence.
+ * <p>A test is excluded when it is explicitly outdated, disabled, not applicable to the configured
+ * splitter config load mode, or has no verification evidence.
  * Verification evidence includes direct assertions, framework matcher calls and transitive calls to
  * local helper methods containing such checks.</p>
  */
@@ -45,6 +46,10 @@ public final class TestReportEligibilityScanner {
                     "[A-Za-z_$][\\w$<>\\[\\].?, @]*\\s+" +
                     "([A-Za-z_$][\\w$]*)\\s*\\([^;{}]*\\)\\s*" +
                     "(?:throws\\s+[^;{}]+)?\\{");
+    private static final Pattern PROFILE_ANNOTATION_PATTERN = Pattern.compile(
+            "@(?:[a-zA-Z_][\\w.]*\\.)?SplitterTestProfileOnly\\s*(?:\\(([^)]*)\\))?",
+            Pattern.DOTALL);
+    private static final Pattern STRING_LITERAL_PATTERN = Pattern.compile("\"([^\"]+)\"");
 
     private static final Pattern VERIFICATION_PATTERN = Pattern.compile(
             "\\bassert[A-Z_$][\\w$]*\\s*\\(" +
@@ -96,13 +101,14 @@ public final class TestReportEligibilityScanner {
         Files.createDirectories(outputDir);
         List<OutdatedRule> outdatedRules = loadOutdatedRules(outdatedRulesFile);
         List<TestDecision> decisions = new ArrayList<>();
+        ScanOptions options = ScanOptions.fromSystemProperties();
 
         try (Stream<Path> paths = Files.walk(sourceRoot)) {
             paths.filter(path -> Files.isRegularFile(path) && path.toString().endsWith(".java"))
                     .sorted()
                     .forEach(path -> {
                         try {
-                            decisions.addAll(scanFile(sourceRoot, path, outdatedRules));
+                            decisions.addAll(scanFile(sourceRoot, path, outdatedRules, options));
                         } catch (IOException exception) {
                             throw new RuntimeException("Cannot scan " + path, exception);
                         }
@@ -110,17 +116,22 @@ public final class TestReportEligibilityScanner {
         }
 
         decisions.sort(Comparator.comparing(TestDecision::fullName));
-        writeOutputs(outputDir, decisions, outdatedRules);
+        writeOutputs(outputDir, decisions, outdatedRules, options);
 
         long excluded = decisions.stream().filter(decision -> !decision.eligible()).count();
         System.out.println("Report eligibility: discovered=" + decisions.size()
                 + ", eligible=" + (decisions.size() - excluded)
-                + ", excluded=" + excluded);
+                + ", excluded=" + excluded
+                + ", splitter.config.load.mode=" + options.splitterConfigLoadMode()
+                + ", splitter.test.profile=" + options.splitterTestProfile()
+                + ", includeManualTests=" + options.includeManualTests()
+                + ", includeSplitterDataOperatorTests=" + options.includeSplitterDataOperatorTests());
     }
 
     private static List<TestDecision> scanFile(Path sourceRoot,
                                                Path sourceFile,
-                                               List<OutdatedRule> outdatedRules) throws IOException {
+                                               List<OutdatedRule> outdatedRules,
+                                               ScanOptions options) throws IOException {
         String rawSource = Files.readString(sourceFile, StandardCharsets.UTF_8);
         String source = stripComments(rawSource);
 
@@ -133,6 +144,10 @@ public final class TestReportEligibilityScanner {
         String fqcn = packageName.isBlank() ? className : packageName + "." + className;
         String classAnnotationBlock = findAnnotationBlockBefore(source, typeMatcher.start());
         boolean classDisabled = containsAnnotation(classAnnotationBlock, "Disabled");
+        boolean classManual = containsAnnotation(classAnnotationBlock, "ManualTest");
+        Optional<ModeRestriction> classModeRestriction = modeRestriction(classAnnotationBlock);
+        Optional<ProfileRestriction> classProfileRestriction = profileRestriction(classAnnotationBlock);
+        boolean splitterTest = isSplitterTest(fqcn);
 
         Map<String, MethodSource> methods = findMethods(source);
         List<TestDecision> result = new ArrayList<>();
@@ -155,6 +170,62 @@ public final class TestReportEligibilityScanner {
             if (outdatedRule.isPresent()) {
                 result.add(TestDecision.excluded(fullName, relativePath, Reason.OUTDATED,
                         outdatedRule.get().reason()));
+                continue;
+            }
+
+            if (isSplitterDataOperatorTest(fqcn) && !options.includeSplitterDataOperatorTests()) {
+                result.add(TestDecision.excluded(fullName, relativePath, Reason.SERVICE_SCOPE,
+                        "Data-operator scenarios are not part of the splitter service suite. "
+                                + "Enable includeSplitterDataOperatorTests only for a prepared data-operator stand."));
+                continue;
+            }
+
+            if (isStrictDocumentProfileTest(fqcn) && !options.isDocumentSplitterProfile()) {
+                result.add(TestDecision.excluded(fullName, relativePath, Reason.SPLITTER_TEST_PROFILE,
+                        "Strict document-profile scenarios require splitter.test.profile=document. "
+                                + "Current profile is " + options.splitterTestProfile()));
+                continue;
+            }
+
+            Optional<ModeRestriction> modeRestriction = modeRestriction(annotationBlock)
+                    .or(() -> classModeRestriction);
+            if (splitterTest && modeRestriction.isEmpty()) {
+                result.add(TestDecision.excluded(fullName, relativePath, Reason.SPLITTER_CONFIG_LOAD_MODE,
+                        "Splitter test has no config load mode marker. Add @AnyConfigLoadMode, "
+                                + "@KafkaConfigLoadModeOnly or @RestConfigLoadModeOnly."));
+                continue;
+            }
+
+            if (modeRestriction.isPresent() && !modeRestriction.get().allows(options.splitterConfigLoadMode())) {
+                result.add(TestDecision.excluded(fullName, relativePath, Reason.SPLITTER_CONFIG_LOAD_MODE,
+                        "Allowed only for splitter.config.load.mode="
+                                + String.join("/", modeRestriction.get().allowedModes())
+                                + ", current mode is " + options.splitterConfigLoadMode()));
+                continue;
+            }
+
+            Optional<ProfileRestriction> profileRestriction = profileRestriction(annotationBlock)
+                    .or(() -> classProfileRestriction);
+            if (profileRestriction.isPresent() && !profileRestriction.get().allows(options.splitterTestProfile())) {
+                result.add(TestDecision.excluded(fullName, relativePath, Reason.SPLITTER_TEST_PROFILE,
+                        "Allowed only for splitter.test.profile="
+                                + String.join("/", profileRestriction.get().allowedProfiles())
+                                + ", current profile is " + options.splitterTestProfile()));
+                continue;
+            }
+
+            if ((containsAnnotation(classAnnotationBlock, "KafkaConfigStatusRequiredOnly")
+                    || containsAnnotation(annotationBlock, "KafkaConfigStatusRequiredOnly"))
+                    && !options.splitterConfigKafkaStatusRequired()) {
+                result.add(TestDecision.excluded(fullName, relativePath, Reason.SPLITTER_KAFKA_STATUS_REQUIRED,
+                        "Requires splitter.config.kafka.status.required=true. Current value is false."));
+                continue;
+            }
+
+            if ((classManual || containsAnnotation(annotationBlock, "ManualTest"))
+                    && !options.includeManualTests()) {
+                result.add(TestDecision.excluded(fullName, relativePath, Reason.MANUAL,
+                        "Manual/profile-specific test is omitted from regular functional reports"));
                 continue;
             }
 
@@ -254,18 +325,38 @@ public final class TestReportEligibilityScanner {
 
     private static void writeOutputs(Path outputDir,
                                      List<TestDecision> decisions,
-                                     List<OutdatedRule> outdatedRules) throws IOException {
+                                     List<OutdatedRule> outdatedRules,
+                                     ScanOptions options) throws IOException {
         List<String> excluded = decisions.stream()
                 .filter(decision -> !decision.eligible())
+                .map(TestDecision::fullName)
+                .toList();
+        List<String> excludedWithDisabledIncluded = decisions.stream()
+                .filter(decision -> !decision.eligible())
+                .filter(decision -> decision.reason() != Reason.DISABLED)
                 .map(TestDecision::fullName)
                 .toList();
         List<String> eligible = decisions.stream()
                 .filter(TestDecision::eligible)
                 .map(TestDecision::fullName)
                 .toList();
+        List<String> modeExcluded = decisions.stream()
+                .filter(decision -> decision.reason() == Reason.SPLITTER_CONFIG_LOAD_MODE)
+                .map(TestDecision::fullName)
+                .toList();
+        List<String> kafkaStatusRequiredExcluded = decisions.stream()
+                .filter(decision -> decision.reason() == Reason.SPLITTER_KAFKA_STATUS_REQUIRED)
+                .map(TestDecision::fullName)
+                .toList();
 
         Files.write(outputDir.resolve("excluded-tests.txt"), excluded, StandardCharsets.UTF_8);
+        Files.write(outputDir.resolve("excluded-tests-include-disabled.txt"),
+                excludedWithDisabledIncluded, StandardCharsets.UTF_8);
         Files.write(outputDir.resolve("eligible-tests.txt"), eligible, StandardCharsets.UTF_8);
+        Files.write(outputDir.resolve("excluded-tests-splitter-config-load-mode.txt"),
+                modeExcluded, StandardCharsets.UTF_8);
+        Files.write(outputDir.resolve("excluded-tests-splitter-kafka-status-required.txt"),
+                kafkaStatusRequiredExcluded, StandardCharsets.UTF_8);
 
         Map<Reason, Long> reasonCounts = new HashMap<>();
         decisions.stream().filter(decision -> !decision.eligible())
@@ -274,10 +365,25 @@ public final class TestReportEligibilityScanner {
         StringBuilder markdown = new StringBuilder();
         markdown.append("# Report eligibility\n\n")
                 .append("Generated from `src/test/java` before the functional and bypass runs.\n\n")
+                .append("- splitter.config.load.mode: **").append(options.splitterConfigLoadMode()).append("**\n")
+                .append("- splitter.test.profile: **").append(options.splitterTestProfile()).append("**\n")
+                .append("- includeManualTests: **").append(options.includeManualTests()).append("**\n")
+                .append("- includeSplitterDataOperatorTests: **")
+                .append(options.includeSplitterDataOperatorTests()).append("**\n")
                 .append("- Discovered tests: **").append(decisions.size()).append("**\n")
                 .append("- Eligible for report: **").append(eligible.size()).append("**\n")
                 .append("- Excluded from report: **").append(excluded.size()).append("**\n")
+                .append("- Excluded when disabled tests are included: **")
+                .append(excludedWithDisabledIncluded.size()).append("**\n")
                 .append("- Disabled: **").append(reasonCounts.getOrDefault(Reason.DISABLED, 0L)).append("**\n")
+                .append("- Other splitter config load mode: **")
+                .append(reasonCounts.getOrDefault(Reason.SPLITTER_CONFIG_LOAD_MODE, 0L)).append("**\n")
+                .append("- Other service scope: **").append(reasonCounts.getOrDefault(Reason.SERVICE_SCOPE, 0L)).append("**\n")
+                .append("- Other splitter test profile: **")
+                .append(reasonCounts.getOrDefault(Reason.SPLITTER_TEST_PROFILE, 0L)).append("**\n")
+                .append("- Kafka status required: **")
+                .append(reasonCounts.getOrDefault(Reason.SPLITTER_KAFKA_STATUS_REQUIRED, 0L)).append("**\n")
+                .append("- Manual/profile-specific: **").append(reasonCounts.getOrDefault(Reason.MANUAL, 0L)).append("**\n")
                 .append("- Without verification evidence: **").append(reasonCounts.getOrDefault(Reason.NO_ASSERTION, 0L)).append("**\n")
                 .append("- Explicitly outdated: **").append(reasonCounts.getOrDefault(Reason.OUTDATED, 0L)).append("**\n\n")
                 .append("## Explicit outdated rules\n\n");
@@ -311,6 +417,95 @@ public final class TestReportEligibilityScanner {
         return Pattern.compile("@(?:[a-zA-Z_][\\w.]*\\.)?" + Pattern.quote(annotation) + "(?:\\s|\\(|$)")
                 .matcher(block)
                 .find();
+    }
+
+    private static Optional<ModeRestriction> modeRestriction(String annotationBlock) {
+        Set<String> allowed = new LinkedHashSet<>();
+        if (containsAnnotation(annotationBlock, "AnyConfigLoadMode")) {
+            allowed.add("rest");
+            allowed.add("kafka");
+        }
+        if (containsAnnotation(annotationBlock, "KafkaConfigLoadModeOnly")) {
+            allowed.add("kafka");
+        }
+        if (containsAnnotation(annotationBlock, "RestConfigLoadModeOnly")) {
+            allowed.add("rest");
+        }
+        return allowed.isEmpty() ? Optional.empty() : Optional.of(new ModeRestriction(allowed));
+    }
+
+    private static Optional<ProfileRestriction> profileRestriction(String annotationBlock) {
+        Matcher matcher = PROFILE_ANNOTATION_PATTERN.matcher(annotationBlock);
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+
+        Set<String> allowed = new LinkedHashSet<>();
+        String args = matcher.group(1);
+        if (args != null) {
+            Matcher valueMatcher = STRING_LITERAL_PATTERN.matcher(args);
+            while (valueMatcher.find()) {
+                allowed.add(normalizeProfile(valueMatcher.group(1)));
+            }
+        }
+        return allowed.isEmpty() ? Optional.empty() : Optional.of(new ProfileRestriction(allowed));
+    }
+
+    private static boolean isSplitterTest(String fqcn) {
+        return fqcn.equals("ru.sber.qa.splitter") || fqcn.startsWith("ru.sber.qa.splitter.");
+    }
+
+    private static boolean isSplitterDataOperatorTest(String fqcn) {
+        return fqcn.startsWith("ru.sber.qa.splitter.EXPLAB_2729.");
+    }
+
+    private static boolean isStrictDocumentProfileTest(String fqcn) {
+        return fqcn.startsWith("ru.sber.qa.splitter.tests_v9.strict.");
+    }
+
+    private static String splitterConfigLoadMode() {
+        String raw = firstNonBlank(
+                System.getProperty("splitter.config.load.mode"),
+                System.getenv("SPLITTER_CONFIG_LOAD_MODE"),
+                "rest");
+        String mode = raw.trim().replace('-', '_').toLowerCase(Locale.ROOT);
+        if (!Set.of("rest", "kafka").contains(mode)) {
+            throw new IllegalArgumentException(
+                    "Unsupported splitter.config.load.mode=" + raw + ". Expected one of: rest, kafka");
+        }
+        return mode;
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    private static String splitterTestProfile() {
+        return firstNonBlank(
+                System.getProperty("splitter.test.profile"),
+                System.getenv("SPLITTER_TEST_PROFILE"),
+                "current")
+                .transform(TestReportEligibilityScanner::normalizeProfile);
+    }
+
+    private static String normalizeProfile(String value) {
+        return value.trim()
+                .replace('_', '-')
+                .toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean featureFlag(String propertyName, String environmentName) {
+        String raw = firstNonBlank(System.getProperty(propertyName), System.getenv(environmentName));
+        if (raw.isBlank()) {
+            return false;
+        }
+        String normalized = raw.trim().toLowerCase(Locale.ROOT);
+        return normalized.equals("true") || normalized.equals("yes") || normalized.equals("1");
     }
 
     private static String findAnnotationBlockBefore(String source, int index) {
@@ -486,8 +681,46 @@ public final class TestReportEligibilityScanner {
         }
     }
 
+    private record ModeRestriction(Set<String> allowedModes) {
+        private boolean allows(String mode) {
+            return allowedModes.contains(mode);
+        }
+    }
+
+    private record ProfileRestriction(Set<String> allowedProfiles) {
+        private boolean allows(String profile) {
+            return allowedProfiles.contains(profile);
+        }
+    }
+
+    private record ScanOptions(String splitterConfigLoadMode,
+                               String splitterTestProfile,
+                               boolean splitterConfigKafkaStatusRequired,
+                               boolean includeManualTests,
+                               boolean includeSplitterDataOperatorTests) {
+
+        private static ScanOptions fromSystemProperties() {
+            return new ScanOptions(
+                    TestReportEligibilityScanner.splitterConfigLoadMode(),
+                    TestReportEligibilityScanner.splitterTestProfile(),
+                    featureFlag("splitter.config.kafka.status.required", "SPLITTER_CONFIG_KAFKA_STATUS_REQUIRED"),
+                    featureFlag("includeManualTests", "INCLUDE_MANUAL_TESTS"),
+                    featureFlag("includeSplitterDataOperatorTests", "INCLUDE_SPLITTER_DATA_OPERATOR_TESTS"));
+        }
+
+        private boolean isDocumentSplitterProfile() {
+            return Set.of("document", "document-profile", "strict-document-profile")
+                    .contains(splitterTestProfile);
+        }
+    }
+
     private enum Reason {
         DISABLED("disabled"),
+        SPLITTER_CONFIG_LOAD_MODE("splitter-config-load-mode"),
+        SPLITTER_TEST_PROFILE("splitter-test-profile"),
+        SPLITTER_KAFKA_STATUS_REQUIRED("splitter-kafka-status-required"),
+        SERVICE_SCOPE("service-scope"),
+        MANUAL("manual"),
         NO_ASSERTION("no-assertion"),
         OUTDATED("outdated");
 

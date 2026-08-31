@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.tests_v9.sdk;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -24,6 +25,7 @@ import java.util.List;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("Tests-v9 / EXPLAB-2690. SDK-derived проверки полного и публичного результата")
+@AnyConfigLoadMode
 public class SplitterV9SdkDerivedBehaviorFlowTest extends AbstractSplitterV9FlowTest {
 
     @Test

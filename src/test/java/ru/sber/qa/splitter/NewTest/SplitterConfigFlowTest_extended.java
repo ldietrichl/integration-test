@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.NewTest;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.LoadConfigRequestDto;
 import dto.splitter.split.SplitRequestDto;
@@ -32,6 +33,7 @@ import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 @Execution(ExecutionMode.SAME_THREAD)
 @ResourceLock("splitter-config")
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
+@AnyConfigLoadMode
 public class SplitterConfigFlowTest_extended extends AbstractNewSplitterFlowTest {
 
     private final SplitterAssertions assertions = new SplitterAssertions();
