@@ -77,7 +77,7 @@ fun resolveSplitterConfigLoadMode(): String {
         ?: requestedTaskMode
         ?: optionalTestRuntimeProperty("splitter.config.load.mode")
         ?: "rest"
-    val mode = raw.trim().replace('-', '_').lowercase()
+    val mode = raw.trim().replace('-', '_').toLowerCase()
     if (mode != "rest" && mode != "kafka") {
         throw GradleException("Unsupported splitter.config.load.mode=$raw. Expected one of: rest, kafka")
     }
