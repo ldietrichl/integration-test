@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.tests_v9.document;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -19,7 +20,6 @@ import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import ru.sber.qa.splitter.tests_v9.common.AbstractSplitterV9FlowTest;
 import util.support.SplitterVersionProvider;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("Tests-v9 / EXPLAB-2690. REACTIONS без альтернативного MAIN")
+@AnyConfigLoadMode
 public class SplitterV9DocumentReactionsAlternativeMatrixFlowTest extends AbstractSplitterV9FlowTest {
 
     @ParameterizedTest(name = "{0}")
@@ -50,8 +51,8 @@ public class SplitterV9DocumentReactionsAlternativeMatrixFlowTest extends Abstra
                             assertBasicResponseContract(response, request, version);
                             assertSplittingResultsHaveUniqueObjectIds(response);
                             long expectedSpread = spread(V9_SALT, splittingId);
-                            verifyObjectMain(response, OBJECT_1, testCase.object1Worked(), expectedSpread);
-                            verifyObjectMain(response, OBJECT_2, testCase.object2Worked(), expectedSpread);
+                            verifyObjectMain(response, OBJECT_1, testCase.object1Worked(), testCase.object1Main(), expectedSpread);
+                            verifyObjectMain(response, OBJECT_2, testCase.object2Worked(), testCase.object2Main(), expectedSpread);
                             assertNoAlternativeTrueAnywhere(response);
                         })
                 .run();
@@ -60,8 +61,9 @@ public class SplitterV9DocumentReactionsAlternativeMatrixFlowTest extends Abstra
     private void verifyObjectMain(ValidatableResponseWrapper response,
                                   String objectId,
                                   Long[] workedExpIds,
+                                  ExpectedMain expectedMain,
                                   long expectedSpread) {
-        if (workedExpIds.length == 0) {
+        if (expectedMain == null) {
             assertObjectEmptyOrAbsent(response, objectId);
             if (hasObject(response, objectId)) {
                 assertRuleAbsent(response, objectId, "MAIN");
@@ -70,15 +72,20 @@ public class SplitterV9DocumentReactionsAlternativeMatrixFlowTest extends Abstra
             return;
         }
 
-        // Без layerPriority universal finalExpByLayerAndId применяет tie-break по минимальному expId.
-        long expectedMainId = Arrays.stream(workedExpIds).mapToLong(Long::longValue).min().orElseThrow();
-        assertRuleExpIdsExactly(response, objectId, "MAIN", expectedMainId);
+        assertRuleExpIdsExactly(response, objectId, "MAIN", expectedMain.expId());
         assertRuleExpsHaveMandatoryFields(response, objectId, "MAIN");
         assertRuleExpsHaveSpreadValue(response, objectId, "MAIN", expectedSpread);
-        assertRuleExpsUseWorkedGroups(response, objectId, "MAIN");
-        assertRuleExpsHaveNoExpFlags(response, objectId, "MAIN");
+        assertFirstRuleExp(response, objectId, "MAIN",
+                expectedMain.expId(), expectedMain.expGroup(), expectedMain.finalExpGroup());
+        assertFirstRuleExpConditionId(response, objectId, "MAIN", expectedMain.conditionId());
+        assertFirstRuleExpActionType(response, objectId, "MAIN", expectedMain.actionType());
+        assertFirstRuleExpResultValue(response, objectId, "MAIN", expectedMain.result());
         assertObjectFlagsEmpty(response, objectId);
-        assertRuleMissingOrEmpty(response, objectId, "ALL");
+        if (findRule(response, objectId, "ALL", false) != null) {
+            assertRuleExpIdsExactly(response, objectId, "ALL", workedExpIds);
+            assertAllResponseRowsAreWorkedGroups(response, objectId);
+            assertAllExpFlagsHaveAlternativeValue(response, objectId, "false");
+        }
     }
 
     private LoadConfigRequestDto reactionsAnalogConfig(long version) {
@@ -120,22 +127,61 @@ public class SplitterV9DocumentReactionsAlternativeMatrixFlowTest extends Abstra
 
     private static Stream<Arguments> reactionsAlternativeCases() {
         return Stream.of(
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-00-05-ALLOW", 0, 500, idsStatic(1, 2), idsStatic(3))),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-05-10-ALLOW", 500, 1000, idsStatic(1, 2), idsStatic())),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-10-15-ALLOW", 1000, 1500, idsStatic(1), idsStatic(3))),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-15-20-ALLOW", 1500, 2000, idsStatic(1), idsStatic())),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-25-30-ALLOW", 2500, 3000, idsStatic(2), idsStatic(1, 3))),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-30-35-ALLOW", 3000, 3500, idsStatic(2), idsStatic(1))),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-35-40-ALLOW", 3500, 4000, idsStatic(), idsStatic(1, 3))),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-40-45-ALLOW", 4000, 4500, idsStatic(), idsStatic(1))),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-50-55-ALLOW", 5000, 5500, idsStatic(2), idsStatic(3))),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-55-60-ALLOW", 5500, 6000, idsStatic(2), idsStatic())),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-60-65-ALLOW", 6000, 6500, idsStatic(), idsStatic(3))),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-65-70-ALLOW", 6500, 7000, idsStatic(), idsStatic())),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-55-60-DENY", 5500, 6000, idsStatic(2), idsStatic())),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-60-65-DENY", 6000, 6500, idsStatic(), idsStatic(3))),
-                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-65-70-DENY", 6500, 7000, idsStatic(), idsStatic()))
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-00-05-ALLOW", 0, 500,
+                        idsStatic(1, 2), main(1, "A", "A", 1, "0", "1"),
+                        idsStatic(3), main(1, "B", "A", 2, "1", "2"))),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-05-10-ALLOW", 500, 1000,
+                        idsStatic(1, 2), main(1, "A", "A", 1, "0", "1"),
+                        idsStatic(), main(1, "B", "A", 2, "1", "2"))),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-10-15-ALLOW", 1000, 1500,
+                        idsStatic(1), main(1, "A", "A", 1, "0", "1"),
+                        idsStatic(3), main(1, "B", "A", 2, "1", "2"))),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-15-20-ALLOW", 1500, 2000,
+                        idsStatic(1), main(1, "A", "A", 1, "0", "1"),
+                        idsStatic(), main(1, "B", "A", 2, "1", "2"))),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-25-30-ALLOW", 2500, 3000,
+                        idsStatic(2), main(1, "A", "B", 1, "0", "1"),
+                        idsStatic(1, 3), main(1, "B", "B", 2, "1", "2"))),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-30-35-ALLOW", 3000, 3500,
+                        idsStatic(2), main(1, "A", "B", 1, "0", "1"),
+                        idsStatic(1), main(1, "B", "B", 2, "1", "2"))),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-35-40-ALLOW", 3500, 4000,
+                        idsStatic(), main(1, "A", "B", 1, "0", "1"),
+                        idsStatic(1, 3), main(1, "B", "B", 2, "1", "2"))),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-40-45-ALLOW", 4000, 4500,
+                        idsStatic(), main(1, "A", "B", 1, "0", "1"),
+                        idsStatic(1), main(1, "B", "B", 2, "1", "2"))),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-50-55-ALLOW", 5000, 5500,
+                        idsStatic(2), main(2, "A", "A", 1, "1", "2"),
+                        idsStatic(3), main(3, "A", "A", 1, "3", "3"))),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-55-60-ALLOW", 5500, 6000,
+                        idsStatic(2), main(2, "A", "A", 1, "1", "2"),
+                        idsStatic(), null)),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-60-65-ALLOW", 6000, 6500,
+                        idsStatic(), null,
+                        idsStatic(3), main(3, "A", "A", 1, "3", "3"))),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-65-70-ALLOW", 6500, 7000,
+                        idsStatic(), null,
+                        idsStatic(), null)),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-55-60-DENY", 5500, 6000,
+                        idsStatic(2), main(2, "A", "A", 1, "1", "2"),
+                        idsStatic(), null)),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-60-65-DENY", 6000, 6500,
+                        idsStatic(), null,
+                        idsStatic(3), main(3, "A", "A", 1, "3", "3"))),
+                Arguments.of(new ReactionsAlternativeCase("SPL-V9-T04R-65-70-DENY", 6500, 7000,
+                        idsStatic(), null,
+                        idsStatic(), null))
         );
+    }
+
+    private static ExpectedMain main(long expId,
+                                     String expGroup,
+                                     String finalExpGroup,
+                                     int conditionId,
+                                     String actionType,
+                                     String result) {
+        return new ExpectedMain(expId, expGroup, finalExpGroup, conditionId, actionType, result);
     }
 
     private static Long[] idsStatic(long... values) {
@@ -150,10 +196,20 @@ public class SplitterV9DocumentReactionsAlternativeMatrixFlowTest extends Abstra
                                             int rangeFrom,
                                             int rangeTo,
                                             Long[] object1Worked,
-                                            Long[] object2Worked) {
+                                            ExpectedMain object1Main,
+                                            Long[] object2Worked,
+                                            ExpectedMain object2Main) {
         @Override
         public String toString() {
             return id;
         }
+    }
+
+    private record ExpectedMain(long expId,
+                                String expGroup,
+                                String finalExpGroup,
+                                int conditionId,
+                                String actionType,
+                                String result) {
     }
 }

@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2538;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.common.ParamDto;
 import dto.splitter.config.ExperimentDto;
@@ -45,6 +46,7 @@ import static util.SplitterPrecalcAssertions.shouldHaveSoConfigVersion;
  *
  * REST-only test. Требует совместимую ConfigMap mapper-current.yml на стенде.
  */
+@AnyConfigLoadMode
 public class Explab2538PrecalcConditionBindingFlowTest extends AbstractAnalyticSplitterFlowTest {
 
     private static final int SO_CONFIG_VERSION = 1;

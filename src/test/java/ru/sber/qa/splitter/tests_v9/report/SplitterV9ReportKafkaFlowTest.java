@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.tests_v9.report;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -25,6 +26,7 @@ import java.util.List;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("Tests-v9. Report/Kafka проверки результата сплиттования")
+@AnyConfigLoadMode
 public class SplitterV9ReportKafkaFlowTest extends AbstractSplitterV9FlowTest {
 
     @Test
@@ -97,9 +99,13 @@ public class SplitterV9ReportKafkaFlowTest extends AbstractSplitterV9FlowTest {
                 .step("Выполняем REACTIONS split", flow -> {
                     ValidatableResponseWrapper response = split(flow, EndpointMode.REACTIONS, request);
                     assertBasicResponseContract(response, request, version);
-                    assertRuleExpIdsExactly(response, OBJECT_REACTIONS, "MAIN", 4L, 5L, 6L);
+                    assertRuleExpIdsExactly(response, OBJECT_REACTIONS, "MAIN", 4L);
                     assertRuleExpsUseWorkedGroups(response, OBJECT_REACTIONS, "MAIN");
-                    assertRuleExpsHaveNoExpFlags(response, OBJECT_REACTIONS, "MAIN");
+                    if (findRule(response, OBJECT_REACTIONS, "ALL", false) != null) {
+                        assertRuleExpIdsExactly(response, OBJECT_REACTIONS, "ALL", 1L, 2L, 3L, 4L, 5L, 6L);
+                        assertAllResponseRowsAreWorkedGroups(response, OBJECT_REACTIONS);
+                        assertAllExpFlagsHaveAlternativeValue(response, OBJECT_REACTIONS, "false");
+                    }
                     assertNoAlternativeTrueAnywhere(response);
                 })
                 .step("Проверяем Kafka-report REACTIONS", flow -> {

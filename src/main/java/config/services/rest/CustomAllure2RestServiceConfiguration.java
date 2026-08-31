@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.event.Level;
 import ru.sber.qa.services.rest.DefaultRestServiceConfiguration;
 import ru.sber.qa.services.rest.filters.RequestResponseConsoleLoggingFilter;
+import steps.rest.splitter.SplitterKafkaConfigLoadFilter;
 
 import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 
@@ -19,18 +20,21 @@ import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 public class CustomAllure2RestServiceConfiguration extends DefaultRestServiceConfiguration {
     @Override
     public @NotNull RequestSpecification requestSpecification() {
-        RestAssuredConfig restAssuredConfig = new RestAssuredConfig()
-                .sslConfig(
-                        new SSLConfig()
-                                .keyStore("src/test/resources/keystore.p12", TEST_CONFIG.keystorePass())
-                                .keystoreType("PKCS12")
-                                .relaxedHTTPSValidation());
+        RestAssuredConfig restAssuredConfig = new RestAssuredConfig();
+        if (!"local".equals(RestEndpointResolver.currentEnvironment())) {
+            restAssuredConfig = restAssuredConfig.sslConfig(
+                    new SSLConfig()
+                            .keyStore("src/test/resources/keystore.p12", TEST_CONFIG.keystorePass())
+                            .keystoreType("PKCS12")
+                            .relaxedHTTPSValidation());
+        }
 
         return super.requestSpecification()
                 .config(restAssuredConfig)
                 .baseUri(RestEndpointResolver.baseUri(RestServiceEndpoint.EXPLAB_GATEWAY))
                 .contentType(ContentType.JSON)
                 .accept("*/*")
+                .filter(new SplitterKafkaConfigLoadFilter())
                 .filter(new AllureRestAssured())
                 .filter(new RequestResponseConsoleLoggingFilter(Level.WARN));
     }

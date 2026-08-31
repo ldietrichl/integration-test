@@ -1,7 +1,9 @@
 package ru.sber.qa.splitter.analytictests.alternatives;
 
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import ru.sber.qa.allure.ManualTest;
+import ru.sber.qa.splitter.support.SplitterTestProfileOnly;
 import ru.sber.qa.splitter.analytictests.common.AbstractAnalyticSplitterFlowTest;
 import ru.sber.qa.splitter.analytictests.common.AnalyticTag;
 
@@ -35,6 +37,7 @@ import static util.SplitterPrecalcAssertions.shouldBe200;
  * Required ConfigMap contract: src/test/resources/splitter/configmap/mapper-current.yml.
  * The test does not apply ConfigMap automatically; the target environment must be configured with compatible rules.
  */
+@AnyConfigLoadMode
 public class Analytic08AlternativeMarkupFlowTest extends AbstractAnalyticSplitterFlowTest {
 
     @CriticalRegression
@@ -77,8 +80,11 @@ public class Analytic08AlternativeMarkupFlowTest extends AbstractAnalyticSplitte
                 .step("Загружаем config из раздела альтернатив", flow -> loadConfigStep(flow, config))
                 .step("Проверяем, что связанные группы на тех же объектах не становятся alternative", flow -> {
                     var response = shouldBe200(split(flow, split));
-                    assertAnyExpHasAlternativeFlag(response, MATCHING_OBJECT_ID, 7803L, "false");
+                    // После EXPLAB-2690 публичный REST ALL содержит только worked rows.
+                    assertAllRuleHasExpIdsExactly(response, MATCHING_OBJECT_ID, 7804L);
                     assertAnyExpHasAlternativeFlag(response, MATCHING_OBJECT_ID, 7804L, "false");
+                    assertAllDoesNotContainBinding(response, MATCHING_OBJECT_ID, 7803L, 1, "A");
+                    assertAllRuleHasExpIdsExactly(response, SECOND_OBJECT_ID, 7804L, 7803L);
                     assertAnyExpHasAlternativeFlag(response, SECOND_OBJECT_ID, 7803L, "false");
                     assertAnyExpHasAlternativeFlag(response, SECOND_OBJECT_ID, 7804L, "false");
                 })
@@ -87,6 +93,7 @@ public class Analytic08AlternativeMarkupFlowTest extends AbstractAnalyticSplitte
 
     @CriticalRegression
     @Test
+    @SplitterTestProfileOnly("mapper-alternative-contract")
     @AnalyticTag("Аналитика: Простейший A/B: один эксперимент, два объекта, группа A привязана к первому объекту, группа B ко второму; объект из несработавшей группы размечается альтернативой.")
     @DisplayName("AN-ALT-04. Альтернативный MAIN использует группу связи объекта и отдельно finalExpGroup")
     void oneExperimentTwoObjectsShouldMarkOtherObjectAsAlternative() {

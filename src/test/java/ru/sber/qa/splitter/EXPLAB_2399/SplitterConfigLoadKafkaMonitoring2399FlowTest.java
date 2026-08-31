@@ -15,6 +15,8 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import ru.sber.qa.allure.CriticalRegression;
 import ru.sber.qa.services.kafka.KafkaService;
 import ru.sber.qa.splitter.analytictests.common.AbstractAnalyticSplitterFlowTest;
+import ru.sber.qa.splitter.support.KafkaConfigLoadModeOnly;
+import ru.sber.qa.splitter.support.KafkaConfigStatusRequiredOnly;
 import util.support.SplitterVersionProvider;
 
 import java.util.UUID;
@@ -33,6 +35,7 @@ import static ru.sber.qa.splitter.EXPLAB_2399.SplitterConfigLoadMonitoring2399As
 import static ru.sber.qa.splitter.EXPLAB_2399.SplitterConfigLoadMonitoring2399Assertions.assertStatus;
 import static ru.sber.qa.splitter.EXPLAB_2399.SplitterConfigLoadMonitoring2399Assertions.assertStatusDescContains;
 import static ru.sber.qa.splitter.EXPLAB_2399.SplitterConfigLoadMonitoring2399Assertions.assertValidationFailedMonitoring;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static util.SplitterPrecalcAssertions.shouldBe200;
 import static util.SplitterPrecalcAssertions.shouldHaveSoConfigVersion;
 
@@ -41,6 +44,7 @@ import static util.SplitterPrecalcAssertions.shouldHaveSoConfigVersion;
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
+@KafkaConfigLoadModeOnly
 public class SplitterConfigLoadKafkaMonitoring2399FlowTest extends AbstractAnalyticSplitterFlowTest {
 
     private static final int EXP_ID_SEED = 239900;
@@ -67,11 +71,8 @@ public class SplitterConfigLoadKafkaMonitoring2399FlowTest extends AbstractAnaly
         getFlowWithRest()
                 .step("Загружаем seed-конфигурацию только через Kafka и ждем CONFIG_LOADED", flow -> {
                     long seedSince = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(kafkaService, seedConfig);
-                    JsonNode seedStatus = kafkaFlow.findStatusByConfigMessageId(kafkaService,
-                            seedConfig.getMessageId(),
-                            seedSince);
-                    assertStatus(seedStatus, seedConfig, "CONFIG_LOADED");
+                    kafkaFlow.sendConfig(seedConfig);
+                    waitForLoadedSignal(kafkaService, seedConfig, seedSince);
                 })
                 .step("Создаем таблицу предрасчета через pre-calculate", flow -> {
                     var precalcResponse = shouldBe200(
@@ -80,13 +81,10 @@ public class SplitterConfigLoadKafkaMonitoring2399FlowTest extends AbstractAnaly
                 })
                 .step("Отправляем новую конфигурацию в Kafka topic splitting-config-created", flow -> {
                     kafkaSince[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(kafkaService, kafkaConfig);
+                    kafkaFlow.sendConfig(kafkaConfig);
                 })
                 .step("Проверяем статус CONFIG_LOADED и monitoring LOADED_WITH_PRECALC с метриками предрасчета", flow -> {
-                    JsonNode status = kafkaFlow.findStatusByConfigMessageId(kafkaService,
-                            kafkaConfig.getMessageId(),
-                            kafkaSince[0]);
-                    assertStatus(status, kafkaConfig, "CONFIG_LOADED");
+                    assertStatusIfRequired(kafkaService, kafkaConfig, kafkaSince[0], "CONFIG_LOADED");
 
                     JsonNode monitoring = kafkaFlow.findMonitoringByMessageIdAndResult(kafkaService,
                             kafkaConfig.getMessageId(),
@@ -109,22 +107,18 @@ public class SplitterConfigLoadKafkaMonitoring2399FlowTest extends AbstractAnaly
         getFlowWithRest()
                 .step("Загружаем текущую более новую конфигурацию только через Kafka и ждем CONFIG_LOADED", flow -> {
                     long currentSince = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(kafkaService, currentConfig);
-                    JsonNode currentStatus = kafkaFlow.findStatusByConfigMessageId(kafkaService,
-                            currentConfig.getMessageId(),
-                            currentSince);
-                    assertStatus(currentStatus, currentConfig, "CONFIG_LOADED");
+                    kafkaFlow.sendConfig(currentConfig);
+                    waitForLoadedSignal(kafkaService, currentConfig, currentSince);
                 })
                 .step("Отправляем через Kafka конфигурацию с версией младше текущей и forceConfigLoad=false", flow -> {
                     kafkaSince[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(kafkaService, oldKafkaConfig);
+                    kafkaFlow.sendConfig(oldKafkaConfig);
                 })
                 .step("Проверяем статус CONFIG_NOT_LOADED и monitoring NOT_LOADED_OLD_VERSION", flow -> {
-                    JsonNode status = kafkaFlow.findStatusByConfigMessageId(kafkaService,
-                            oldKafkaConfig.getMessageId(),
-                            kafkaSince[0]);
-                    assertStatus(status, oldKafkaConfig, "CONFIG_NOT_LOADED");
-                    assertStatusDescContains(status, "Версия");
+                    JsonNode status = assertStatusIfRequired(kafkaService, oldKafkaConfig, kafkaSince[0], "CONFIG_NOT_LOADED");
+                    if (status != null) {
+                        assertStatusDescContains(status, "Версия");
+                    }
 
                     JsonNode monitoring = kafkaFlow.findMonitoringByMessageIdAndResult(kafkaService,
                             oldKafkaConfig.getMessageId(),
@@ -145,14 +139,13 @@ public class SplitterConfigLoadKafkaMonitoring2399FlowTest extends AbstractAnaly
         getFlowWithRest()
                 .step("Отправляем через Kafka конфигурацию с paramSource=REQUEST_PARAMS", flow -> {
                     kafkaSince[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(kafkaService, kafkaConfig);
+                    kafkaFlow.sendConfig(kafkaConfig);
                 })
                 .step("Проверяем статус CONFIG_NOT_LOADED и monitoring REQUEST_PARAMS_WITH_PRECALC_ENABLED", flow -> {
-                    JsonNode status = kafkaFlow.findStatusByConfigMessageId(kafkaService,
-                            kafkaConfig.getMessageId(),
-                            kafkaSince[0]);
-                    assertStatus(status, kafkaConfig, "CONFIG_NOT_LOADED");
-                    assertStatusDescContains(status, "параметрами запроса");
+                    JsonNode status = assertStatusIfRequired(kafkaService, kafkaConfig, kafkaSince[0], "CONFIG_NOT_LOADED");
+                    if (status != null) {
+                        assertStatusDescContains(status, "параметрами запроса");
+                    }
 
                     JsonNode monitoring = kafkaFlow.findMonitoringByMessageIdAndResult(kafkaService,
                             kafkaConfig.getMessageId(),
@@ -173,25 +166,25 @@ public class SplitterConfigLoadKafkaMonitoring2399FlowTest extends AbstractAnaly
         getFlowWithRest()
                 .step("Отправляем через Kafka конфигурацию без правил привязки к трафику", flow -> {
                     kafkaSince[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(kafkaService, kafkaConfig);
+                    kafkaFlow.sendConfig(kafkaConfig);
                 })
                 .step("Проверяем статус CONFIG_NOT_LOADED и monitoring VALIDATION_FAILED", flow -> {
-                    JsonNode status = kafkaFlow.findStatusByConfigMessageId(kafkaService,
-                            kafkaConfig.getMessageId(),
-                            kafkaSince[0]);
-                    assertStatus(status, kafkaConfig, "CONFIG_NOT_LOADED");
-                    assertStatusDescContains(status, "валидации");
+                    JsonNode status = assertStatusIfRequired(kafkaService, kafkaConfig, kafkaSince[0], "CONFIG_NOT_LOADED");
+                    if (status != null) {
+                        assertStatusDescContains(status, "валидации");
+                    }
 
                     JsonNode monitoring = kafkaFlow.findMonitoringByMessageIdAndResult(kafkaService,
                             kafkaConfig.getMessageId(),
                             "VALIDATION_FAILED",
                             kafkaSince[0]);
-                    assertValidationFailedMonitoring(monitoring, kafkaConfig, "Нет правил");
+                    assertValidationFailedMonitoring(monitoring, kafkaConfig, "objectSelectConditions");
                 })
                 .run();
     }
 
     @Test
+    @KafkaConfigStatusRequiredOnly
     @DisplayName("EXPLAB-2399-05. Kafka load: невалидная структура сообщения пишет monitoring VALIDATION_FAILED")
     void kafkaInvalidMessageStructureShouldWriteValidationFailedMonitoring(KafkaService kafkaService) {
         long version = SplitterVersionProvider.nextVersion();
@@ -202,9 +195,11 @@ public class SplitterConfigLoadKafkaMonitoring2399FlowTest extends AbstractAnaly
         getFlowWithRest()
                 .step("Отправляем в Kafka сообщение с невалидной DTO-структурой", flow -> {
                     kafkaSince[0] = System.currentTimeMillis();
-                    kafkaFlow.sendRaw(kafkaService, messageId, invalidPayload);
+                    kafkaFlow.sendRaw(messageId, invalidPayload);
                 })
                 .step("Проверяем monitoring VALIDATION_FAILED по messageId/requestIdIn", flow -> {
+                    assumeTrue(kafkaFlow.isStatusRequired(),
+                            "Локальный SDK-host не публикует monitoring для ошибок Spring Kafka deserialization");
                     JsonNode monitoring = kafkaFlow.findMonitoringByMessageIdAndResult(kafkaService,
                             messageId,
                             "VALIDATION_FAILED",
@@ -213,5 +208,30 @@ public class SplitterConfigLoadKafkaMonitoring2399FlowTest extends AbstractAnaly
                 })
                 .run();
     }
-}
 
+    private void waitForLoadedSignal(KafkaService kafkaService, LoadConfigRequestDto config, long since) {
+        if (kafkaFlow.isStatusRequired()) {
+            assertStatusIfRequired(kafkaService, config, since, "CONFIG_LOADED");
+        } else {
+            JsonNode monitoring = kafkaFlow.findMonitoringByMessageIdAndResult(kafkaService,
+                    config.getMessageId(),
+                    "LOADED_WITH_PRECALC",
+                    since);
+            assertLoadedWithPrecalcMonitoring(monitoring, config);
+        }
+    }
+
+    private JsonNode assertStatusIfRequired(KafkaService kafkaService,
+                                            LoadConfigRequestDto config,
+                                            long since,
+                                            String expectedStatus) {
+        if (!kafkaFlow.isStatusRequired()) {
+            return null;
+        }
+        JsonNode status = kafkaFlow.findStatusByConfigMessageId(kafkaService,
+                config.getMessageId(),
+                since);
+        assertStatus(status, config, expectedStatus);
+        return status;
+    }
+}

@@ -24,6 +24,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import ru.sber.qa.allure.CriticalRegression;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
+import ru.sber.qa.splitter.support.RestConfigLoadModeOnly;
 import ru.sber.qa.splitter.tests_v9.common.AbstractSplitterV9FlowTest;
 import util.support.SplitterVersionProvider;
 
@@ -44,6 +45,7 @@ import static util.SplitterPrecalcAssertions.shouldHaveSoConfigVersion;
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
+@RestConfigLoadModeOnly
 @DisplayName("EXPLAB-2834. API config load")
 public class SplitterConfigLoadRules2834FlowTest extends AbstractSplitterV9FlowTest {
 
@@ -133,7 +135,7 @@ public class SplitterConfigLoadRules2834FlowTest extends AbstractSplitterV9FlowT
                 simpleExperiment((int) VALID_EXP_ID, "0", "FORCE"));
         LoadConfigRequestDto forcedConfig = config(oldVersion,
                 true,
-                simpleExperiment((int) FORCE_EXP_ID, "7", "FORCE"));
+                simpleExperiment((int) FORCE_EXP_ID, "6", "FORCE"));
         SplitRequestDto request = splitRequest("EXPLAB-2834-API-04",
                 object(OBJECT_ID, param("marker", "FORCE", "STRING")));
 
@@ -146,7 +148,7 @@ public class SplitterConfigLoadRules2834FlowTest extends AbstractSplitterV9FlowT
                     ValidatableResponseWrapper response = split(flow, EndpointMode.MAPPER, request);
                     assertBasicResponseContract(response, request, oldVersion);
                     assertFirstRuleExp(response, OBJECT_ID, "MAIN", FORCE_EXP_ID, "A", "A");
-                    assertFirstRuleExpActionType(response, OBJECT_ID, "MAIN", "7");
+                    assertFirstRuleExpActionType(response, OBJECT_ID, "MAIN", "6");
                 })
                 .run();
     }
@@ -367,11 +369,15 @@ public class SplitterConfigLoadRules2834FlowTest extends AbstractSplitterV9FlowT
     }
 
     @Test
-    @DisplayName("EXPLAB-2834-API-12. Layer-based config без salt загружается")
-    void layerBasedConfigWithoutSaltShouldLoad() {
-        long version = SplitterVersionProvider.next();
-        LoadConfigRequestDto config = configFor(EndpointMode.MAPPER,
-                version,
+    @DisplayName("EXPLAB-2834-API-12. Layer-based config без salt отклоняется и не меняет active config")
+    void layerBasedConfigWithoutSaltShouldBeRejected() {
+        long activeVersion = SplitterVersionProvider.next();
+        long invalidVersion = SplitterVersionProvider.next();
+        LoadConfigRequestDto activeConfig = configFor(EndpointMode.MAPPER,
+                activeVersion,
+                simpleExperiment((int) VALID_EXP_ID, "0", "LAYER-ACTIVE"));
+        LoadConfigRequestDto invalidConfig = configFor(EndpointMode.MAPPER,
+                invalidVersion,
                 ExperimentDto.builder()
                         .id((int) LAYER_EXP_ID)
                         .purpose("DCG")
@@ -384,15 +390,18 @@ public class SplitterConfigLoadRules2834FlowTest extends AbstractSplitterV9FlowT
         SplitRequestDto request = splitRequest("EXPLAB-2834-API-12",
                 objectWithUniqueId("explab-2834-api-12-uid",
                         OBJECT_ID,
-                        param("marker", "LAYER", "STRING")));
+                        param("marker", "LAYER-ACTIVE", "STRING")));
 
         getFlowWithRest()
-                .step("Загружаем layer-based config без salt", flow ->
-                        loadConfig(flow, EndpointMode.MAPPER, config))
-                .step("Проверяем, что config участвует в split", flow -> {
+                .step("Загружаем валидный config", flow ->
+                        loadConfig(flow, EndpointMode.MAPPER, activeConfig))
+                .step("Отправляем layer-based config без salt", flow ->
+                        EndpointMode.MAPPER.load(flow.restCustomSteps(), invalidConfig)
+                                .should(haveStatusCode(HttpStatus.SC_BAD_REQUEST)))
+                .step("Проверяем, что активный config не изменился", flow -> {
                     ValidatableResponseWrapper response = split(flow, EndpointMode.MAPPER, request);
-                    assertBasicResponseContract(response, request, version);
-                    assertFirstRuleExp(response, OBJECT_ID, "MAIN", LAYER_EXP_ID, "A", "A");
+                    assertBasicResponseContract(response, request, activeVersion);
+                    assertFirstRuleExp(response, OBJECT_ID, "MAIN", VALID_EXP_ID, "A", "A");
                 })
                 .run();
     }
@@ -422,7 +431,8 @@ public class SplitterConfigLoadRules2834FlowTest extends AbstractSplitterV9FlowT
                 .step("Загружаем валидный config", flow ->
                         loadConfig(flow, EndpointMode.MAPPER, activeConfig))
                 .step("Отправляем config с пересекающимися shares", flow -> {
-                    ValidatableResponseWrapper response = shouldBe200(EndpointMode.MAPPER.load(flow.restCustomSteps(), invalidConfig));
+                    ValidatableResponseWrapper response = EndpointMode.MAPPER.load(flow.restCustomSteps(), invalidConfig)
+                            .should(haveStatusCode(HttpStatus.SC_BAD_REQUEST));
                     JsonNode root = jsonBody(response, "Ожидали JSON body ответа CONFIG_ERROR");
                     assertEquals("CONFIG_ERROR", root.path("result").asText(null), body(response));
                     assertTrue(root.path("resultDetails").asText("").contains("invalid group ranges"), body(response));

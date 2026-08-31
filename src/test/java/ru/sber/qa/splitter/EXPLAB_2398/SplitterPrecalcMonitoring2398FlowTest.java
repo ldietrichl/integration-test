@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2398;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.LoadConfigRequestDto;
 import dto.splitter.precalc.SplitterPrecalcRequestDto;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import ru.sber.qa.allure.CriticalRegression;
 import ru.sber.qa.services.kafka.KafkaService;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
+import ru.sber.qa.splitter.support.SplitterTestProfileOnly;
 
 import java.util.List;
 
@@ -25,12 +27,13 @@ import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
+@AnyConfigLoadMode
 public class SplitterPrecalcMonitoring2398FlowTest extends AbstractPrecalcMonitoring2398FlowTest {
 
     @CriticalRegression
     @Test
-    @DisplayName("EXPLAB-2398-PC-01. Повторный pre-calculate пишет LOADED и счетчики copied/added/deleted")
-    void repeatedPrecalcShouldWriteLoadedMonitoringWithStableCounters(KafkaService kafkaService) {
+    @DisplayName("EXPLAB-2398-PC-01. Повторный pre-calculate пишет LOADED_FIRST и monitoring-счетчики")
+    void repeatedPrecalcShouldWriteLoadedFirstMonitoringWithStableCounters(KafkaService kafkaService) {
         LoadConfigRequestDto config = oneExperimentConfig();
         int soVersion = nextSoConfigVersion();
         String matchingUc = uc("pc01", 1);
@@ -54,8 +57,8 @@ public class SplitterPrecalcMonitoring2398FlowTest extends AbstractPrecalcMonito
                 .step("Повторный pre-calculate по тому же полному списку должен дать стабильные счетчики", flow -> {
                     long since = System.currentTimeMillis();
                     calculatePreliminary(flow, repeated);
-                    assertMonitoringEvent(kafkaService, since, loadedExpectation(repeated,
-                            2, 0, 0,
+                    assertMonitoringEvent(kafkaService, since, loadedFirstExpectation(repeated,
+                            0, 0,
                             1, 2,
                             1, 1));
                 })
@@ -93,8 +96,8 @@ public class SplitterPrecalcMonitoring2398FlowTest extends AbstractPrecalcMonito
                 .step("Новый исчерпывающий список содержит A и C: B должен считаться удаленным, C добавленным", flow -> {
                     long since = System.currentTimeMillis();
                     calculatePreliminary(flow, changedFullList);
-                    assertMonitoringEvent(kafkaService, since, loadedExpectation(changedFullList,
-                            1, 1, 1,
+                    assertMonitoringEvent(kafkaService, since, loadedFirstExpectation(changedFullList,
+                            1, 1,
                             0, 2,
                             1, 1));
                 })
@@ -125,8 +128,8 @@ public class SplitterPrecalcMonitoring2398FlowTest extends AbstractPrecalcMonito
                 .step("Повторный pre-calculate должен показать totalObjects=2, notLinkedObjects=2, linkedExps=0", flow -> {
                     long since = System.currentTimeMillis();
                     calculatePreliminary(flow, repeated);
-                    assertMonitoringEvent(kafkaService, since, loadedExpectation(repeated,
-                            2, 0, 0,
+                    assertMonitoringEvent(kafkaService, since, loadedFirstExpectation(repeated,
+                            0, 0,
                             2, 2,
                             0, 1));
                 })
@@ -152,8 +155,8 @@ public class SplitterPrecalcMonitoring2398FlowTest extends AbstractPrecalcMonito
                 .step("Проверяем корреляцию monitoring event по requestIdIn/soConfigVersion и базовый контракт", flow -> {
                     long since = System.currentTimeMillis();
                     calculatePreliminary(flow, repeated);
-                    assertMonitoringEvent(kafkaService, since, loadedExpectation(repeated,
-                            1, 0, 0,
+                    assertMonitoringEvent(kafkaService, since, loadedFirstExpectation(repeated,
+                            0, 0,
                             0, 1,
                             1, 1));
                 })
@@ -162,6 +165,7 @@ public class SplitterPrecalcMonitoring2398FlowTest extends AbstractPrecalcMonito
 
     @CriticalRegression
     @Test
+    @SplitterTestProfileOnly("monitoring-contract")
     @DisplayName("EXPLAB-2398-PC-05. Ошибка валидации pre-calculate пишет VALIDATION_FAILED в monitoring")
     void validationFailedShouldWriteMonitoringEvent(KafkaService kafkaService) {
         int soVersion = nextSoConfigVersion();

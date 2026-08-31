@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.tests_v9.empty_rules;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.GroupDto;
@@ -26,6 +27,7 @@ import java.util.List;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("Tests-v9. MAPPER: configCommId in [] + configCommId in [1]")
+@AnyConfigLoadMode
 public class SplitterV9EmptyRulesTwoSplitsFlowTest extends AbstractSplitterV9FlowTest {
 
     private static final long EMPTY_VALUES_EXP_ID = 1L;

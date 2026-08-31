@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.NewTest;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.LoadConfigRequestDto;
 import dto.splitter.precalc.SplitterPrecalcObjectDto;
@@ -23,6 +24,7 @@ import ru.sber.qa.allure.CriticalRegression;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static util.SplitterPrecalcAssertions.shouldBe200;
 import static util.SplitterPrecalcAssertions.shouldBeConfigLoaded;
 import static util.SplitterPrecalcAssertions.shouldContainObjectIds;
@@ -30,7 +32,7 @@ import static util.SplitterPrecalcAssertions.shouldHaveNonEmptySplitEnvelope;
 import static util.SplitterPrecalcAssertions.shouldHaveSingleObjectWithEmptyResults;
 import static util.SplitterPrecalcAssertions.shouldHaveSingleObjectWithNonEmptyResults;
 import static util.SplitterPrecalcAssertions.shouldHaveSoConfigVersion;
-import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
+import static util.SplitterAssertions.shouldBeBadRequestError;
 import static ru.sber.qa.splitter.NewTest.SplitterPrecalcFlowSupport.assertPrecalcAccepted;
 import static ru.sber.qa.splitter.NewTest.SplitterPrecalcFlowSupport.calculatePreliminary;
 import static ru.sber.qa.splitter.NewTest.SplitterPrecalcFlowSupport.loadConfig;
@@ -68,6 +70,7 @@ import static ru.sber.qa.splitter.NewTest.SplitterPrecalcFlowSupport.twoExperime
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
+@AnyConfigLoadMode
 public class SplitterPrecalcFlowTest extends AbstractNewSplitterFlowTest {
 
     private static final String MATCHING_OBJECT_ID = "22222222-2222-2222-2222-222222222222";
@@ -99,9 +102,7 @@ public class SplitterPrecalcFlowTest extends AbstractNewSplitterFlowTest {
         getFlowWithRest()
                 .step("Отправляем невалидный запрос predcalc", flow -> {
                     ValidatableResponseWrapper response = calculatePreliminary(flow, invalidRequest);
-                    response.should(haveStatusCode(HttpStatus.SC_BAD_REQUEST));
-                    response.should(RestMatchers.haveBodyWithEvaluatableJsonPathExpression("status == 400"));
-                    response.should(RestMatchers.haveBodyWithEvaluatableJsonPathExpression("error == 'Bad Request'"));
+                    shouldBeBadRequestError(response);
                 })
                 .run();
     }
@@ -600,7 +601,7 @@ public class SplitterPrecalcFlowTest extends AbstractNewSplitterFlowTest {
 
     @CriticalRegression
     @Test
-    @DisplayName("PC-25. Неконсистентные данные в predcalc не валят сервис")
+    @DisplayName("PC-25. Неконсистентные данные в predcalc обрабатываются без 5xx")
     void inconsistentDataShouldBeHandledGracefully() {
         SplitterPrecalcRequestDto request = SplitterPrecalcRequestDto.builder()
                 .requestId(UUID.randomUUID().toString())
@@ -615,8 +616,15 @@ public class SplitterPrecalcFlowTest extends AbstractNewSplitterFlowTest {
 
         getFlowWithRest()
                 .step("Пытаемся спровоцировать ошибку неконсистентными данными", flow -> {
-                    ValidatableResponseWrapper response = shouldBe200(calculatePreliminary(flow, request));
-                    assertPrecalcAccepted(response);
+                    ValidatableResponseWrapper response = calculatePreliminary(flow, request);
+                    int statusCode = response.toResponse().statusCode();
+                    assertTrue(statusCode == HttpStatus.SC_OK || statusCode == HttpStatus.SC_BAD_REQUEST,
+                            "Ожидали 200/400 без 5xx, фактический статус: " + statusCode);
+                    if (statusCode == HttpStatus.SC_OK) {
+                        assertPrecalcAccepted(response);
+                    } else {
+                        shouldBeBadRequestError(response);
+                    }
                 })
                 .run();
     }

@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.NewTest.document;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -29,6 +30,7 @@ import static util.SplitterPrecalcAssertions.shouldBe200;
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
+@AnyConfigLoadMode
 public class SplitterDocumentActionTypePriorityFlowTest extends AbstractSplitterDocumentFlowTest {
 
     private static final String SCENARIO_SECTION = "1. Тест на приоритет Целевого действия";
@@ -43,7 +45,7 @@ public class SplitterDocumentActionTypePriorityFlowTest extends AbstractSplitter
      * ConfigMap-dependent:
      * final-exp-rule.values-map на текущем стенде задает порядок приоритета actionType:
      * 2 > 4 > 3 > 6 > 5 > 1 > 0.
-     * filter-rule.values=[1,3,5], поэтому filtered=true ожидается только для MAIN с actionType 1/3/5.
+     * filter-rule.values=[2,4], поэтому filtered=true ожидается только для MAIN с actionType 2/4.
      * Отрицательные actionType из таблицы документа в текущей ConfigMap не заведены, поэтому здесь
      * проверяется исполнимая часть таблицы 0/1/5/6/3/4/2 и дополнительные tie-break проверки.
      */
@@ -272,6 +274,6 @@ public class SplitterDocumentActionTypePriorityFlowTest extends AbstractSplitter
     }
 
     private String expectedFilteredValue(String actionType) {
-        return List.of("1", "3", "5").contains(actionType) ? "true" : "false";
+        return List.of("2", "4").contains(actionType) ? "true" : "false";
     }
 }

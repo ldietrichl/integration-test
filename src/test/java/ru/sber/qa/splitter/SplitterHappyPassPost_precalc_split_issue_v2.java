@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import constants.Endpoints;
 
 import config.services.core.RestEndpointResolver;
@@ -41,6 +42,7 @@ import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 //@Disabled("Exploratory test for manual runs")
 @ExtendWith(PerfeccionistaExtension.class)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
+@AnyConfigLoadMode
 public class SplitterHappyPassPost_precalc_split_issue_v2 {
     private static final String splitterBaseUri = RestEndpointResolver.baseUri(RestServiceEndpoint.SPLITTER);
     // Переключение стенда вручную

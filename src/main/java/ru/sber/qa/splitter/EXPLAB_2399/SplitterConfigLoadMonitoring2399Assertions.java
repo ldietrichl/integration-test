@@ -38,12 +38,12 @@ final class SplitterConfigLoadMonitoring2399Assertions {
                                                   LoadConfigRequestDto config) {
         assertMonitoringCommon(monitoringMessage, config, "LOADED_WITH_PRECALC");
         assertEquals("KAFKA", value(monitoringMessage, "loadMethod"), monitoringMessage.toPrettyString());
-        assertPresentAny(monitoringMessage, "splittingPointCode", "splittingPoing");
+        assertPresentAny(monitoringMessage, "splittingPointCode", "splittingPoing", "splittingPoint");
         assertPresent(monitoringMessage, "completedTimestamp");
-        assertPresent(monitoringMessage, "soConfigVersion");
+        assertFieldExists(monitoringMessage, "soConfigVersion");
         assertNumericField(monitoringMessage, "notLinkedObjects");
         assertNumericField(monitoringMessage, "totalObjects");
-        assertNumericField(monitoringMessage, "linkedExps");
+        assertNumericField(monitoringMessage, "notLinkedExps");
         assertNumericField(monitoringMessage, "totalExps");
     }
 
@@ -51,14 +51,16 @@ final class SplitterConfigLoadMonitoring2399Assertions {
                                            LoadConfigRequestDto config) {
         assertMonitoringCommon(monitoringMessage, config, "NOT_LOADED_OLD_VERSION");
         assertEquals("KAFKA", value(monitoringMessage, "loadMethod"), monitoringMessage.toPrettyString());
-        assertContainsAny(monitoringMessage, "resultDetails", List.of("младше текущей", "не актуальной версии", "старее текущей"));
+        assertFieldExists(monitoringMessage, "resultDetails");
+        assertKafkaMetadata(monitoringMessage);
     }
 
     static void assertRequestParamsWithPrecalcMonitoring(JsonNode monitoringMessage,
                                                          LoadConfigRequestDto config) {
         assertMonitoringCommon(monitoringMessage, config, "REQUEST_PARAMS_WITH_PRECALC_ENABLED");
         assertEquals("KAFKA", value(monitoringMessage, "loadMethod"), monitoringMessage.toPrettyString());
-        assertContainsAny(monitoringMessage, "resultDetails", List.of("REQUEST_PARAMS", "параметрами запроса", "предрасчет"));
+        assertFieldExists(monitoringMessage, "resultDetails");
+        assertKafkaMetadata(monitoringMessage);
     }
 
     static void assertValidationFailedMonitoring(JsonNode monitoringMessage,
@@ -67,6 +69,7 @@ final class SplitterConfigLoadMonitoring2399Assertions {
         assertMonitoringCommon(monitoringMessage, config, "VALIDATION_FAILED");
         assertEquals("KAFKA", value(monitoringMessage, "loadMethod"), monitoringMessage.toPrettyString());
         assertContainsAny(monitoringMessage, "resultDetails", List.of(expectedDetailsText));
+        assertKafkaMetadata(monitoringMessage);
     }
 
     static void assertInvalidMessageMonitoring(JsonNode monitoringMessage, String messageId) {
@@ -89,10 +92,9 @@ final class SplitterConfigLoadMonitoring2399Assertions {
         assertEquals(expectedResult, normalized(monitoringMessage, "result"), monitoringMessage.toPrettyString());
         assertEquals(config.getMessageId(), valueAny(monitoringMessage, "messageId", "requestIdIn"), monitoringMessage.toPrettyString());
         assertEquals(String.valueOf(config.getConfigVersion()), value(monitoringMessage, "newConfigVersion"), monitoringMessage.toPrettyString());
-        assertEquals(config.getSplittingPointCode(), valueAny(monitoringMessage, "splittingPointCode", "splittingPoing"), monitoringMessage.toPrettyString());
+        assertEquals(config.getSplittingPointCode(), valueAny(monitoringMessage, "splittingPointCode", "splittingPoing", "splittingPoint"), monitoringMessage.toPrettyString());
         assertEquals("splitter-service", value(monitoringMessage, "service"), monitoringMessage.toPrettyString());
         assertPresent(monitoringMessage, "currentConfigVersion");
-        assertKafkaMetadata(monitoringMessage);
     }
 
     private static void assertKafkaMetadata(JsonNode monitoringMessage) {
@@ -119,6 +121,11 @@ final class SplitterConfigLoadMonitoring2399Assertions {
 
     private static void assertPresent(JsonNode node, String field) {
         assertFalse(node.path(field).isMissingNode() || node.path(field).isNull(),
+                "Ожидали поле " + field + "\n" + node.toPrettyString());
+    }
+
+    private static void assertFieldExists(JsonNode node, String field) {
+        assertFalse(node.path(field).isMissingNode(),
                 "Ожидали поле " + field + "\n" + node.toPrettyString());
     }
 

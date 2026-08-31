@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2729;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigWithRest;
 import dto.dataoperator.DataOperatorRuleDto;
 import io.perfeccionista.framework.SetEnvironmentConfiguration;
@@ -34,6 +35,7 @@ import static util.dataoperator.DataOperatorAssertions.ids;
 @SetEnvironmentConfiguration(EnvironmentConfigWithRest.class)
 @ResourceLock("data-operator-cache")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@AnyConfigLoadMode
 public class DataOperatorObjectIds2729RulesFlowTest extends AbstractDataOperator2729FlowTest {
 
     @CriticalRegression

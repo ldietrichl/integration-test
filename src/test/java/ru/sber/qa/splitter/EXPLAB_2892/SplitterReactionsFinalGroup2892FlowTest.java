@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2892;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import com.fasterxml.jackson.databind.JsonNode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
@@ -36,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("EXPLAB-2892. REACTIONS: группа итогового эксперимента")
+@AnyConfigLoadMode
 public class SplitterReactionsFinalGroup2892FlowTest extends AbstractSplitterV9FlowTest {
 
     private static final int EXP_ID = 2;
@@ -71,7 +73,7 @@ public class SplitterReactionsFinalGroup2892FlowTest extends AbstractSplitterV9F
 
     @CriticalRegression
     @Test
-    @DisplayName("EXPLAB-2892-02. Kafka-report выбирает B/B в MAIN; ALL проверяется при наличии")
+    @DisplayName("EXPLAB-2892-02. Kafka-report выбирает B/B в MAIN; ALL проверяется как публичный worked-result")
     void reactionsKafkaReportShouldUseWorkedGroupInMainAndCheckAllWhenPresent(KafkaService kafkaService) {
         long version = SplitterVersionProvider.next();
         LoadConfigRequestDto config = reactionsConfig(version);
@@ -98,7 +100,7 @@ public class SplitterReactionsFinalGroup2892FlowTest extends AbstractSplitterV9F
                             assertReportRuleResult(reportRoot, OBJECT_1_ID, "MAIN", 1);
                             assertReportExp(reportRoot, OBJECT_1_ID, "MAIN", "B", "B", "2");
 
-                            assertReportAllWhenEnabled(reportRoot);
+                            assertReportAllWhenEnabled(reportRoot, testCase);
                             assertUnmatchedObjectsAreEmpty(reportRoot);
                         })
                 .run();
@@ -173,15 +175,14 @@ public class SplitterReactionsFinalGroup2892FlowTest extends AbstractSplitterV9F
                 "Неверный размер " + ruleCode + ".resultExps для objectId=" + objectId + "\n" + reportRoot);
     }
 
-    private void assertReportAllWhenEnabled(JsonNode reportRoot) {
+    private void assertReportAllWhenEnabled(JsonNode reportRoot, WorkedGroupCase testCase) {
         if (findReportRule(reportRoot, OBJECT_1_ID, "ALL", false) == null) {
             return;
         }
 
-        assertReportRuleResult(reportRoot, OBJECT_1_ID, "ALL", 3);
-        assertReportExp(reportRoot, OBJECT_1_ID, "ALL", "A", "B", "1");
-        assertReportExp(reportRoot, OBJECT_1_ID, "ALL", "B", "B", "2");
-        assertReportExp(reportRoot, OBJECT_1_ID, "ALL", "C", "B", "3");
+        assertReportRuleResult(reportRoot, OBJECT_1_ID, "ALL", 1);
+        assertReportExp(reportRoot, OBJECT_1_ID, "ALL",
+                testCase.expectedGroup(), testCase.expectedGroup(), testCase.expectedResult());
     }
 
     private void assertReportExp(JsonNode reportRoot,

@@ -26,6 +26,15 @@ public final class RestEndpointResolver {
         String endpointKey = propertyKey(environment, endpoint.propertySegment());
         String configuredUri = TestPropertiesLoader.optional(endpointKey);
 
+        if (configuredUri == null || configuredUri.isBlank()) {
+            for (String fallbackSegment : endpoint.fallbackPropertySegments()) {
+                configuredUri = TestPropertiesLoader.optional(propertyKey(environment, fallbackSegment));
+                if (configuredUri != null && !configuredUri.isBlank()) {
+                    break;
+                }
+            }
+        }
+
         if ((configuredUri == null || configuredUri.isBlank()) && endpoint.gatewayFallbackAllowed()) {
             configuredUri = TestPropertiesLoader.required(propertyKey(environment, "gateway"));
         }
@@ -60,9 +69,10 @@ public final class RestEndpointResolver {
             case "ift", "eift", "ift-ds", "eift-ds" -> "ift";
             case "ift-dm", "eift-dm" -> "ift-dm";
             case "lt" -> "lt";
+            case "local", "localhost" -> "local";
             default -> throw new IllegalStateException(
                     "Неподдерживаемое значение env='" + rawEnvironment
-                            + "' в src/test/resources/test.properties. Допустимо: dev, ift, ift-dm, lt");
+                            + "' в src/test/resources/test.properties. Допустимо: dev, ift, ift-dm, lt, local");
         };
     }
 

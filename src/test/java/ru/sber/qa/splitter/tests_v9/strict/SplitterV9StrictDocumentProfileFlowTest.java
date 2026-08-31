@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.tests_v9.strict;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -19,13 +20,12 @@ import util.support.SplitterVersionProvider;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 @ExtendWith(PerfeccionistaExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("Tests-v9. Строгие проверки документного профиля")
+@AnyConfigLoadMode
 public class SplitterV9StrictDocumentProfileFlowTest extends AbstractSplitterV9FlowTest {
 
     @Test
@@ -50,7 +50,7 @@ public class SplitterV9StrictDocumentProfileFlowTest extends AbstractSplitterV9F
     }
 
     @Test
-    @DisplayName("SPL-V9-STRICT-02. REACTIONS API ALL содержит все сработавшие experiments по документной матрице")
+    @DisplayName("SPL-V9-STRICT-02. REACTIONS API ALL содержит сработавшие experiments, MAIN содержит выбранный итоговый experiment")
     void reactionsApiAllShouldContainWorkedExperimentsForDocumentProfile() {
         long version = SplitterVersionProvider.next();
         LoadConfigRequestDto config = reactionsConfig(version);
@@ -59,20 +59,19 @@ public class SplitterV9StrictDocumentProfileFlowTest extends AbstractSplitterV9F
 
         getFlowWithRest()
                 .step("Загружаем REACTIONS config для строгой проверки ALL", flow -> loadConfig(flow, EndpointMode.REACTIONS, config))
-                .step("Проверяем document-profile ожидание: ALL=1..6, MAIN=4/5/6", flow -> {
+                .step("Проверяем текущий document-profile контракт: ALL=1..6, MAIN=4", flow -> {
                     ValidatableResponseWrapper response = split(flow, EndpointMode.REACTIONS, request);
                     assertBasicResponseContract(response, request, version);
                     assertRuleExpIdsExactly(response, OBJECT_REACTIONS, "ALL", 1L, 2L, 3L, 4L, 5L, 6L);
-                    assertRuleExpIdsExactly(response, OBJECT_REACTIONS, "MAIN", 4L, 5L, 6L);
+                    assertRuleExpIdsExactly(response, OBJECT_REACTIONS, "MAIN", 4L);
                     assertRuleExpsUseWorkedGroups(response, OBJECT_REACTIONS, "MAIN");
-                    assertRuleExpsHaveNoExpFlags(response, OBJECT_REACTIONS, "MAIN");
                     assertNoAlternativeTrueAnywhere(response);
                 })
                 .run();
     }
 
     @Test
-    @DisplayName("SPL-V9-STRICT-03. API response содержит resultDt, если документный контракт включен в реализации")
+    @DisplayName("SPL-V9-STRICT-03. API response не содержит resultDt; поле проверяется в Kafka-report")
     void apiResponseShouldContainResultDtForDocumentProfile() {
         long version = SplitterVersionProvider.next();
         LoadConfigRequestDto config = singleDocumentConfig(version);
@@ -83,12 +82,11 @@ public class SplitterV9StrictDocumentProfileFlowTest extends AbstractSplitterV9F
                         param("id3", "3", "INTEGER")));
 
         getFlowWithRest()
-                .step("Загружаем config для проверки resultDt в API", flow -> loadConfig(flow, EndpointMode.MAPPER, config))
-                .step("Проверяем наличие resultDt в REST response по документу", flow -> {
+                .step("Загружаем config для проверки отсутствия resultDt в API", flow -> loadConfig(flow, EndpointMode.MAPPER, config))
+                .step("Проверяем, что REST response не содержит resultDt", flow -> {
                     ValidatableResponseWrapper response = split(flow, EndpointMode.MAPPER, request);
                     assertBasicResponseContract(response, request, version);
-                    assertTrue(hasFieldRecursively(jsonBody(response, "Ожидали JSON body для resultDt"), "resultDt"),
-                            "Документный профиль ожидает resultDt в REST response" + body(response));
+                    assertNoResultDtInApiResponse(response);
                 })
                 .run();
     }

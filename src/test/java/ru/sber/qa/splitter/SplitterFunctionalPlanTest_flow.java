@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import constants.Endpoints;
 
 import config.services.core.RestEndpointResolver;
@@ -20,12 +21,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import ru.sber.qa.matchers.RestMatchers;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import ru.sber.qa.allure.CriticalRegression;
+import util.support.SplitterVersionProvider;
 
 import java.util.UUID;
+
+import static util.SplitterAssertions.shouldBeBadRequestError;
 
 @ExtendWith(PerfeccionistaExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
+@AnyConfigLoadMode
 public class SplitterFunctionalPlanTest_flow extends Flows {
     private static final String splitterBaseUri = RestEndpointResolver.baseUri(RestServiceEndpoint.SPLITTER);
 
@@ -33,8 +38,7 @@ public class SplitterFunctionalPlanTest_flow extends Flows {
     private static final String CONFIG_ENDPOINT = Endpoints.Splitter.SPLITTER_CONFIG;
     private static final String SPLIT_ENDPOINT = Endpoints.Splitter.SPLITTER_SPLIT;
 
-    private static final long BASE_VERSION = 4_000_000_000L
-            + ((System.currentTimeMillis() / 1000L) % 1_000_000L) * 100L;
+    private static final long BASE_VERSION = SplitterVersionProvider.nextVersion();
 
     private static final String OBJECT_ONE_ID = "11111111-1111-1111-1111-111111111111";
     private static final String OBJECT_TWO_ID = "22222222-2222-2222-2222-222222222222";
@@ -463,12 +467,7 @@ public class SplitterFunctionalPlanTest_flow extends Flows {
                                 .should(RestMatchers.haveStatusCode(HttpStatus.SC_OK)))
 
                 .step("Отправляем невалидный split-запрос без requestId", flow ->
-                        postSplit(flow, splitInvalidRequestWithoutRequestId())
-                                .should(
-                                        RestMatchers.haveStatusCode(HttpStatus.SC_BAD_REQUEST),
-                                        RestMatchers.haveBodyWithEvaluatableJsonPathExpression("status == 400"),
-                                        RestMatchers.haveBodyWithEvaluatableJsonPathExpression("error == 'Bad Request'")
-                                ))
+                        shouldBeBadRequestError(postSplit(flow, splitInvalidRequestWithoutRequestId())))
                 .run();
     }
 

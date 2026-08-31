@@ -5,14 +5,22 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dto.splitter.config.LoadConfigRequestDto;
 import io.qameta.allure.Allure;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
 import ru.sber.qa.services.kafka.KafkaService;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -27,21 +35,23 @@ final class SplitterConfigKafkaLoad2739Flow {
     private static final String DEFAULT_MONITORING_TOPIC = "omon_explab_splitter_log";
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(45);
 
-    void sendConfig(KafkaService kafkaService, LoadConfigRequestDto request) {
-        sendRaw(kafkaService, request.getMessageId(), toJson(request));
+    void sendConfig(LoadConfigRequestDto request) {
+        sendRaw(request.getMessageId(), toJson(request));
     }
 
-    void sendRaw(KafkaService kafkaService, String messageKey, String payload) {
+    void sendRaw(String messageKey, String payload) {
         String env = kafkaEnv();
         String topic = inputTopic();
+        Duration timeout = timeout();
 
         Allure.parameter("splitter.config.kafka.env", env);
         Allure.parameter("splitter.config.kafka.inputTopic", topic);
         Allure.addAttachment("Kafka input payload / " + topic, "application/json", payload, ".json");
 
-        try {
-            kafkaService.<String, String>producerClient(env)
-                    .sendRecord(topic, messageKey, payload);
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerProperties(env))) {
+            producer.send(new ProducerRecord<>(topic, messageKey, payload))
+                    .get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+            producer.flush();
         } catch (Exception exception) {
             throw new AssertionError("Не удалось отправить сообщение в Kafka topic=" + topic
                     + ", env=" + env
@@ -161,10 +171,57 @@ final class SplitterConfigKafkaLoad2739Flow {
         return System.getProperty("splitter.config.kafka.monitoring.topic", DEFAULT_MONITORING_TOPIC);
     }
 
+    boolean isStatusRequired() {
+        return Boolean.parseBoolean(System.getProperty("splitter.config.kafka.status.required", "true"));
+    }
+
     private Duration timeout() {
         return Duration.ofSeconds(Long.parseLong(System.getProperty(
                 "splitter.config.kafka.timeout.seconds",
                 String.valueOf(DEFAULT_TIMEOUT.toSeconds()))));
+    }
+
+    private static Properties producerProperties(String env) {
+        Properties source = new Properties();
+        try (InputStream inputStream = Thread.currentThread()
+                .getContextClassLoader()
+                .getResourceAsStream("kafka-producers.properties")) {
+            if (inputStream != null) {
+                source.load(inputStream);
+            }
+        } catch (IOException exception) {
+            throw new IllegalStateException("Не удалось прочитать kafka-producers.properties", exception);
+        }
+
+        Properties target = new Properties();
+        applyPrefix(source, target, "kafka_producer.all.");
+        applyPrefix(source, target, "kafka_producer." + env + ".");
+        applySystemPrefix(target, "kafka_producer.all.");
+        applySystemPrefix(target, "kafka_producer." + env + ".");
+
+        target.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        target.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        target.putIfAbsent(ProducerConfig.ACKS_CONFIG, "1");
+
+        Object bootstrapServers = target.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
+        if (bootstrapServers == null || String.valueOf(bootstrapServers).isBlank()) {
+            throw new AssertionError("Не заданы bootstrap.servers для Kafka producer env=" + env
+                    + ". Добавь kafka_producer." + env + ".bootstrap.servers в kafka-producers.properties"
+                    + " или передай -Dkafka_producer." + env + ".bootstrap.servers=<hosts>");
+        }
+        return target;
+    }
+
+    private static void applyPrefix(Properties source, Properties target, String prefix) {
+        source.stringPropertyNames().stream()
+                .filter(name -> name.startsWith(prefix))
+                .forEach(name -> target.put(name.substring(prefix.length()), source.getProperty(name)));
+    }
+
+    private static void applySystemPrefix(Properties target, String prefix) {
+        System.getProperties().stringPropertyNames().stream()
+                .filter(name -> name.startsWith(prefix))
+                .forEach(name -> target.put(name.substring(prefix.length()), System.getProperty(name)));
     }
 
     private static String toJson(Object object) {

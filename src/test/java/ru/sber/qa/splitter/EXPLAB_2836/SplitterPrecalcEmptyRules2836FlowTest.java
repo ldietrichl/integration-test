@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2836;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.GroupDto;
@@ -37,6 +38,7 @@ import static util.SplitterPrecalcAssertions.shouldHaveSoConfigVersion;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("EXPLAB-2836. Pre-calculate: empty rules")
+@AnyConfigLoadMode
 public class SplitterPrecalcEmptyRules2836FlowTest extends AbstractSplitterV9FlowTest {
 
     private static final AtomicInteger SO_VERSION = new AtomicInteger((int) (System.currentTimeMillis() / 1000L));

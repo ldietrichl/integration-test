@@ -113,16 +113,14 @@ abstract class AbstractPrecalcMonitoring2398FlowTest extends AbstractAnalyticSpl
                 expectation);
     }
 
-    protected PrecalcMonitoring2398EventExpectation loadedExpectation(SplitterPrecalcRequestDto request,
-                                                                      long copiedObjects,
-                                                                      long objectsAdded,
-                                                                      long objectsDeleted,
-                                                                      long notLinkedObjects,
-                                                                      long totalObjects,
-                                                                      long linkedExps,
-                                                                      long totalExps) {
-        return PrecalcMonitoring2398EventExpectation.event(request.getRequestId(), "LOADED", request.getSoConfigVersion())
-                .counter("copiedObjects", copiedObjects)
+    protected PrecalcMonitoring2398EventExpectation loadedFirstExpectation(SplitterPrecalcRequestDto request,
+                                                                           long objectsAdded,
+                                                                           long objectsDeleted,
+                                                                           long notLinkedObjects,
+                                                                           long totalObjects,
+                                                                           long linkedExps,
+                                                                           long totalExps) {
+        return PrecalcMonitoring2398EventExpectation.event(request.getRequestId(), "LOADED_FIRST", request.getSoConfigVersion())
                 .counter("objectsAdded", objectsAdded)
                 .counter("objectsDeleted", objectsDeleted)
                 .counter("notLinkedObjects", notLinkedObjects)

@@ -41,24 +41,22 @@ public class Endpoints {
     }
 
     public static class Splitter {
-        private static final String SPLITTER_MAPPER_BASE = "/api/v1/splitter/mapper";
         private static final String SPLITTER_VINTAGE_BASE = "/api/v1/splitter-vintage";
-        private static final String ACTIVE_SPLITTER_BASE = SPLITTER_MAPPER_BASE;
 
-        public static final String SPLITTER_CONFIG = ACTIVE_SPLITTER_BASE + "/config";
-        public static final String SPLITTER_SPLIT = ACTIVE_SPLITTER_BASE + "/split";
-        public static final String SPLITTER_PRECALCULATE = ACTIVE_SPLITTER_BASE + "/pre-calculate";
-        public static final String SPLITTER_VERSION = ACTIVE_SPLITTER_BASE + "/version";
+        public static final String SPLITTER_CONFIG = SplitterEndpointPaths.mapperConfig();
+        public static final String SPLITTER_SPLIT = SplitterEndpointPaths.mapperSplit();
+        public static final String SPLITTER_PRECALCULATE = SplitterEndpointPaths.mapperPrecalculate();
+        public static final String SPLITTER_VERSION = SplitterEndpointPaths.mapperVersion();
 
         public static final String SPLITTER_VINTAGE_CONFIG = SPLITTER_VINTAGE_BASE + "/config";
         public static final String SPLITTER_VINTAGE_SPLIT = SPLITTER_VINTAGE_BASE + "/split";
         public static final String SPLITTER_VINTAGE_PRECALCULATE = SPLITTER_VINTAGE_BASE + "/pre-calculate";
         public static final String SPLITTER_VINTAGE_VERSION = SPLITTER_VINTAGE_BASE + "/version";
 
-        public static final String SPLITTER_REACTIONS_CONFIG = "/api/v1/splitter/reactions/config";
-        public static final String SPLITTER_REACTIONS_SPLIT = "/api/v1/splitter/reactions/split";
-        public static final String SPLITTER_REACTIONS_PRECALCULATE = "/api/v1/splitter/reactions/pre-calculate";
-        public static final String SPLITTER_REACTIONS_VERSION = "/api/v1/splitter/reactions/version";
+        public static final String SPLITTER_REACTIONS_CONFIG = SplitterEndpointPaths.reactionsConfig();
+        public static final String SPLITTER_REACTIONS_SPLIT = SplitterEndpointPaths.reactionsSplit();
+        public static final String SPLITTER_REACTIONS_PRECALCULATE = SplitterEndpointPaths.reactionsPrecalculate();
+        public static final String SPLITTER_REACTIONS_VERSION = SplitterEndpointPaths.reactionsVersion();
     }
 
     /** REST API data-operator-service v2. */

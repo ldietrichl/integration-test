@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.NewTest.document;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.LoadConfigRequestDto;
 import dto.splitter.config.ObjectSelectConditionDto;
@@ -31,6 +32,7 @@ import static util.SplitterPrecalcAssertions.shouldBe200;
  * На текущем стенде ожидаем isAlternative=false. Если traffic-based-alternative включат,
  * ожидания в assertAnyExpHasAlternativeFlag(...) нужно пересогласовать.
  */
+@AnyConfigLoadMode
 public class SplitterDocument05AlternativeFlowTest extends AbstractSplitterDocumentFlowTest {
 
     @CriticalRegression
@@ -92,8 +94,9 @@ public class SplitterDocument05AlternativeFlowTest extends AbstractSplitterDocum
                     assertAnyExpHasAlternativeFlag(response, MATCHING_OBJECT_ID, 10503L, "false");
                     assertAllRuleHasExpIdsExactly(response, MATCHING_OBJECT_ID, 10503L, 10504L);
                     assertObjectHasMainAndAll(response, SECOND_OBJECT_ID);
-                    assertMainExp(response, SECOND_OBJECT_ID, 10503L);
-                    assertAnyExpHasAlternativeFlag(response, SECOND_OBJECT_ID, 10503L, "false");
+                    assertMainExp(response, SECOND_OBJECT_ID, 10504L);
+                    assertAllRuleHasExpIdsExactly(response, SECOND_OBJECT_ID, 10504L);
+                    assertAnyExpHasAlternativeFlag(response, SECOND_OBJECT_ID, 10504L, "false");
                 })
                 .run();
     }

@@ -13,6 +13,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import ru.sber.qa.allure.CriticalRegression;
 import ru.sber.qa.services.kafka.KafkaService;
+import ru.sber.qa.splitter.support.RestConfigLoadModeOnly;
+import ru.sber.qa.splitter.support.SplitterTestProfileOnly;
 import util.support.SplitterVersionProvider;
 
 import static ru.sber.qa.splitter.EXPLAB_2400.SplitterConfigLoad2400TestData.VALUE_EXP_1;
@@ -36,6 +38,7 @@ import static ru.sber.qa.splitter.EXPLAB_2400.SplitterConfigLoadMonitoring2400As
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
+@RestConfigLoadModeOnly
 public class SplitterConfigLoadMonitoring2400FlowTest extends AbstractConfigLoadMonitoring2400FlowTest {
 
     private static final int EXP_ID_1 = 240001;
@@ -43,6 +46,7 @@ public class SplitterConfigLoadMonitoring2400FlowTest extends AbstractConfigLoad
     private static final int EXP_ID_NEGATIVE = 240003;
 
     @Test
+    @SplitterTestProfileOnly("monitoring-contract")
     @DisplayName("EXPLAB-2400-01. API load с таблицей предрасчета публикует точные счетчики LOADED_WITH_PRECALC")
     void apiReloadShouldWriteExactPrecalcCounters(KafkaService kafkaService) {
         long[] versions = SplitterVersionProvider.nextVersions(2);
@@ -73,6 +77,7 @@ public class SplitterConfigLoadMonitoring2400FlowTest extends AbstractConfigLoad
     }
 
     @Test
+    @SplitterTestProfileOnly("monitoring-contract")
     @DisplayName("EXPLAB-2400-02. Добавление эксперимента обновляет linkedExps и totalExps в monitoring")
     void addedExperimentShouldBeReflectedInMonitoringCounters(KafkaService kafkaService) {
         long[] versions = SplitterVersionProvider.nextVersions(2);
@@ -104,6 +109,7 @@ public class SplitterConfigLoadMonitoring2400FlowTest extends AbstractConfigLoad
     }
 
     @Test
+    @SplitterTestProfileOnly("monitoring-contract")
     @DisplayName("EXPLAB-2400-03. Удаление эксперимента исключает его связи из linkedExps")
     void removedExperimentShouldBeExcludedFromMonitoringCounters(KafkaService kafkaService) {
         long[] versions = SplitterVersionProvider.nextVersions(2);
@@ -135,6 +141,7 @@ public class SplitterConfigLoadMonitoring2400FlowTest extends AbstractConfigLoad
     }
 
     @Test
+    @SplitterTestProfileOnly("monitoring-contract")
     @DisplayName("EXPLAB-2400-04. forceConfigLoad=true загружает старую версию и публикует LOADED_WITH_PRECALC")
     void forcedOldVersionShouldWriteLoadedWithPrecalcMonitoring(KafkaService kafkaService) {
         long currentVersion = SplitterVersionProvider.nextVersion();
@@ -211,6 +218,7 @@ public class SplitterConfigLoadMonitoring2400FlowTest extends AbstractConfigLoad
     }
 
     @Test
+    @SplitterTestProfileOnly("monitoring-contract")
     @DisplayName("EXPLAB-2400-07. Ошибка валидации через API публикует VALIDATION_FAILED с resultDetails")
     void validationErrorShouldWriteMonitoring(KafkaService kafkaService) {
         long[] versions = SplitterVersionProvider.nextVersions(2);

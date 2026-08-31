@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.tests_v9.empty_rules;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.GroupDto;
@@ -26,6 +27,7 @@ import java.util.List;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("Tests-v9. MAPPER: experiment with empty rules + many split requests")
+@AnyConfigLoadMode
 public class SplitterV9EmptyRulesManySplitsFlowTest extends AbstractSplitterV9FlowTest {
 
     private static final int REQUEST_COUNT = 100;

@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2633;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.common.ParamDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -29,6 +30,7 @@ import static util.SplitterPrecalcAssertions.shouldBe200;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@AnyConfigLoadMode
 public class SplitterDuplicateParamsAcrossOrGroupsParameterizedFlowTest extends AbstractExplab2633DuplicateConditionsFlowTest {
 
     @CriticalRegression

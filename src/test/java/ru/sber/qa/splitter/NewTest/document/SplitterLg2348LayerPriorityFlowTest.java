@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.NewTest.document;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import com.fasterxml.jackson.databind.JsonNode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -38,6 +39,7 @@ import static util.SplitterPrecalcAssertions.shouldBe200;
  * Если в ConfigMap изменится final-exp-rule для actionType=1, LG-ожидания не должны измениться,
  * пока все experiment остаются с одинаковым actionType и различаются только layerPriority.
  */
+@AnyConfigLoadMode
 public class SplitterLg2348LayerPriorityFlowTest extends AbstractSplitterDocumentFlowTest {
 
     private static final String OBJECT_ID = "23482348-2348-2348-2348-234823482348";

@@ -1,5 +1,7 @@
 package ru.sber.qa.splitter.EXPLAB_2603;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
+import ru.sber.qa.splitter.support.SplitterTestProfileOnly;
 import dto.splitter.config.LoadConfigRequestDto;
 import dto.splitter.split.SplitRequestDto;
 import flow.RestCustomFlow;
@@ -12,6 +14,8 @@ import util.support.SplitterVersionProvider;
 /**
  * Проверяет режим SPLITTER_EMPTY_OBJECTS_RESPONSE_ENABLED=false.
  */
+@AnyConfigLoadMode
+@SplitterTestProfileOnly("empty-objects-disabled")
 class SplitterEmptyObjectsResponseDisabled2603FlowTest extends AbstractEmptyObjectsResponse2603FlowTest {
 
     @Override

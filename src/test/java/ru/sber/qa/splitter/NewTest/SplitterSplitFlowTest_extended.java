@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.NewTest;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.LoadConfigRequestDto;
 import dto.splitter.split.SplitRequestDto;
@@ -26,6 +27,7 @@ import static util.SplitterAssertions.*;
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
+@AnyConfigLoadMode
 public class SplitterSplitFlowTest_extended extends AbstractNewSplitterFlowTest {
 
     @CriticalRegression

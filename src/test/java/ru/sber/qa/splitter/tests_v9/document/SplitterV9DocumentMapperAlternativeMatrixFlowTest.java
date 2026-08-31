@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.tests_v9.document;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
 import dto.splitter.config.LoadConfigRequestDto;
@@ -27,6 +28,7 @@ import java.util.stream.Stream;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("Tests-v9. Тест 3: MAPPER-матрица альтернатив")
+@AnyConfigLoadMode
 public class SplitterV9DocumentMapperAlternativeMatrixFlowTest extends AbstractSplitterV9FlowTest {
 
     @ParameterizedTest(name = "{0}")

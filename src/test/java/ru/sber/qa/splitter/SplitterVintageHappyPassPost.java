@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import config.environment.EnvironmentConfigurationExample;
 import config.services.core.RestEndpointResolver;
@@ -30,6 +31,7 @@ import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 
 @ExtendWith(PerfeccionistaExtension.class)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
+@AnyConfigLoadMode
 public class SplitterVintageHappyPassPost {
     private static final String splitterBaseUri = RestEndpointResolver.baseUri(RestServiceEndpoint.SPLITTER);
 

@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2633;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.LoadConfigRequestDto;
 import dto.splitter.split.SplitRequestDto;
@@ -20,6 +21,7 @@ import static util.SplitterPrecalcAssertions.shouldBe200;
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
+@AnyConfigLoadMode
 public class SplitterDuplicateConditionsSmokeFlowTest extends AbstractExplab2633DuplicateConditionsFlowTest {
 
     @CriticalRegression

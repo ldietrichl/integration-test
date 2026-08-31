@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -30,6 +31,7 @@ import static util.TestAssertions.fail;
 final class PrecalcMonitoring2398KafkaAssertions {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Set<String> SUPPORTED_SERVICE_NAMES = Set.of("splitter-service", "splitter--service");
     private static final Pattern TS_AT = Pattern.compile("@timestamp\"\\s*:\\s*(\\d{10,})(?:\\.\\d+)?");
     private static final Pattern TS_PLAIN = Pattern.compile("\"timestamp\"\\s*:\\s*(\\d{10,})(?:\\.\\d+)?");
     private static final Pattern TS_COMPLETED = Pattern.compile("\"completedTimestamp\"\\s*:\\s*\"?(\\d{10,})\"?");
@@ -63,7 +65,8 @@ final class PrecalcMonitoring2398KafkaAssertions {
         assertEquals(expectation.result(), text(event, "result"), "Некорректный result в monitoring event\n" + event);
         assertEquals(expectation.requestId(), text(event, "requestIdIn"), "Некорректный requestIdIn в monitoring event\n" + event);
         assertEquals(expectation.soConfigVersion(), number(event, "soConfigVersion"), "Некорректный soConfigVersion\n" + event);
-        assertEquals("splitter--service", text(event, "service"), "Некорректный service в monitoring event\n" + event);
+        assertTrue(SUPPORTED_SERVICE_NAMES.contains(text(event, "service")),
+                "Некорректный service в monitoring event\n" + event);
 
         assertPrecalcSplittingPoint(event);
         assertCompletedTimestamp(event, sinceEpochMillis);

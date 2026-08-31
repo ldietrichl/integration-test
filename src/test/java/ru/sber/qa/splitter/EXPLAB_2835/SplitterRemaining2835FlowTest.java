@@ -1,5 +1,6 @@
 package ru.sber.qa.splitter.EXPLAB_2835;
 
+import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import com.fasterxml.jackson.databind.JsonNode;
 import config.environment.EnvironmentConfigurationExample;
 import dto.splitter.config.ExperimentDto;
@@ -45,6 +46,7 @@ import static util.SplitterPrecalcAssertions.shouldHaveSoConfigVersion;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("EXPLAB-2835. Split: remaining functional plan")
+@AnyConfigLoadMode
 public class SplitterRemaining2835FlowTest extends AbstractSplitterV9FlowTest {
 
     private static final AtomicInteger SO_VERSION = new AtomicInteger((int) (System.currentTimeMillis() / 1000L));
