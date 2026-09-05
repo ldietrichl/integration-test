@@ -21,6 +21,7 @@ import static util.TestAssertions.assertEquals;
 import static util.TestAssertions.assertFalse;
 import static util.TestAssertions.assertTrue;
 import static util.TestAssertions.fail;
+import static util.KafkaAllureLog.waitForTopic;
 
 /**
  * Kafka assertions для EXPLAB-2398.
@@ -89,6 +90,8 @@ final class PrecalcMonitoring2398KafkaAssertions {
             consumer.poll(Duration.ofMillis(300));
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
+            waitForTopic(envName, topic, timeout,
+                    "ищем function=PRE_CALC_REQUEST, requestIdIn=" + requestId);
             while (System.currentTimeMillis() < deadline) {
                 consumer.poll(Duration.ofMillis(300));
                 try {

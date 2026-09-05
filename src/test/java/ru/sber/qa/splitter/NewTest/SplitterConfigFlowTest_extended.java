@@ -18,6 +18,7 @@ import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import util.SplitterAssertions;
 import util.support.SplitterVersionProvider;
 import ru.sber.qa.allure.CriticalRegression;
+import ru.sber.qa.allure.ManualTest;
 
 import static request.splitter.SplitterConfigTestDataFactory.emptyExperimentsConfig;
 import static request.splitter.SplitterConfigTestDataFactory.invalidNoConditionsConfig;
@@ -221,6 +222,7 @@ public class SplitterConfigFlowTest_extended extends AbstractNewSplitterFlowTest
     }
 
     @Test
+    @ManualTest
     @Disabled("Exploratory only: на текущем стенде layer-конфиг без salt отклоняется 400, сценарий исключен из contract-набора до уточнения правила")
     @DisplayName("CFG-08. Layer-конфиг без salt загружается и участвует в split")
     void layerBasedConfigShouldLoadWithoutSalt() {

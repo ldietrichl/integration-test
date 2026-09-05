@@ -58,11 +58,11 @@ public class SplitterV9DocumentReactionsLayerMatrixFlowTest extends AbstractSpli
                                      ReactionsCase testCase,
                                      long expectedSpread) {
         if (testCase.expectedMain().length == 0) {
-            assertObjectEmptyOrAbsent(response, OBJECT_REACTIONS);
-            if (hasObject(response, OBJECT_REACTIONS)) {
-                assertRuleAbsent(response, OBJECT_REACTIONS, "MAIN");
-                assertRuleAbsent(response, OBJECT_REACTIONS, "ALL");
+            if (!hasObject(response, OBJECT_REACTIONS)) {
+                return;
             }
+            assertRuleMissingOrEmpty(response, OBJECT_REACTIONS, "MAIN");
+            assertRuleMissingOrEmpty(response, OBJECT_REACTIONS, "ALL");
             return;
         }
 

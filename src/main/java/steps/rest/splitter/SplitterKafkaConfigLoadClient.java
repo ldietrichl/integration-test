@@ -5,42 +5,31 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dto.splitter.config.LoadConfigRequestDto;
+import io.perfeccionista.framework.Environment;
 import io.qameta.allure.Allure;
 import io.restassured.builder.ResponseBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
+import ru.sber.qa.services.kafka.KafkaConsumerClient;
+import ru.sber.qa.services.kafka.KafkaService;
 import ru.sber.qa.services.rest.validation.DefaultValidatableResponseWrapper;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
+import static util.KafkaAllureLog.waitForTopic;
 
 final class SplitterKafkaConfigLoadClient {
 
@@ -51,6 +40,9 @@ final class SplitterKafkaConfigLoadClient {
     private static final String DEFAULT_STATUS_TOPIC = "splitting-config-requested-and-received";
     private static final String DEFAULT_MONITORING_TOPIC = "omon_explab_splitter_log";
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(45);
+    private static final Duration DEFAULT_CONSUMER_WARMUP = Duration.ZERO;
+    private static final String KAFKA_CONSUMER_GROUP_PROPERTY_PREFIX = "kafka_consumer.";
+    private static final String KAFKA_CONSUMER_GROUP_PROPERTY_SUFFIX = ".group.id";
 
     private SplitterKafkaConfigLoadClient() {
     }
@@ -71,22 +63,23 @@ final class SplitterKafkaConfigLoadClient {
         Allure.parameter("splitter.config.kafka.messageKey", messageKey);
         Allure.addAttachment("Kafka input payload / " + inputTopic(), "application/json", payload.raw(), ".json");
 
+        KafkaService kafkaService = kafkaService();
         if (payload.malformedJson()) {
-            sendJson(messageKey, payload.raw());
+            sendJson(kafkaService, messageKey, payload.raw());
             return response(KafkaLoadOutcome.badRequest(payload, messageKey, "Malformed JSON"));
         }
 
         if (badRequestByRequestContract) {
-            sendJson(messageKey, payload.raw());
+            sendJson(kafkaService, messageKey, payload.raw());
             return response(KafkaLoadOutcome.badRequest(payload, messageKey, "Request violates splitter config load contract"));
         }
 
         if (endpointMismatch) {
-            sendJson(messageKey, payload.raw());
+            sendJson(kafkaService, messageKey, payload.raw());
             return response(KafkaLoadOutcome.endpointMismatch(payload, messageKey, endpointSplittingPointCode));
         }
 
-        KafkaLoadOutcome outcome = sendAndWait(messageKey, payload, badRequestByRequestContract);
+        KafkaLoadOutcome outcome = sendAndWait(kafkaService, messageKey, payload, badRequestByRequestContract);
         return response(outcome);
     }
 
@@ -147,21 +140,53 @@ final class SplitterKafkaConfigLoadClient {
         return false;
     }
 
-    private static KafkaLoadOutcome sendAndWait(String messageKey, Payload payload, boolean badRequestByRequestContract) {
+    private static KafkaLoadOutcome sendAndWait(KafkaService kafkaService,
+                                                String messageKey,
+                                                Payload payload,
+                                                boolean badRequestByRequestContract) {
         String observeTopic = statusRequired() ? statusTopic() : monitoringTopic();
-        Properties consumerProperties = consumerProperties(kafkaEnv());
+        String env = kafkaEnv();
+        Duration timeout = timeout();
+        ConsumerGroupOverride consumerGroupOverride = ConsumerGroupOverride.apply(env, messageKey);
 
-        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProperties)) {
-            consumer.subscribe(Collections.singletonList(observeTopic));
-            assignAtEnd(consumer, observeTopic);
+        try {
+            KafkaConsumerClient<String, String> consumer = kafkaService.consumerClient(env, timeout);
+            try {
+                consumer.subscribe(observeTopic);
+                warmUpConsumer(consumer, env, observeTopic);
 
-            long since = System.currentTimeMillis();
-            sendJson(messageKey, payload.raw());
-            return findOutcome(consumer, observeTopic, payload, messageKey, since, badRequestByRequestContract);
+                long since = System.currentTimeMillis();
+                Allure.parameter("splitter.config.kafka.since", String.valueOf(since));
+                Allure.parameter("splitter.config.kafka.observeTopic", observeTopic);
+                sendJson(kafkaService, messageKey, payload.raw());
+                return findOutcome(consumer, env, observeTopic, payload, messageKey, since, badRequestByRequestContract);
+            } finally {
+                try {
+                    consumer.unsubscribe();
+                } catch (Throwable ignored) {
+                }
+            }
+        } finally {
+            consumerGroupOverride.close();
         }
     }
 
-    private static KafkaLoadOutcome findOutcome(KafkaConsumer<String, String> consumer,
+    private static void warmUpConsumer(KafkaConsumerClient<String, String> consumer, String env, String topic) {
+        Duration warmup = consumerWarmup();
+        if (warmup.isZero() || warmup.isNegative()) {
+            consumer.poll(Duration.ofMillis(300));
+            return;
+        }
+
+        waitForTopic(env, topic, warmup, "инициализируем consumer перед отправкой splitter config");
+        long deadline = System.currentTimeMillis() + warmup.toMillis();
+        while (System.currentTimeMillis() < deadline) {
+            consumer.poll(Duration.ofMillis(300));
+        }
+    }
+
+    private static KafkaLoadOutcome findOutcome(KafkaConsumerClient<String, String> consumer,
+                                                String env,
                                                 String topic,
                                                 Payload payload,
                                                 String messageKey,
@@ -170,30 +195,33 @@ final class SplitterKafkaConfigLoadClient {
         Duration timeout = timeout();
         long deadline = System.currentTimeMillis() + timeout.toMillis();
         List<String> observedPayloads = new ArrayList<>();
+        waitForTopic(env, topic, timeout, "ищем splitter config load signal, messageId/requestId=" + messageKey);
 
         while (System.currentTimeMillis() < deadline) {
-            for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofMillis(300))) {
-                if (record.timestamp() > 0 && record.timestamp() < sinceEpochMillis) {
-                    continue;
-                }
-                if (record.value() == null) {
-                    continue;
+            consumer.poll(Duration.ofMillis(300));
+            List<KafkaLoadOutcome> matched = new ArrayList<>();
+            consumer.records().forEach(recordWrapper -> {
+                ConsumerRecord<?, ?> record = recordWrapper.toConsumerRecord();
+                Object value = record.value();
+                if (value == null) {
+                    return;
                 }
 
-                String raw = unescapeUnicode(record.value());
-                observedPayloads.add(raw);
-                Optional<KafkaLoadOutcome> outcome = extractObjectNodes(raw).stream()
+                String raw = unescapeUnicode(String.valueOf(value));
+                observedPayloads.add(recordInfo(record) + System.lineSeparator() + raw);
+                extractObjectNodes(raw).stream()
                         .map(node -> outcomeFromNode(node, payload, messageKey, badRequestByRequestContract))
                         .filter(Optional::isPresent)
                         .map(Optional::get)
-                        .findFirst();
-                if (outcome.isPresent()) {
-                    Allure.addAttachment("Kafka matched payload / " + topic,
-                            "application/json",
-                            pretty(outcome.get().sourceNode()),
-                            ".json");
-                    return outcome.get();
-                }
+                        .forEach(matched::add);
+            });
+            if (!matched.isEmpty()) {
+                KafkaLoadOutcome outcome = matched.get(0);
+                Allure.addAttachment("Kafka matched payload / " + topic,
+                        "application/json",
+                        pretty(outcome.sourceNode()),
+                        ".json");
+                return outcome;
             }
         }
 
@@ -207,6 +235,7 @@ final class SplitterKafkaConfigLoadClient {
         throw new AssertionError("Не найден Kafka-сигнал загрузки splitter config"
                 + "\nTopic=" + topic
                 + "\nEnv=" + kafkaEnv()
+                + "\nConsumerGroup=" + ConsumerGroupOverride.currentGroupId(env)
                 + "\nmessageId/requestId=" + messageKey
                 + "\nSince=" + sinceEpochMillis
                 + "\nObserved sample:\n" + sample);
@@ -274,19 +303,16 @@ final class SplitterKafkaConfigLoadClient {
                         || Objects.equals(candidate, text(node, "configMessageId")));
     }
 
-    private static void sendJson(String key, String payload) {
+    private static void sendJson(KafkaService kafkaService, String key, String payload) {
         String env = kafkaEnv();
         String topic = inputTopic();
-        Duration timeout = timeout();
 
         Allure.parameter("splitter.config.kafka.env", env);
         Allure.parameter("splitter.config.kafka.inputTopic", topic);
+        Allure.step("Отправляем splitter config в Kafka topic " + topic + ". Kafka[" + env + "]");
 
-        Properties properties = producerProperties(env);
-        try (KafkaProducer<String, String> producer = new KafkaProducer<>(properties)) {
-            producer.send(new ProducerRecord<>(topic, key, payload))
-                    .get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-            producer.flush();
+        try {
+            kafkaService.producerClient(env).sendRecord(topic, key, payload);
         } catch (Exception exception) {
             throw new AssertionError("Не удалось отправить splitter config в Kafka topic=" + topic
                     + ", env=" + env
@@ -295,19 +321,21 @@ final class SplitterKafkaConfigLoadClient {
         }
     }
 
-    private static void assignAtEnd(KafkaConsumer<String, String> consumer, String topic) {
-        long deadline = System.currentTimeMillis() + Duration.ofSeconds(5).toMillis();
-        while (consumer.assignment().isEmpty() && System.currentTimeMillis() < deadline) {
-            consumer.poll(Duration.ofMillis(200));
+    private static KafkaService kafkaService() {
+        try {
+            return Environment.getForCurrentThread().getService(KafkaService.class);
+        } catch (RuntimeException exception) {
+            throw new AssertionError("KafkaService не зарегистрирован в Perfeccionista Environment. "
+                    + "Проверь EnvironmentConfigurationExample и DefaultKafkaServiceConfiguration.", exception);
         }
+    }
 
-        Set<TopicPartition> assignment = consumer.assignment();
-        if (assignment.isEmpty()) {
-            throw new AssertionError("Kafka consumer не получил partition assignment для topic=" + topic
-                    + ", env=" + kafkaEnv());
-        }
-        consumer.seekToEnd(assignment);
-        assignment.forEach(consumer::position);
+    private static String recordInfo(ConsumerRecord<?, ?> record) {
+        return "topic=" + record.topic()
+                + ", partition=" + record.partition()
+                + ", offset=" + record.offset()
+                + ", timestamp=" + record.timestamp()
+                + ", key=" + record.key();
     }
 
     private static Response response(KafkaLoadOutcome outcome) {
@@ -367,83 +395,39 @@ final class SplitterKafkaConfigLoadClient {
     }
 
     private static boolean statusRequired() {
-        return SplitterConfigProperties.bool("splitter.config.kafka.status.required", true);
+        return SplitterConfigProperties.bool("splitter.config.kafka.status.required", false);
     }
 
     private static Duration timeout() {
         return SplitterConfigProperties.durationSeconds("splitter.config.kafka.timeout.seconds", DEFAULT_TIMEOUT);
     }
 
-    private static Properties producerProperties(String env) {
-        Properties source = classpathProperties("kafka-producers.properties");
-        Properties target = new Properties();
-        applyPrefix(source, target, "kafka_producer.all.");
-        applyPrefix(source, target, "kafka_producer." + env + ".");
-        applySystemPrefix(target, "kafka_producer.all.");
-        applySystemPrefix(target, "kafka_producer." + env + ".");
-
-        target.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        target.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        target.putIfAbsent(ProducerConfig.ACKS_CONFIG, "1");
-
-        Object bootstrapServers = target.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
-        if (bootstrapServers == null || String.valueOf(bootstrapServers).isBlank()) {
-            throw new AssertionError("Не заданы bootstrap.servers для Kafka producer env=" + env
-                    + ". Добавь kafka_producer." + env + ".bootstrap.servers в kafka-producers.properties"
-                    + " или передай -Dkafka_producer." + env + ".bootstrap.servers=<hosts>");
-        }
-        return target;
+    private static Duration consumerWarmup() {
+        return SplitterConfigProperties.durationSeconds("splitter.config.kafka.consumer.warmup.seconds", DEFAULT_CONSUMER_WARMUP);
     }
 
-    private static Properties consumerProperties(String env) {
-        Properties source = classpathProperties("kafka-consumers.properties");
-        Properties target = new Properties();
-        applyPrefix(source, target, "kafka_consumer.all.");
-        applyPrefix(source, target, "kafka_consumer." + env + ".");
-        applySystemPrefix(target, "kafka_consumer.all.");
-        applySystemPrefix(target, "kafka_consumer." + env + ".");
-
-        target.remove("key.serializer");
-        target.remove("value.serializer");
-        target.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        target.putIfAbsent(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        target.put(ConsumerConfig.GROUP_ID_CONFIG, "splitter-config-load-" + UUID.randomUUID());
-        target.putIfAbsent(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-        target.putIfAbsent(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-        target.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, "300");
-        target.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "500");
-
-        Object bootstrapServers = target.get(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG);
-        if (bootstrapServers == null || String.valueOf(bootstrapServers).isBlank()) {
-            throw new AssertionError("Не заданы bootstrap.servers для Kafka consumer env=" + env
-                    + ". Добавь kafka_consumer." + env + ".bootstrap.servers в kafka-consumers.properties"
-                    + " или передай -Dkafka_consumer." + env + ".bootstrap.servers=<hosts>");
-        }
-        return target;
+    private static boolean uniqueConsumerGroupEnabled() {
+        return SplitterConfigProperties.bool("splitter.config.kafka.unique.consumer.group.enabled", true);
     }
 
-    private static Properties classpathProperties(String resource) {
-        Properties properties = new Properties();
-        try (InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resource)) {
-            if (inputStream != null) {
-                properties.load(inputStream);
-            }
-        } catch (IOException exception) {
-            throw new IllegalStateException("Не удалось прочитать " + resource, exception);
-        }
-        return properties;
+    private static String observerGroupPrefix() {
+        return SplitterConfigProperties.string("splitter.config.kafka.consumer.group.prefix",
+                "integration-test-splitter-config-load");
     }
 
-    private static void applyPrefix(Properties source, Properties target, String prefix) {
-        source.stringPropertyNames().stream()
-                .filter(name -> name.startsWith(prefix))
-                .forEach(name -> target.put(name.substring(prefix.length()), source.getProperty(name)));
+    private static String kafkaConsumerGroupProperty(String env) {
+        return KAFKA_CONSUMER_GROUP_PROPERTY_PREFIX + env + KAFKA_CONSUMER_GROUP_PROPERTY_SUFFIX;
     }
 
-    private static void applySystemPrefix(Properties target, String prefix) {
-        System.getProperties().stringPropertyNames().stream()
-                .filter(name -> name.startsWith(prefix))
-                .forEach(name -> target.put(name.substring(prefix.length()), System.getProperty(name)));
+    private static String observerGroupId(String env, String messageKey) {
+        return observerGroupPrefix()
+                + "-" + safeGroupIdPart(env)
+                + "-" + safeGroupIdPart(messageKey);
+    }
+
+    private static String safeGroupIdPart(String raw) {
+        String value = raw == null ? "unknown" : raw.replaceAll("[^a-zA-Z0-9._-]", "-");
+        return value.length() <= 64 ? value : value.substring(0, 64);
     }
 
     private static String toJson(Object object) {
@@ -592,6 +576,58 @@ final class SplitterKafkaConfigLoadClient {
             i++;
         }
         return out.toString();
+    }
+
+    private static final class ConsumerGroupOverride implements AutoCloseable {
+        private final String propertyName;
+        private final String previousValue;
+        private final boolean hadPreviousValue;
+        private final String currentValue;
+
+        private ConsumerGroupOverride(String propertyName,
+                                      String previousValue,
+                                      boolean hadPreviousValue,
+                                      String currentValue) {
+            this.propertyName = propertyName;
+            this.previousValue = previousValue;
+            this.hadPreviousValue = hadPreviousValue;
+            this.currentValue = currentValue;
+        }
+
+        static ConsumerGroupOverride apply(String env, String messageKey) {
+            String propertyName = kafkaConsumerGroupProperty(env);
+            String previousValue = System.getProperty(propertyName);
+            boolean hadPreviousValue = previousValue != null;
+
+            if (!uniqueConsumerGroupEnabled()) {
+                Allure.parameter("splitter.config.kafka.consumer.group.property", propertyName);
+                Allure.parameter("splitter.config.kafka.consumer.group.id", currentGroupId(env));
+                return new ConsumerGroupOverride(propertyName, previousValue, hadPreviousValue, previousValue);
+            }
+
+            String groupId = observerGroupId(env, messageKey);
+            System.setProperty(propertyName, groupId);
+            Allure.parameter("splitter.config.kafka.consumer.group.property", propertyName);
+            Allure.parameter("splitter.config.kafka.consumer.group.id", groupId);
+            Allure.step("Наблюдаем ответ splitter config load из Kafka через consumer group " + groupId);
+            return new ConsumerGroupOverride(propertyName, previousValue, hadPreviousValue, groupId);
+        }
+
+        static String currentGroupId(String env) {
+            return System.getProperty(kafkaConsumerGroupProperty(env), "");
+        }
+
+        @Override
+        public void close() {
+            if (propertyName == null || currentValue == null) {
+                return;
+            }
+            if (hadPreviousValue) {
+                System.setProperty(propertyName, previousValue);
+            } else {
+                System.clearProperty(propertyName);
+            }
+        }
     }
 
     private record Payload(String raw, JsonNode root, boolean malformedJson) {

@@ -34,6 +34,7 @@ import static util.TestAssertions.assertFalse;
 import static util.TestAssertions.assertNotNull;
 import static util.TestAssertions.assertTrue;
 import static util.TestAssertions.fail;
+import static util.KafkaAllureLog.waitForTopic;
 import static util.SplitterPrecalcAssertions.shouldBe200;
 import static util.SplitterPrecalcAssertions.shouldBeConfigLoaded;
 
@@ -460,6 +461,7 @@ public abstract class AbstractSplitterV9FlowTest extends AbstractAnalyticSplitte
             consumer.subscribe(topic);
             consumer.poll(Duration.ofMillis(300));
             long deadline = System.currentTimeMillis() + timeout.toMillis();
+            waitForTopic(env, topic, timeout, "ищем payload по requestId=" + requestId);
             while (System.currentTimeMillis() < deadline) {
                 consumer.poll(Duration.ofMillis(300));
                 try {

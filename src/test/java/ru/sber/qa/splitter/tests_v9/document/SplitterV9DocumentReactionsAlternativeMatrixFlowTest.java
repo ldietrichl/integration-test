@@ -64,11 +64,11 @@ public class SplitterV9DocumentReactionsAlternativeMatrixFlowTest extends Abstra
                                   ExpectedMain expectedMain,
                                   long expectedSpread) {
         if (expectedMain == null) {
-            assertObjectEmptyOrAbsent(response, objectId);
-            if (hasObject(response, objectId)) {
-                assertRuleAbsent(response, objectId, "MAIN");
-                assertRuleAbsent(response, objectId, "ALL");
+            if (!hasObject(response, objectId)) {
+                return;
             }
+            assertRuleMissingOrEmpty(response, objectId, "MAIN");
+            assertRuleMissingOrEmpty(response, objectId, "ALL");
             return;
         }
 

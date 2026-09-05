@@ -58,7 +58,7 @@ public class SplitterConfigKafkaEmptyRules2739FlowTest extends AbstractSplitterV
                     kafkaSince[0] = System.currentTimeMillis();
                     kafkaFlow.sendConfig(config);
                 })
-                .step("Проверяем статус CONFIG_LOADED в splitting-config-requested-and-received", flow -> {
+                .step("Проверяем Kafka load signal по status topic или monitoring", flow -> {
                     if (kafkaFlow.isStatusRequired()) {
                         JsonNode status = kafkaFlow.findStatusByConfigMessageId(kafkaService,
                                 config.getMessageId(),
