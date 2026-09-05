@@ -1,5 +1,6 @@
 package config.environment;
 
+import config.services.core.SecureAwareConfigurationService;
 import config.services.data.CustomAllureDataSourceServiceConfiguration;
 import config.services.db.CustomDatabaseServiceConfiguration;
 import config.services.rest.CustomAllure2RestServiceConfiguration;
@@ -30,7 +31,9 @@ public class EnvironmentConfigWithDbRest extends DefaultEnvironmentConfiguration
         return super.getServiceConfigurations()
                 // Служебные сервисы
                 .put(ConfiguredServiceHolder.of(
-                        ConfigurationService.class, new DefaultConfigurationServiceConfiguration()))
+                        ConfigurationService.class,
+                        SecureAwareConfigurationService.class,
+                        new DefaultConfigurationServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(FixtureService.class, new DefaultFixtureServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(
                         DataConverterService.class, new DefaultDataConverterServiceConfiguration()))

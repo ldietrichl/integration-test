@@ -24,6 +24,9 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.UUID;
+
+import util.support.SplitterVersionProvider;
 
 import static io.qameta.allure.Allure.step;
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
@@ -56,15 +59,15 @@ public class SplitterOperatorsLinkRulesTest {
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg_1 = Files.readString(pathReqNeg_1);
         String fileReqNeg_2 = Files.readString(pathReqNeg_2);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -154,15 +157,15 @@ public class SplitterOperatorsLinkRulesTest {
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg_1 = Files.readString(pathReqNeg_1);
         String fileReqNeg_2 = Files.readString(pathReqNeg_2);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),

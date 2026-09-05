@@ -83,7 +83,7 @@ public class SplitterConfigLoadRules2834FlowTest extends AbstractSplitterV9FlowT
                 .run();
     }
 
-    @Disabled("Требуется отдельный стендовый профиль с splitter.config.api-config-load=false")
+    @Disabled("Требуется отдельный стендовый профиль с SPLITTER_API_CONFIG_LOAD=false")
     @Test
     @DisplayName("EXPLAB-2834-API-02. Manual/env: API-загрузка выключена")
     void apiLoadDisabledShouldRejectConfigWithoutChangingActiveVersion() {

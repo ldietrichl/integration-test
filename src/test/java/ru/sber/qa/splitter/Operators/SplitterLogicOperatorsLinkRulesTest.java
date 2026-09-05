@@ -24,6 +24,9 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.UUID;
+
+import util.support.SplitterVersionProvider;
 
 import static io.qameta.allure.Allure.step;
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
@@ -54,15 +57,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -121,15 +124,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -189,15 +192,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -256,15 +259,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -327,15 +330,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -398,15 +401,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -472,15 +475,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileReqNeg_1 = Files.readString(pathReqNeg_1);
         String fileReqNeg_2 = Files.readString(pathReqNeg_2);
         String fileReqNeg_3 = Files.readString(pathReqNeg_3);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -576,15 +579,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileReqNeg_1 = Files.readString(pathReqNeg_1);
         String fileReqNeg_2 = Files.readString(pathReqNeg_2);
         String fileReqNeg_3 = Files.readString(pathReqNeg_3);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -679,15 +682,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -753,15 +756,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileReqNeg_1 = Files.readString(pathReqNeg_1);
         String fileReqNeg_2 = Files.readString(pathReqNeg_2);
         String fileReqNeg_3 = Files.readString(pathReqNeg_3);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),

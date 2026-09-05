@@ -1,5 +1,6 @@
 package config.environment;
 
+import config.services.core.SecureAwareConfigurationService;
 import config.services.data.CustomAllureDataSourceServiceConfiguration;
 import config.services.rest.CustomAllure2RestServiceConfiguration;
 import io.perfeccionista.framework.DefaultEnvironmentConfiguration;
@@ -28,7 +29,9 @@ public class EnvironmentConfigWithRest extends DefaultEnvironmentConfiguration {
         return super.getServiceConfigurations()
                 // Служебные сервисы
                 .put(ConfiguredServiceHolder.of(
-                        ConfigurationService.class, new DefaultConfigurationServiceConfiguration()))
+                        ConfigurationService.class,
+                        SecureAwareConfigurationService.class,
+                        new DefaultConfigurationServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(FixtureService.class, new DefaultFixtureServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(
                         DataConverterService.class, new DefaultDataConverterServiceConfiguration()))

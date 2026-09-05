@@ -1,5 +1,6 @@
 package config.environment;
 
+import config.services.core.SecureAwareConfigurationService;
 import config.services.data.CustomAllureDataSourceServiceConfiguration;
 import config.services.db.CustomDatabaseServiceConfiguration;
 import config.services.rest.CustomAllure2RestServiceConfiguration;
@@ -34,7 +35,9 @@ public class EnvironmentConfigurationExample extends DefaultEnvironmentConfigura
     public @NotNull ServiceConfigurationManager getServiceConfigurations() {
         return super.getServiceConfigurations()
                 .put(ConfiguredServiceHolder.of(
-                        ConfigurationService.class, new DefaultConfigurationServiceConfiguration()))
+                        ConfigurationService.class,
+                        SecureAwareConfigurationService.class,
+                        new DefaultConfigurationServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(FixtureService.class, new DefaultFixtureServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(ValueService.class))
                 .put(ConfiguredServiceHolder.of(

@@ -52,9 +52,6 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
     private static final Set<String> ALLOWED_TEST_STAGES = Set.of(
             "code", "dev", "devBarier", "st", "ift", "lt", "psi", "prom"
     );
-    private static final Pattern JSON_FULL_NAME_PATTERN = Pattern.compile(
-            "\"fullName\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
-
     private static final Path PROJECT_DIRECTORY = Path.of(System.getProperty("user.dir", "."))
             .toAbsolutePath()
             .normalize();
@@ -180,41 +177,14 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
         try {
             String fileName = resultFile.getFileName().toString();
             String uuid = fileName.substring(0, fileName.length() - "-result.json".length());
-            String content = Files.readString(resultFile, StandardCharsets.UTF_8);
-            String fullName = extractJsonFullName(content)
-                    .map(RequiredAllureLabelsExtension::stripInvocationSuffix)
-                    .orElse("");
 
-            if (RESULT_UUIDS_TO_PRUNE.contains(uuid)
-                    || EXCLUDED_TEST_NAMES.contains(fullName)
-                    || OUTDATED_RULES.stream().anyMatch(rule -> rule.matches(fullName)
-                    || rule.matches(classNameFromFullName(fullName)))) {
+            if (RESULT_UUIDS_TO_PRUNE.contains(uuid)) {
                 Files.deleteIfExists(resultFile);
             }
         } catch (IOException exception) {
             System.err.println("Cannot delete excluded Allure result " + resultFile + ": "
                     + exception.getMessage());
         }
-    }
-
-    private static Optional<String> extractJsonFullName(String content) {
-        Matcher matcher = JSON_FULL_NAME_PATTERN.matcher(content);
-        if (!matcher.find()) {
-            return Optional.empty();
-        }
-        return Optional.of(unescapeJsonString(matcher.group(1)));
-    }
-
-    private static String unescapeJsonString(String value) {
-        return value
-                .replace("\\\"", "\"")
-                .replace("\\\\", "\\")
-                .replace("\\/", "/")
-                .replace("\\b", "\b")
-                .replace("\\f", "\f")
-                .replace("\\n", "\n")
-                .replace("\\r", "\r")
-                .replace("\\t", "\t");
     }
 
     private static Path resolveAllureResultsDirectory() {
@@ -230,10 +200,7 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
 
     private static Set<String> loadExcludedTestNames() {
         Set<String> result = new LinkedHashSet<>();
-        List<Path> candidates = Arrays.asList(
-                optionalPath(System.getProperty("report.exclusions.file")),
-                PROJECT_DIRECTORY.resolve("build/report-eligibility/excluded-tests.txt")
-        );
+        List<Path> candidates = Arrays.asList(optionalPath(System.getProperty("report.exclusions.file")));
         for (Path candidate : candidates) {
             if (candidate == null || !Files.isRegularFile(candidate)) {
                 continue;

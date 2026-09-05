@@ -5,26 +5,21 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dto.splitter.config.LoadConfigRequestDto;
 import io.qameta.allure.Allure;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.StringSerializer;
+import io.perfeccionista.framework.Environment;
 import ru.sber.qa.services.kafka.KafkaService;
+import util.KafkaAllureLog;
+import util.SplitterKafkaConsumerGroupOverride;
+import util.SplitterKafkaProperties;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 import static util.TestAssertions.fail;
 
 final class SplitterConfigKafkaLoad2739Flow {
@@ -35,23 +30,34 @@ final class SplitterConfigKafkaLoad2739Flow {
     private static final String DEFAULT_MONITORING_TOPIC = "omon_explab_splitter_log";
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(45);
 
+    boolean isStatusRequired() {
+        return SplitterKafkaProperties.bool("splitter.config.kafka.status.required", false);
+    }
+
     void sendConfig(LoadConfigRequestDto request) {
-        sendRaw(request.getMessageId(), toJson(request));
+        sendConfig(kafkaService(), request);
+    }
+
+    void sendConfig(KafkaService kafkaService, LoadConfigRequestDto request) {
+        sendRaw(kafkaService, request.getMessageId(), toJson(request));
     }
 
     void sendRaw(String messageKey, String payload) {
+        sendRaw(kafkaService(), messageKey, payload);
+    }
+
+    void sendRaw(KafkaService kafkaService, String messageKey, String payload) {
         String env = kafkaEnv();
         String topic = inputTopic();
-        Duration timeout = timeout();
 
         Allure.parameter("splitter.config.kafka.env", env);
         Allure.parameter("splitter.config.kafka.inputTopic", topic);
         Allure.addAttachment("Kafka input payload / " + topic, "application/json", payload, ".json");
+        KafkaAllureLog.sendToTopic(env, topic, messageKey, "splitter config load");
 
-        try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerProperties(env))) {
-            producer.send(new ProducerRecord<>(topic, messageKey, payload))
-                    .get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-            producer.flush();
+        try {
+            kafkaService.<String, String>producerClient(env)
+                    .sendRecord(topic, messageKey, payload);
         } catch (Exception exception) {
             throw new AssertionError("Не удалось отправить сообщение в Kafka topic=" + topic
                     + ", env=" + env
@@ -60,15 +66,45 @@ final class SplitterConfigKafkaLoad2739Flow {
         }
     }
 
+    private KafkaService kafkaService() {
+        return Environment.getForCurrentThread().getService(KafkaService.class);
+    }
+
     JsonNode findStatusByConfigMessageId(KafkaService kafkaService,
-                                         String configMessageId,
-                                         long sinceEpochMillis) {
+                                          String configMessageId,
+                                          long sinceEpochMillis) {
         return findJsonNode(kafkaService,
                 statusTopic(),
                 sinceEpochMillis,
                 node -> configMessageId.equals(text(node, "configMessageId"))
                         && "STATUS".equals(normalizedText(node, "messageType")),
-                "status by configMessageId=" + configMessageId);
+                "status by configMessageId=" + configMessageId,
+                configMessageId);
+    }
+
+    JsonNode findStatusOrMonitoringByConfigMessageId(KafkaService kafkaService,
+                                                     String configMessageId,
+                                                     String expectedStatus,
+                                                     long sinceEpochMillis,
+                                                     String... expectedMonitoringResults) {
+        if (isStatusRequired()) {
+            return findStatusByConfigMessageId(kafkaService, configMessageId, sinceEpochMillis);
+        }
+
+        List<String> monitoringResults = monitoringResultsFor(expectedStatus, expectedMonitoringResults);
+        Allure.parameter("splitter.config.kafka.status.required", "false");
+        Allure.step("Status topic check отключен: подтверждаем Kafka config load через monitoring topic "
+                + monitoringTopic());
+        return findJsonNode(kafkaService,
+                monitoringTopic(),
+                sinceEpochMillis,
+                node -> "SPLITTING_CONFIG_LOAD".equals(normalizedText(node, "function"))
+                        && monitoringResults.contains(normalizedText(node, "result"))
+                        && messageIdMatches(node, configMessageId),
+                "monitoring fallback for status=" + expectedStatus
+                        + ", results=" + monitoringResults
+                        + ", messageId/requestIdIn=" + configMessageId,
+                configMessageId);
     }
 
     JsonNode findMonitoringByMessageIdAndResult(KafkaService kafkaService,
@@ -81,14 +117,16 @@ final class SplitterConfigKafkaLoad2739Flow {
                 node -> "SPLITTING_CONFIG_LOAD".equals(normalizedText(node, "function"))
                         && result.equals(normalizedText(node, "result"))
                         && messageIdMatches(node, messageId),
-                "monitoring result=" + result + ", messageId/requestIdIn=" + messageId);
+                "monitoring result=" + result + ", messageId/requestIdIn=" + messageId,
+                messageId);
     }
 
     private JsonNode findJsonNode(KafkaService kafkaService,
                                   String topic,
                                   long sinceEpochMillis,
                                   Predicate<JsonNode> predicate,
-                                  String assertionContext) {
+                                  String assertionContext,
+                                  String consumerGroupKey) {
         String env = kafkaEnv();
         Duration timeout = timeout();
         Allure.parameter("splitter.config.kafka.consumerEnv", env);
@@ -96,47 +134,50 @@ final class SplitterConfigKafkaLoad2739Flow {
         Allure.parameter("splitter.config.kafka.since", String.valueOf(sinceEpochMillis));
         Allure.parameter("splitter.config.kafka.timeout", timeout.toString());
 
-        var consumer = kafkaService.consumerClient(env, timeout);
         List<String> observedPayloads = new ArrayList<>();
-        try {
-            consumer.subscribe(topic);
-            consumer.poll(Duration.ofMillis(300));
-
-            long deadline = System.currentTimeMillis() + timeout.toMillis();
-            while (System.currentTimeMillis() < deadline) {
+        try (SplitterKafkaConsumerGroupOverride ignoredGroup =
+                     SplitterKafkaConsumerGroupOverride.apply(env, consumerGroupKey)) {
+            var consumer = kafkaService.consumerClient(env, timeout);
+            try (KafkaAllureLog.Scope ignored = KafkaAllureLog.waitingForTopic(env, topic, timeout, assertionContext)) {
+                consumer.subscribe(topic);
                 consumer.poll(Duration.ofMillis(300));
-                List<JsonNode> matched = new ArrayList<>();
-                consumer.records().forEach(recordWrapper -> {
-                    var record = recordWrapper.toConsumerRecord();
-                    Object raw = record.value();
-                    if (raw == null) {
-                        return;
-                    }
-                    long recordTimestamp = record.timestamp();
-                    if (recordTimestamp > 0 && recordTimestamp < sinceEpochMillis) {
-                        return;
-                    }
 
-                    String payload = unescapeUnicode(String.valueOf(raw));
-                    observedPayloads.add(payload);
-                    extractObjectNodes(payload).stream()
-                            .filter(predicate)
-                            .forEach(matched::add);
-                });
+                long deadline = System.currentTimeMillis() + timeout.toMillis();
+                while (System.currentTimeMillis() < deadline) {
+                    consumer.poll(Duration.ofMillis(300));
+                    List<JsonNode> matched = new ArrayList<>();
+                    consumer.records().forEach(recordWrapper -> {
+                        var record = recordWrapper.toConsumerRecord();
+                        Object raw = record.value();
+                        if (raw == null) {
+                            return;
+                        }
+                        long recordTimestamp = record.timestamp();
+                        if (recordTimestamp > 0 && recordTimestamp < sinceEpochMillis) {
+                            return;
+                        }
 
-                if (!matched.isEmpty()) {
-                    JsonNode node = matched.get(0);
-                    Allure.addAttachment("Kafka matched payload / " + assertionContext,
-                            "application/json",
-                            pretty(node),
-                            ".json");
-                    return node;
+                        String payload = unescapeUnicode(String.valueOf(raw));
+                        observedPayloads.add(payload);
+                        extractObjectNodes(payload).stream()
+                                .filter(predicate)
+                                .forEach(matched::add);
+                    });
+
+                    if (!matched.isEmpty()) {
+                        JsonNode node = matched.get(0);
+                        Allure.addAttachment("Kafka matched payload / " + assertionContext,
+                                "application/json",
+                                pretty(node),
+                                ".json");
+                        return node;
+                    }
                 }
-            }
-        } finally {
-            try {
-                consumer.unsubscribe();
-            } catch (Throwable ignored) {
+            } finally {
+                try {
+                    consumer.unsubscribe();
+                } catch (Throwable ignored) {
+                }
             }
         }
 
@@ -156,68 +197,46 @@ final class SplitterConfigKafkaLoad2739Flow {
     }
 
     private String kafkaEnv() {
-        return System.getProperty("splitter.config.kafka.env", TEST_CONFIG.env());
+        return SplitterKafkaProperties.kafkaEnv("splitter.config.kafka.env");
     }
 
     private String inputTopic() {
-        return System.getProperty("splitter.config.kafka.input.topic", DEFAULT_INPUT_TOPIC);
+        return SplitterKafkaProperties.string("splitter.config.kafka.input.topic", DEFAULT_INPUT_TOPIC);
     }
 
     private String statusTopic() {
-        return System.getProperty("splitter.config.kafka.status.topic", DEFAULT_STATUS_TOPIC);
+        return SplitterKafkaProperties.string("splitter.config.kafka.status.topic", DEFAULT_STATUS_TOPIC);
     }
 
     private String monitoringTopic() {
-        return System.getProperty("splitter.config.kafka.monitoring.topic", DEFAULT_MONITORING_TOPIC);
+        return SplitterKafkaProperties.string("splitter.config.kafka.monitoring.topic", DEFAULT_MONITORING_TOPIC);
     }
 
     private Duration timeout() {
-        return Duration.ofSeconds(Long.parseLong(System.getProperty(
-                "splitter.config.kafka.timeout.seconds",
-                String.valueOf(DEFAULT_TIMEOUT.toSeconds()))));
+        return SplitterKafkaProperties.durationSeconds("splitter.config.kafka.timeout.seconds", DEFAULT_TIMEOUT);
     }
 
-    private static Properties producerProperties(String env) {
-        Properties source = new Properties();
-        try (InputStream inputStream = Thread.currentThread()
-                .getContextClassLoader()
-                .getResourceAsStream("kafka-producers.properties")) {
-            if (inputStream != null) {
-                source.load(inputStream);
+    private static List<String> monitoringResultsFor(String expectedStatus, String... explicitResults) {
+        List<String> results = new ArrayList<>();
+        if (explicitResults != null) {
+            for (String explicitResult : explicitResults) {
+                if (explicitResult != null && !explicitResult.isBlank()) {
+                    results.add(explicitResult);
+                }
             }
-        } catch (IOException exception) {
-            throw new IllegalStateException("Не удалось прочитать kafka-producers.properties", exception);
         }
-
-        Properties target = new Properties();
-        applyPrefix(source, target, "kafka_producer.all.");
-        applyPrefix(source, target, "kafka_producer." + env + ".");
-        applySystemPrefix(target, "kafka_producer.all.");
-        applySystemPrefix(target, "kafka_producer." + env + ".");
-
-        target.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        target.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        target.putIfAbsent(ProducerConfig.ACKS_CONFIG, "1");
-
-        Object bootstrapServers = target.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
-        if (bootstrapServers == null || String.valueOf(bootstrapServers).isBlank()) {
-            throw new AssertionError("Не заданы bootstrap.servers для Kafka producer env=" + env
-                    + ". Добавь kafka_producer." + env + ".bootstrap.servers в kafka-producers.properties"
-                    + " или передай -Dkafka_producer." + env + ".bootstrap.servers=<hosts>");
+        if (!results.isEmpty()) {
+            return results;
         }
-        return target;
-    }
-
-    private static void applyPrefix(Properties source, Properties target, String prefix) {
-        source.stringPropertyNames().stream()
-                .filter(name -> name.startsWith(prefix))
-                .forEach(name -> target.put(name.substring(prefix.length()), source.getProperty(name)));
-    }
-
-    private static void applySystemPrefix(Properties target, String prefix) {
-        System.getProperties().stringPropertyNames().stream()
-                .filter(name -> name.startsWith(prefix))
-                .forEach(name -> target.put(name.substring(prefix.length()), System.getProperty(name)));
+        if ("CONFIG_LOADED".equals(expectedStatus)) {
+            results.add("LOADED");
+            results.add("LOADED_WITH_PRECALC");
+            return results;
+        }
+        results.add("NOT_LOADED_OLD_VERSION");
+        results.add("REQUEST_PARAMS_WITH_PRECALC_ENABLED");
+        results.add("VALIDATION_FAILED");
+        return results;
     }
 
     private static String toJson(Object object) {

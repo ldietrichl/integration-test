@@ -11,6 +11,7 @@ import io.qameta.allure.Allure;
 import ru.sber.qa.services.kafka.KafkaService;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import ru.sber.qa.splitter.analytictests.common.AbstractAnalyticSplitterFlowTest;
+import util.SplitterKafkaProperties;
 import util.support.SplitterVersionProvider;
 
 import java.time.Duration;
@@ -19,7 +20,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 import static util.SplitterPrecalcAssertions.shouldBe200;
 import static util.SplitterPrecalcAssertions.shouldBeConfigLoaded;
 import static util.SplitterPrecalcAssertions.shouldHaveSoConfigVersion;
@@ -147,7 +147,7 @@ abstract class AbstractPrecalcMonitoring2398FlowTest extends AbstractAnalyticSpl
     }
 
     private String monitoringKafkaEnv() {
-        return System.getProperty("splitter.precalc.monitoring.kafka.env", TEST_CONFIG.env());
+        return SplitterKafkaProperties.kafkaEnv("splitter.precalc.monitoring.kafka.env");
     }
 
     private String monitoringTopic() {

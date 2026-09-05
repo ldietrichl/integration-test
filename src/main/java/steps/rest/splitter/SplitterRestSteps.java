@@ -14,8 +14,12 @@ public class SplitterRestSteps {
     }
 
     public ValidatableResponseWrapper loadConfig(Object body) {
-        return Allure.step("Загрузка конфигурации сплиттера", () ->
-                client.post(spec -> spec.body(body), Endpoints.Splitter.SPLITTER_CONFIG)
+        return Allure.step("Загрузка конфигурации сплиттера", () -> {
+            if (isKafkaConfigLoadMode()) {
+                return SplitterKafkaConfigLoadClient.load(body, "MAPPER");
+            }
+            return client.post(spec -> spec.body(body), Endpoints.Splitter.SPLITTER_CONFIG);
+        }
         );
     }
 
@@ -44,8 +48,12 @@ public class SplitterRestSteps {
     }
 
     public ValidatableResponseWrapper loadReactionsConfig(Object body) {
-        return Allure.step("Загрузка конфигурации сплиттера через дополнительный endpoint", () ->
-                client.post(spec -> spec.body(body), Endpoints.Splitter.SPLITTER_REACTIONS_CONFIG)
+        return Allure.step("Загрузка конфигурации сплиттера через дополнительный endpoint", () -> {
+            if (isKafkaConfigLoadMode()) {
+                return SplitterKafkaConfigLoadClient.load(body, "REACTIONS");
+            }
+            return client.post(spec -> spec.body(body), Endpoints.Splitter.SPLITTER_REACTIONS_CONFIG);
+        }
         );
     }
 
@@ -65,5 +73,9 @@ public class SplitterRestSteps {
         return Allure.step("Получить версию сплиттера через дополнительный endpoint", () ->
                 client.get(spec -> spec, Endpoints.Splitter.SPLITTER_REACTIONS_VERSION)
         );
+    }
+
+    private static boolean isKafkaConfigLoadMode() {
+        return "kafka".equalsIgnoreCase(System.getProperty("splitter.config.load.mode", "rest").trim());
     }
 }

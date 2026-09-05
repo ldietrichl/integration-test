@@ -21,10 +21,11 @@ import java.util.List;
 @ResourceLock("explab-2696-running-cache")
 public class RunningV1CacheV2CjEnabled2696FlowTest extends AbstractRunningV1Cache2696FlowTest {
 
-  //  @BeforeEach
-   // void requireV2CjToggleEnabled() {
-    //    assumeV2CjExperimentsToggleEnabledStand();
-    //}
+    // Toggle EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED должен быть включен: true.
+    @BeforeEach
+    void requireV2CjToggleEnabled() {
+        assumeV2CjExperimentsToggleEnabledStand();
+    }
 
     @CriticalRegression
     @Test

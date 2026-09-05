@@ -30,6 +30,8 @@ import ru.sber.qa.services.configuration.converters.SecretPropertyConverter;
 @Sources({
         "system:env",
         "system:properties",
+        "file:secure.local.override.properties",
+        "file:secure.local.properties",
         "classpath:database.properties",
         "classpath:config/database.properties"
 })

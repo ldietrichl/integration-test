@@ -1,5 +1,6 @@
 package config.environment.special;
 
+import config.services.core.SecureAwareConfigurationService;
 import config.services.data.CustomAllureDataSourceServiceConfiguration;
 import config.services.db.CustomDatabaseServiceConfiguration;
 import config.services.rest.CustomAllure2RestV2ServiceConfiguration;
@@ -29,7 +30,9 @@ public class EnvironmentConfigWIthRestDbV2 extends DefaultEnvironmentConfigurati
         return ServiceConfigurationManager.of()
                 // Служебные сервисы
                 .put(ConfiguredServiceHolder.of(
-                        ConfigurationService.class, new DefaultConfigurationServiceConfiguration()))
+                        ConfigurationService.class,
+                        SecureAwareConfigurationService.class,
+                        new DefaultConfigurationServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(FixtureService.class, new DefaultFixtureServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(
                         DataConverterService.class, new DefaultDataConverterServiceConfiguration()))

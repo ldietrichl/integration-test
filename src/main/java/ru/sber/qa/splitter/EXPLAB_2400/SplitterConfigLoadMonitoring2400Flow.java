@@ -7,6 +7,8 @@ import dto.splitter.config.LoadConfigResponseDto;
 import dto.splitter.monitoring.SplitterConfigLoadMonitoringDto;
 import io.qameta.allure.Allure;
 import ru.sber.qa.services.kafka.KafkaService;
+import util.KafkaAllureLog;
+import util.SplitterKafkaProperties;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -18,7 +20,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 import static util.TestAssertions.fail;
 
 /**
@@ -56,7 +57,11 @@ final class SplitterConfigLoadMonitoring2400Flow {
         List<String> observedPayloads = new ArrayList<>();
         long startedAt = 0L;
         LoadConfigResponseDto response = null;
-        try {
+        try (KafkaAllureLog.Scope ignored = KafkaAllureLog.waitingForTopic(
+                env,
+                topic,
+                timeout,
+                "function=SPLITTING_CONFIG_LOAD, result=" + expectedResult + ", requestIdIn=" + messageId)) {
             // Подписываемся до REST-вызова, чтобы auto.offset.reset=latest не потерял быстрое событие.
             consumer.subscribe(topic);
             consumer.poll(Duration.ofMillis(300));
@@ -131,7 +136,7 @@ final class SplitterConfigLoadMonitoring2400Flow {
     }
 
     private String kafkaEnv() {
-        return System.getProperty("splitter.config.load.monitoring.kafka.env", TEST_CONFIG.env());
+        return SplitterKafkaProperties.kafkaEnv("splitter.config.load.monitoring.kafka.env");
     }
 
     private String monitoringTopic() {

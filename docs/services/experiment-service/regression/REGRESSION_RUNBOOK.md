@@ -21,6 +21,14 @@ cd <path-to-corporate-integration-test>
 
 `env`, `encryption.password` и остальные стендовые параметры должны быть заранее заполнены в корпоративных properties, IDEA Run Configuration или CI. В командах ниже они специально не передаются, чтобы не дублировать локальные настройки и не выводить пароль в терминальный лог.
 
+## Конфигурация секретов
+
+Стендовые адреса и несекретные параметры остаются в `src/test/resources/*.properties`. Чувствительные значения в этих файлах задаются только через плейсхолдеры вида `${SECURE_*}`.
+
+Единый справочник секретных переменных находится в `secure.local.properties`. Его можно пушить: внутри только имена переменных, комментарии и безопасные `<SET_ME_...>` заглушки. Реальные значения для локального запуска кладите в `secure.local.override.properties`; этот файл игнорируется Git. В CI те же значения можно передавать через environment variables, JVM `-D` или Gradle `-P` properties.
+
+`tokenName` и `tokenPassword` из этого же файла подхватываются в `settings.gradle.kts` для Gradle pluginManagement и в `build.gradle.kts` для обычных зависимостей. Архитектурно runtime-секреты подключены так же, как в шаблоне `platform-v-at-gradle-draft-master`: `SecureLocalConfig` использует `Owner @Sources`, `CustomTestConfig` использует штатный `SecretPropertyConverter`, а `SecureAwareConfigurationService` раскрывает `${SECURE_*}` на уровне `ConfigurationService` для Kafka/DB/Container scope. Значения могут быть открытыми, `ENC(...)` или ссылками `vault.*`.
+
 Перед каждым отдельным прогоном задавайте `$env:JAVA_TOOL_OPTIONS` заново: в этой переменной передается состояние toggle и таймауты ожидания.
 
 ## Комбинированный регресс с ожиданием toggle=true

@@ -18,6 +18,7 @@ import ru.sber.qa.services.kafka.KafkaService;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import steps.rest.RestCustomSteps;
 import ru.sber.qa.splitter.analytictests.common.AbstractAnalyticSplitterFlowTest;
+import util.SplitterKafkaProperties;
 import util.splittercheck.SplitterResponseReader;
 
 import java.time.Duration;
@@ -26,7 +27,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 import static util.TestAssertions.assertEquals;
 import static util.TestAssertions.assertFalse;
 import static util.TestAssertions.assertTrue;
@@ -237,7 +237,7 @@ abstract class AbstractEmptyObjectsResponse2603FlowTest extends AbstractAnalytic
     }
 
     private String kapKafkaEnv() {
-        return System.getProperty("splitter.kap.kafka.env", TEST_CONFIG.env());
+        return SplitterKafkaProperties.kafkaEnv("splitter.kap.kafka.env");
     }
 
     private String kapTopic() {

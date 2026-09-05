@@ -26,7 +26,7 @@ final class TestPropertiesLoader {
 
     static String optional(String key) {
         String value = PROPERTIES.getProperty(key);
-        return value == null ? null : value.trim();
+        return value == null ? null : SecurePropertyResolver.resolve(value).trim();
     }
 
     private static Properties load() {
