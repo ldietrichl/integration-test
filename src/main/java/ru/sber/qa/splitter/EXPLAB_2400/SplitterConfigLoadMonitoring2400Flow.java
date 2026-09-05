@@ -19,6 +19,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
+import static util.KafkaAllureLog.waitForTopic;
 import static util.TestAssertions.fail;
 
 /**
@@ -66,6 +67,9 @@ final class SplitterConfigLoadMonitoring2400Flow {
             response = loadAction.get();
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
+            waitForTopic(env, topic, timeout,
+                    "ищем function=SPLITTING_CONFIG_LOAD, result=" + expectedResult
+                            + ", messageId/requestIdIn=" + messageId);
             while (System.currentTimeMillis() < deadline) {
                 consumer.poll(Duration.ofMillis(300));
                 List<JsonNode> matched = new ArrayList<>();

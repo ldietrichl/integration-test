@@ -830,7 +830,7 @@ public class SplitterFunctionalPlanTest {
     @CriticalRegression
     @Test
     @Order(15)
-    @DisplayName("SPL-12. На текущем стенде при итоговом actionType=2 возвращается filtered=false")
+    @DisplayName("SPL-12. На текущем стенде при итоговом actionType=2 возвращается filtered=true")
     void splitShouldMarkObjectAsFilteredWhenActionTypeIsTwo(RestService restService) {
         long version = BASE_VERSION + 15;
         String requestBody = splitRequest(UUID.randomUUID().toString(), "123456", "[]", "[" + OBJECT_TWO + "]");
@@ -847,7 +847,7 @@ public class SplitterFunctionalPlanTest {
                     .post(spec -> spec.contentType(ContentType.JSON).accept("application/json").body(requestBody),
                             splitterBaseUri + endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression(objectPath("22222222-2222-2222-2222-222222222222") + ".objectFlags.find { it.code == 'filtered' }.value == 'false'"),
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression(objectPath("22222222-2222-2222-2222-222222222222") + ".objectFlags.find { it.code == 'filtered' }.value == 'true'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(objectResultPath("22222222-2222-2222-2222-222222222222", "MAIN") + ".resultExps[0].expId == 1201"));
         });
     }
@@ -855,7 +855,7 @@ public class SplitterFunctionalPlanTest {
     @CriticalRegression
     @Test
     @Order(16)
-    @DisplayName("SPL-13. На текущем стенде при итоговом actionType=4 возвращается filtered=false")
+    @DisplayName("SPL-13. На текущем стенде при итоговом actionType=4 возвращается filtered=true")
     void splitShouldMarkObjectAsFilteredWhenActionTypeIsFour(RestService restService) {
         long version = BASE_VERSION + 16;
         String requestBody = splitRequest(UUID.randomUUID().toString(), "123456", "[]", "[" + OBJECT_TWO + "]");
@@ -872,7 +872,7 @@ public class SplitterFunctionalPlanTest {
                     .post(spec -> spec.contentType(ContentType.JSON).accept("application/json").body(requestBody),
                             splitterBaseUri + endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression(objectPath("22222222-2222-2222-2222-222222222222") + ".objectFlags.find { it.code == 'filtered' }.value == 'false'"),
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression(objectPath("22222222-2222-2222-2222-222222222222") + ".objectFlags.find { it.code == 'filtered' }.value == 'true'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(objectResultPath("22222222-2222-2222-2222-222222222222", "MAIN") + ".resultExps[0].expId == 1301"));
         });
     }

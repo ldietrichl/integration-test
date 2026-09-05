@@ -23,7 +23,7 @@ import java.util.stream.Stream;
  * Builds the list of tests that must be excluded before JUnit discovery reaches Allure.
  *
  * <p>A test is excluded when it is explicitly outdated, disabled, not applicable to the configured
- * splitter config load mode, or has no verification evidence.
+ * splitter config load mode, requires an unavailable Kafka consumer, or has no verification evidence.
  * Verification evidence includes direct assertions, framework matcher calls and transitive calls to
  * local helper methods containing such checks.</p>
  */
@@ -101,7 +101,7 @@ public final class TestReportEligibilityScanner {
         Files.createDirectories(outputDir);
         List<OutdatedRule> outdatedRules = loadOutdatedRules(outdatedRulesFile);
         List<TestDecision> decisions = new ArrayList<>();
-        ScanOptions options = ScanOptions.fromSystemProperties();
+        ScanOptions options = ScanOptions.fromSystemProperties(sourceRoot);
 
         try (Stream<Path> paths = Files.walk(sourceRoot)) {
             paths.filter(path -> Files.isRegularFile(path) && path.toString().endsWith(".java"))
@@ -201,6 +201,15 @@ public final class TestReportEligibilityScanner {
                         "Allowed only for splitter.config.load.mode="
                                 + String.join("/", modeRestriction.get().allowedModes())
                                 + ", current mode is " + options.splitterConfigLoadMode()));
+                continue;
+            }
+
+            if (splitterTest && requiresKafkaService(annotationBlock) && !options.kafkaConsumerAvailable()) {
+                result.add(TestDecision.excluded(fullName, relativePath, Reason.SPLITTER_KAFKA_CONSUMER_UNAVAILABLE,
+                        "Method requires KafkaService, but Kafka consumer configuration is incomplete for env="
+                                + options.splitterKafkaConsumerEnv()
+                                + ". Secure placeholders from kafka-consumers.properties are resolved eagerly"
+                                + ". Set splitter.kafka.consumer.available=true to force inclusion."));
                 continue;
             }
 
@@ -383,6 +392,8 @@ public final class TestReportEligibilityScanner {
                 .append(reasonCounts.getOrDefault(Reason.SPLITTER_TEST_PROFILE, 0L)).append("**\n")
                 .append("- Kafka status required: **")
                 .append(reasonCounts.getOrDefault(Reason.SPLITTER_KAFKA_STATUS_REQUIRED, 0L)).append("**\n")
+                .append("- Kafka consumer unavailable: **")
+                .append(reasonCounts.getOrDefault(Reason.SPLITTER_KAFKA_CONSUMER_UNAVAILABLE, 0L)).append("**\n")
                 .append("- Manual/profile-specific: **").append(reasonCounts.getOrDefault(Reason.MANUAL, 0L)).append("**\n")
                 .append("- Without verification evidence: **").append(reasonCounts.getOrDefault(Reason.NO_ASSERTION, 0L)).append("**\n")
                 .append("- Explicitly outdated: **").append(reasonCounts.getOrDefault(Reason.OUTDATED, 0L)).append("**\n\n")
@@ -432,6 +443,10 @@ public final class TestReportEligibilityScanner {
             allowed.add("rest");
         }
         return allowed.isEmpty() ? Optional.empty() : Optional.of(new ModeRestriction(allowed));
+    }
+
+    private static boolean requiresKafkaService(String annotationBlock) {
+        return annotationBlock.contains("KafkaService");
     }
 
     private static Optional<ProfileRestriction> profileRestriction(String annotationBlock) {
@@ -506,6 +521,119 @@ public final class TestReportEligibilityScanner {
         }
         String normalized = raw.trim().toLowerCase(Locale.ROOT);
         return normalized.equals("true") || normalized.equals("yes") || normalized.equals("1");
+    }
+
+    private static Optional<Boolean> optionalFeatureFlag(String propertyName, String environmentName) {
+        String raw = firstNonBlank(System.getProperty(propertyName), System.getenv(environmentName));
+        if (raw.isBlank()) {
+            return Optional.empty();
+        }
+        String normalized = raw.trim().toLowerCase(Locale.ROOT);
+        if (normalized.equals("true") || normalized.equals("yes") || normalized.equals("1")) {
+            return Optional.of(true);
+        }
+        if (normalized.equals("false") || normalized.equals("no") || normalized.equals("0")) {
+            return Optional.of(false);
+        }
+        throw new IllegalArgumentException(
+                propertyName + "/" + environmentName + " must be boolean, but was: " + raw);
+    }
+
+    private static String splitterKafkaConsumerEnv() {
+        return String.join(",", splitterKafkaConsumerEnvs());
+    }
+
+    private static Set<String> splitterKafkaConsumerEnvs() {
+        Set<String> envs = new LinkedHashSet<>();
+        addIfNotBlank(envs, System.getProperty("splitter.kap.kafka.env"));
+        addIfNotBlank(envs, System.getenv("SPLITTER_KAP_KAFKA_ENV"));
+        addIfNotBlank(envs, System.getProperty("splitter.config.kafka.env"));
+        addIfNotBlank(envs, System.getenv("SPLITTER_CONFIG_KAFKA_ENV"));
+        addIfNotBlank(envs, System.getProperty("splitter.precalc.monitoring.kafka.env"));
+        addIfNotBlank(envs, System.getenv("SPLITTER_PRECALC_MONITORING_KAFKA_ENV"));
+        addIfNotBlank(envs, System.getProperty("splitter.config.load.monitoring.kafka.env"));
+        addIfNotBlank(envs, System.getenv("SPLITTER_CONFIG_LOAD_MONITORING_KAFKA_ENV"));
+        if (envs.isEmpty()) {
+            addIfNotBlank(envs, System.getProperty("env"));
+            addIfNotBlank(envs, System.getenv("ENV"));
+        }
+        if (envs.isEmpty()) {
+            envs.add("ift");
+        }
+        return envs;
+    }
+
+    private static void addIfNotBlank(Set<String> values, String raw) {
+        if (raw != null && !raw.isBlank()) {
+            values.add(raw.trim().toLowerCase(Locale.ROOT));
+        }
+    }
+
+    private static boolean kafkaConsumerAvailable(Path sourceRoot) {
+        Optional<Boolean> explicit = optionalFeatureFlag(
+                "splitter.kafka.consumer.available",
+                "SPLITTER_KAFKA_CONSUMER_AVAILABLE");
+        if (explicit.isPresent()) {
+            return explicit.get();
+        }
+
+        KafkaConsumerInspection inspection = kafkaConsumerInspection(sourceRoot, splitterKafkaConsumerEnvs());
+        return inspection.profilesFound()
+                && inspection.securePlaceholders().stream().allMatch(TestReportEligibilityScanner::hasUsableSecret);
+    }
+
+    private static KafkaConsumerInspection kafkaConsumerInspection(Path sourceRoot, Set<String> selectedProfiles) {
+        Optional<Path> propertiesFile = findProjectFile(sourceRoot, "src/test/resources/kafka-consumers.properties");
+        if (propertiesFile.isEmpty()) {
+            return new KafkaConsumerInspection(true, Set.of());
+        }
+        try {
+            String source = stripComments(Files.readString(propertiesFile.get(), StandardCharsets.UTF_8));
+            Matcher propertyMatcher = Pattern.compile(
+                    "(?m)^\\s*kafka_consumer\\.([^.\\s=]+)\\.[^=]+=(.*)$").matcher(source);
+            Set<String> placeholders = new LinkedHashSet<>();
+            boolean profilesFound = false;
+            while (propertyMatcher.find()) {
+                String profile = propertyMatcher.group(1).trim().toLowerCase(Locale.ROOT);
+                if (!profile.equals("all") && !selectedProfiles.contains(profile)) {
+                    continue;
+                }
+                if (selectedProfiles.contains(profile)) {
+                    profilesFound = true;
+                }
+                Matcher placeholderMatcher = Pattern.compile("\\$\\{([^}]+)}").matcher(propertyMatcher.group(2));
+                while (placeholderMatcher.find()) {
+                    String name = placeholderMatcher.group(1);
+                    if (name.startsWith("SECURE_KAFKA_CONSUMER_")) {
+                        placeholders.add(name);
+                    }
+                }
+            }
+            return new KafkaConsumerInspection(profilesFound, placeholders);
+        } catch (IOException exception) {
+            throw new RuntimeException("Cannot read " + propertiesFile.get(), exception);
+        }
+    }
+
+    private static Optional<Path> findProjectFile(Path sourceRoot, String relativePath) {
+        Path current = sourceRoot.toAbsolutePath().normalize();
+        while (current != null) {
+            Path candidate = current.resolve(relativePath);
+            if (Files.isRegularFile(candidate)) {
+                return Optional.of(candidate);
+            }
+            current = current.getParent();
+        }
+        return Optional.empty();
+    }
+
+    private static boolean hasUsableSecret(String name) {
+        String raw = firstNonBlank(System.getProperty(name), System.getenv(name));
+        if (raw.isBlank()) {
+            return false;
+        }
+        String value = raw.trim();
+        return !(value.startsWith("<SET_ME_") && value.endsWith(">"));
     }
 
     private static String findAnnotationBlockBefore(String source, int index) {
@@ -693,17 +821,24 @@ public final class TestReportEligibilityScanner {
         }
     }
 
+    private record KafkaConsumerInspection(boolean profilesFound, Set<String> securePlaceholders) {
+    }
+
     private record ScanOptions(String splitterConfigLoadMode,
                                String splitterTestProfile,
                                boolean splitterConfigKafkaStatusRequired,
+                               boolean kafkaConsumerAvailable,
+                               String splitterKafkaConsumerEnv,
                                boolean includeManualTests,
                                boolean includeSplitterDataOperatorTests) {
 
-        private static ScanOptions fromSystemProperties() {
+        private static ScanOptions fromSystemProperties(Path sourceRoot) {
             return new ScanOptions(
                     TestReportEligibilityScanner.splitterConfigLoadMode(),
                     TestReportEligibilityScanner.splitterTestProfile(),
                     featureFlag("splitter.config.kafka.status.required", "SPLITTER_CONFIG_KAFKA_STATUS_REQUIRED"),
+                    TestReportEligibilityScanner.kafkaConsumerAvailable(sourceRoot),
+                    TestReportEligibilityScanner.splitterKafkaConsumerEnv(),
                     featureFlag("includeManualTests", "INCLUDE_MANUAL_TESTS"),
                     featureFlag("includeSplitterDataOperatorTests", "INCLUDE_SPLITTER_DATA_OPERATOR_TESTS"));
         }
@@ -719,6 +854,7 @@ public final class TestReportEligibilityScanner {
         SPLITTER_CONFIG_LOAD_MODE("splitter-config-load-mode"),
         SPLITTER_TEST_PROFILE("splitter-test-profile"),
         SPLITTER_KAFKA_STATUS_REQUIRED("splitter-kafka-status-required"),
+        SPLITTER_KAFKA_CONSUMER_UNAVAILABLE("splitter-kafka-consumer-unavailable"),
         SERVICE_SCOPE("service-scope"),
         MANUAL("manual"),
         NO_ASSERTION("no-assertion"),

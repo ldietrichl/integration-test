@@ -14,6 +14,8 @@ public final class SecurePropertyResolver {
 
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([^}]+)}");
     private static final SecretPropertyConverter SECRET_PROPERTY_CONVERTER = new SecretPropertyConverter();
+    private static final String FAIL_ON_UNRESOLVED_PROPERTY = "secure.placeholders.fail-on-unresolved";
+    private static final String FAIL_ON_UNRESOLVED_ENV = "SECURE_PLACEHOLDERS_FAIL_ON_UNRESOLVED";
 
     private SecurePropertyResolver() {
     }
@@ -23,6 +25,9 @@ public final class SecurePropertyResolver {
             return value;
         }
         if (isSetMePlaceholder(value.trim())) {
+            if (!failOnUnresolvedPlaceholders()) {
+                return value;
+            }
             throw new IllegalStateException("Секретное значение не заполнено: " + value.trim()
                     + ". Заполните secure.local.override.properties, secure.local.properties, env или JVM -D property.");
         }
@@ -37,6 +42,10 @@ public final class SecurePropertyResolver {
             String name = matcher.group(1);
             String resolved = lookup(name);
             if (resolved == null) {
+                if (isSecurePlaceholder(name) && !failOnUnresolvedPlaceholders()) {
+                    matcher.appendReplacement(result, Matcher.quoteReplacement(matcher.group(0)));
+                    continue;
+                }
                 throw new IllegalStateException("Не найдено значение для плейсхолдера ${" + name
                         + "}. Заполните secure.local.override.properties, secure.local.properties, env или JVM -D property.");
             }
@@ -95,6 +104,34 @@ public final class SecurePropertyResolver {
 
     private static boolean isSetMePlaceholder(String value) {
         return value.startsWith("<SET_ME_") && value.endsWith(">");
+    }
+
+    private static boolean isSecurePlaceholder(String name) {
+        return name != null && name.startsWith("SECURE_");
+    }
+
+    private static boolean failOnUnresolvedPlaceholders() {
+        String value = firstRaw(
+                System.getProperty(FAIL_ON_UNRESOLVED_PROPERTY),
+                System.getenv(FAIL_ON_UNRESOLVED_ENV)
+        );
+        if (value == null) {
+            return true;
+        }
+
+        String normalized = value.trim();
+        return !(normalized.equalsIgnoreCase("false")
+                || normalized.equalsIgnoreCase("no")
+                || normalized.equals("0"));
+    }
+
+    private static String firstRaw(String... candidates) {
+        for (String candidate : candidates) {
+            if (candidate != null && !candidate.isBlank()) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
 }

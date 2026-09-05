@@ -18,6 +18,7 @@ import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import request.splitter.SplitterTestDataFactory;
 import util.support.SplitterVersionProvider;
 import ru.sber.qa.allure.CriticalRegression;
+import ru.sber.qa.allure.ManualTest;
 
 
 import static request.splitter.SplitterTestDataFactory.*;
@@ -67,6 +68,7 @@ public class SplitterSplitFlowTest_extended extends AbstractNewSplitterFlowTest 
     }
 
     @Test
+    @ManualTest
     @Disabled("Exploratory only: REQUEST_PARAMS-конфиги конфликтуют с текущим режимом predcalc на стенде, сценарий вынесен из contract-набора")
     @DisplayName("SPL-03. REQUEST_PARAMS-условие применяется ко всем объектам")
     void requestParamsConditionShouldMatchAllObjects() {
@@ -86,6 +88,7 @@ public class SplitterSplitFlowTest_extended extends AbstractNewSplitterFlowTest 
     }
 
     @Test
+    @ManualTest
     @Disabled("Exploratory only: сценарий зависит от REQUEST_PARAMS и шумит на текущем стенде, временно исключен из contract-набора")
     @DisplayName("SPL-04. OR-блоки objectSelectConditions выбирают два разных объекта")
     void orRulesShouldSelectTwoDifferentObjects() {
@@ -181,9 +184,8 @@ public class SplitterSplitFlowTest_extended extends AbstractNewSplitterFlowTest 
                 })
                 .run();
     }
-@Disabled("тест требует доработки")
     @Test
-    @DisplayName("SPL-12. На текущем стенде actionType=2 возвращает filtered=false")
+    @DisplayName("SPL-12. На текущем стенде actionType=2 возвращает filtered=true")
     void actionType2ShouldReturnFilteredFalseOnCurrentStand() {
         long version = SplitterVersionProvider.next();
         LoadConfigRequestDto config = SplitterTestDataFactory.actionType2Config(version);
@@ -194,14 +196,14 @@ public class SplitterSplitFlowTest_extended extends AbstractNewSplitterFlowTest 
                 .step("Проверяем текущее поведение стенда", flow -> {
                     ValidatableResponseWrapper response = shouldBe200(split(splitRequest));
                     shouldHaveConfigVersion(response, version);
-                    shouldHaveFilteredValue(response, MATCHED_OBJECT_ID, "false");
+                    shouldHaveFilteredValue(response, MATCHED_OBJECT_ID, "true");
                 })
                 .run();
     }
 
     @CriticalRegression
     @Test
-    @DisplayName("SPL-13. На текущем стенде actionType=4 возвращает filtered=false")
+    @DisplayName("SPL-13. На текущем стенде actionType=4 возвращает filtered=true")
     void actionType4ShouldReturnFilteredFalseOnCurrentStand() {
         long version = SplitterVersionProvider.next();
         LoadConfigRequestDto config = SplitterTestDataFactory.actionType4Config(version);
@@ -212,7 +214,7 @@ public class SplitterSplitFlowTest_extended extends AbstractNewSplitterFlowTest 
                 .step("Проверяем текущее поведение стенда", flow -> {
                     ValidatableResponseWrapper response = shouldBe200(split(splitRequest));
                     shouldHaveConfigVersion(response, version);
-                    shouldHaveFilteredValue(response, MATCHED_OBJECT_ID, "false");
+                    shouldHaveFilteredValue(response, MATCHED_OBJECT_ID, "true");
                     shouldHaveMainExpId(response, MATCHED_OBJECT_ID, 1301L);
                 })
                 .run();

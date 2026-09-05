@@ -21,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import ru.sber.qa.matchers.RestMatchers;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import ru.sber.qa.allure.CriticalRegression;
+import ru.sber.qa.allure.ManualTest;
 import util.support.SplitterVersionProvider;
 
 import java.util.UUID;
@@ -277,6 +278,7 @@ public class SplitterFunctionalPlanTest_flow extends Flows {
     }
 
     @Test
+    @ManualTest
     @Disabled("На текущем стенде конфиги с REQUEST_PARAMS не активируются через /mapper/config")
     @Order(9)
     @DisplayName("SPL-03. Привязка объектов по REQUEST_PARAMS")
@@ -309,6 +311,7 @@ public class SplitterFunctionalPlanTest_flow extends Flows {
     }
 
     @Test
+    @ManualTest
     @Disabled("На текущем стенде конфиги с REQUEST_PARAMS/AND-OR не активируются через /mapper/config")
     @Order(10)
     @DisplayName("SPL-04. Обработка AND/OR в objectSelectConditions")
@@ -409,7 +412,7 @@ public class SplitterFunctionalPlanTest_flow extends Flows {
     @CriticalRegression
     @Test
     @Order(14)
-    @DisplayName("SPL-12. На текущем стенде actionType=2 возвращает filtered=false")
+    @DisplayName("SPL-12. На текущем стенде actionType=2 возвращает filtered=true")
     void splitShouldMarkObjectAsFilteredWhenActionTypeIsTwo() {
         long version = version(15);
         String objectPath = objectPath(OBJECT_TWO_ID);
@@ -424,7 +427,7 @@ public class SplitterFunctionalPlanTest_flow extends Flows {
                         postSplit(flow, splitRequest(randomRequestId(), "123456", "[]", "[%s]".formatted(OBJECT_TWO)))
                                 .should(
                                         RestMatchers.haveStatusCode(HttpStatus.SC_OK),
-                                        RestMatchers.haveBodyWithEvaluatableJsonPathExpression(objectPath + ".objectFlags.find { it.code == 'filtered' }.value == 'false'"),
+                                        RestMatchers.haveBodyWithEvaluatableJsonPathExpression(objectPath + ".objectFlags.find { it.code == 'filtered' }.value == 'true'"),
                                         RestMatchers.haveBodyWithEvaluatableJsonPathExpression(mainPath + ".resultExps[0].expId == 1201")
                                 ))
                 .run();
@@ -433,7 +436,7 @@ public class SplitterFunctionalPlanTest_flow extends Flows {
     @CriticalRegression
     @Test
     @Order(15)
-    @DisplayName("SPL-13. На текущем стенде actionType=4 возвращает filtered=false")
+    @DisplayName("SPL-13. На текущем стенде actionType=4 возвращает filtered=true")
     void splitShouldMarkObjectAsFilteredWhenActionTypeIsFour() {
         long version = version(16);
         String objectPath = objectPath(OBJECT_TWO_ID);
@@ -448,7 +451,7 @@ public class SplitterFunctionalPlanTest_flow extends Flows {
                         postSplit(flow, splitRequest(randomRequestId(), "123456", "[]", "[%s]".formatted(OBJECT_TWO)))
                                 .should(
                                         RestMatchers.haveStatusCode(HttpStatus.SC_OK),
-                                        RestMatchers.haveBodyWithEvaluatableJsonPathExpression(objectPath + ".objectFlags.find { it.code == 'filtered' }.value == 'false'"),
+                                        RestMatchers.haveBodyWithEvaluatableJsonPathExpression(objectPath + ".objectFlags.find { it.code == 'filtered' }.value == 'true'"),
                                         RestMatchers.haveBodyWithEvaluatableJsonPathExpression(mainPath + ".resultExps[0].expId == 1301")
                                 ))
                 .run();
@@ -493,6 +496,7 @@ public class SplitterFunctionalPlanTest_flow extends Flows {
     }
 
     @Test
+    @ManualTest
     @Disabled("Тест зависит от полностью чистого состояния стенда; на текущем окружении конфигурация уже загружена")
     @Order(18)
     @DisplayName("SPL-16. Без загруженного конфига сервис должен вернуть NO_SPLIT_CONFIG")

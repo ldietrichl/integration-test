@@ -1,6 +1,13 @@
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.testing.Test
+import org.gradle.api.tasks.testing.TestDescriptor
+import org.gradle.api.tasks.testing.TestListener
+import org.gradle.api.tasks.testing.TestOutputEvent
+import org.gradle.api.tasks.testing.TestOutputListener
+import org.gradle.api.tasks.testing.TestResult
 import java.io.File
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Properties
@@ -63,9 +70,12 @@ fun isGradleTaskRequested(taskName: String): Boolean =
         requested == taskName || requested == ":$taskName" || requested.endsWith(":$taskName")
     }
 
+fun isAnyGradleTaskRequested(vararg taskNames: String): Boolean =
+    taskNames.any(::isGradleTaskRequested)
+
 fun resolveSplitterConfigLoadMode(): String {
-    val restTaskRequested = isGradleTaskRequested("splitterRestRegression")
-    val kafkaTaskRequested = isGradleTaskRequested("splitterKafkaRegression")
+    val restTaskRequested = isAnyGradleTaskRequested("splitterRestRegression", "splitterRestDebug")
+    val kafkaTaskRequested = isAnyGradleTaskRequested("splitterKafkaRegression", "splitterKafkaDebug")
     val requestedTaskMode = when {
         kafkaTaskRequested && !restTaskRequested -> "kafka"
         restTaskRequested && !kafkaTaskRequested -> "rest"
@@ -118,13 +128,118 @@ val includeSplitterDataOperatorTests =
 val splitterConfigLoadMode = resolveSplitterConfigLoadMode()
 val splitterTestProfile = usableLocalProperty(System.getProperty("splitter.test.profile"))
     ?: configValue("splitter.test.profile", "SPLITTER_TEST_PROFILE", defaultValue = "current")!!
+val activeTestEnv = configValue("env", "ENV")
+    ?: optionalTestRuntimeProperty("env")
+    ?: "ift"
 val splitterConfigKafkaStatusRequired =
-    configValue("splitter.config.kafka.status.required", "SPLITTER_CONFIG_KAFKA_STATUS_REQUIRED", defaultValue = "true")!!
+    configValue("splitter.config.kafka.status.required", "SPLITTER_CONFIG_KAFKA_STATUS_REQUIRED")
+        ?: optionalTestRuntimeProperty("splitter.config.kafka.status.required")
+        ?: "false"
 val allureResultsDirectory = fileFromProjectOrAbsolute(
     usableLocalProperty(System.getProperty("allure.results.directory"))
         ?: optionalConfigProperty("allure.results.directory")
         ?: "build/allure-results"
 )
+val splitterRegressionLogsDir = providers.provider {
+    fileFromProjectOrAbsolute(
+        configValue("splitter.regression.logs.dir", "SPLITTER_REGRESSION_LOGS_DIR")
+            ?: "build/logs/splitter-regression"
+    )
+}
+splitterRegressionLogsDir.get().mkdirs()
+
+val splitterRuntimeSystemProperties = listOf(
+    "splitter.config.kafka.env",
+    "splitter.config.kafka.input.topic",
+    "splitter.config.kafka.status.topic",
+    "splitter.config.kafka.monitoring.topic",
+    "splitter.config.kafka.status.required",
+    "splitter.config.kafka.timeout.seconds",
+    "splitter.config.kafka.unique.consumer.group.enabled",
+    "splitter.config.kafka.consumer.group.prefix",
+    "splitter.config.kafka.consumer.warmup.seconds",
+    "splitter.kap.kafka.env",
+    "splitter.kap.topic",
+    "splitter.kap.monitoring.topic",
+    "splitter.kap.timeout.seconds",
+    "splitter.kap.monitoring.timeout.seconds",
+    "splitter.precalc.monitoring.kafka.env",
+    "splitter.precalc.monitoring.topic",
+    "splitter.precalc.monitoring.timeout.seconds",
+    "splitter.config.load.monitoring.kafka.env",
+    "splitter.config.load.monitoring.topic",
+    "splitter.config.load.monitoring.timeout.seconds",
+    "splitter.kafka.consumer.available",
+    "secure.placeholders.fail-on-unresolved"
+)
+
+fun propertyEnvName(propertyName: String): String =
+    propertyName.replace('.', '_').replace('-', '_').uppercase()
+
+fun configuredRuntimeSystemProperty(propertyName: String): String? =
+    configValue(propertyName, propertyEnvName(propertyName))
+        ?: optionalTestRuntimeProperty(propertyName)
+
+val splitterRegressionLogLock = Any()
+val splitterRegressionLogTimestampFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
+
+fun splitterRegressionLogNow(): String =
+    LocalDateTime.now().format(splitterRegressionLogTimestampFormatter)
+
+fun appendSplitterRegressionLog(file: File, text: String) {
+    synchronized(splitterRegressionLogLock) {
+        file.parentFile.mkdirs()
+        file.appendText(text, Charsets.UTF_8)
+    }
+}
+
+fun throwableStackTrace(throwable: Throwable): String {
+    val writer = StringWriter()
+    throwable.printStackTrace(PrintWriter(writer))
+    return writer.toString()
+}
+
+fun splitterRunLogPropertyValue(propertyName: String, mode: String): String =
+    when (propertyName) {
+        "env" -> activeTestEnv
+        "splitter.config.load.mode" -> mode
+        "splitter.test.profile" -> splitterTestProfile
+        "splitter.config.kafka.status.required" -> splitterConfigKafkaStatusRequired
+        "allure.results.directory" -> allureResultsDirectory.absolutePath
+        "splitter.regression.logs.dir" -> splitterRegressionLogsDir.get().absolutePath
+        "secure.placeholders.fail-on-unresolved" -> configuredRuntimeSystemProperty(propertyName) ?: "false"
+        else -> configuredRuntimeSystemProperty(propertyName) ?: ""
+    }
+
+fun splitterRunLogHeader(mode: String, taskPath: String, logFile: File): String {
+    val propertyNames = (listOf(
+        "env",
+        "splitter.config.load.mode",
+        "splitter.test.profile",
+        "splitter.config.kafka.status.required",
+        "allure.results.directory",
+        "splitter.regression.logs.dir"
+    ) + splitterRuntimeSystemProperties).distinct()
+    val properties = propertyNames.joinToString(System.lineSeparator()) { propertyName ->
+        "$propertyName=${splitterRunLogPropertyValue(propertyName, mode)}"
+    }
+    return """
+        Splitter regression Gradle task log
+        startedAt=${splitterRegressionLogNow()}
+        task=$taskPath
+        mode=$mode
+        projectDir=${rootProject.projectDir.absolutePath}
+        logFile=${logFile.absolutePath}
+        gradle=${gradle.gradleVersion}
+        java=${System.getProperty("java.version")}
+        requestedTasks=${gradle.startParameter.taskNames.joinToString(",")}
+
+        properties:
+        $properties
+
+        ${splitterConfigLoadModeNotice(mode)}
+    """.trimIndent() + System.lineSeparator()
+}
 
 fun resolveAllureUploadResultsDirectory(): File =
     fileFromProjectOrAbsolute(
@@ -309,6 +424,17 @@ val generateReportEligibility by tasks.registering(JavaExec::class) {
     systemProperty("splitter.config.kafka.status.required", splitterConfigKafkaStatusRequired)
     systemProperty("includeManualTests", includeManualTests.toString())
     systemProperty("includeSplitterDataOperatorTests", includeSplitterDataOperatorTests.toString())
+    systemProperty("env", activeTestEnv)
+    splitterRuntimeSystemProperties.forEach { propertyName ->
+        configuredRuntimeSystemProperty(propertyName)?.let { systemProperty(propertyName, it) }
+    }
+    System.getProperties().stringPropertyNames()
+        .filter { it.startsWith("SECURE_") || it.startsWith("splitter.kap.") }
+        .forEach { systemProperty(it, System.getProperty(it)) }
+    secureLocalProperties.stringPropertyNames()
+        .mapNotNull { name -> optionalLocalProperty(name)?.let { name to it } }
+        .filter { (name, _) -> name.startsWith("SECURE_") }
+        .forEach { (name, value) -> systemProperty(name, value) }
     args(
         file("src/test/java").absolutePath,
         file("config/reporting/outdated-tests.properties").absolutePath,
@@ -316,9 +442,15 @@ val generateReportEligibility by tasks.registering(JavaExec::class) {
     )
     inputs.dir("src/test/java")
     inputs.file("config/reporting/outdated-tests.properties")
+    inputs.file("src/test/resources/test.properties")
+    inputs.file("src/test/resources/kafka-consumers.properties")
     inputs.property("splitter.config.load.mode", splitterConfigLoadMode)
     inputs.property("splitter.test.profile", splitterTestProfile)
     inputs.property("splitter.config.kafka.status.required", splitterConfigKafkaStatusRequired)
+    inputs.property("env", activeTestEnv)
+    splitterRuntimeSystemProperties.forEach { propertyName ->
+        inputs.property(propertyName, configuredRuntimeSystemProperty(propertyName) ?: "")
+    }
     inputs.property("includeManualTests", includeManualTests)
     inputs.property("includeSplitterDataOperatorTests", includeSplitterDataOperatorTests)
     outputs.dir(reportEligibilityOutputDir)
@@ -355,6 +487,18 @@ val bypassTests by tasks.registering(Test::class) {
     testLogging.showStandardStreams = true
 }
 
+val prepareSplitterRegressionLogs by tasks.registering {
+    group = "verification"
+    description = "Create directory for splitter regression Gradle task logs"
+    outputs.dir(splitterRegressionLogsDir)
+    doLast {
+        val directory = splitterRegressionLogsDir.get()
+        if (!directory.mkdirs() && !directory.isDirectory) {
+            throw GradleException("Cannot create splitter regression logs directory: ${directory.absolutePath}")
+        }
+        logger.lifecycle("Splitter regression logs directory: ${directory.absolutePath}")
+    }
+}
 
 fun Test.applyReportEligibilityExclusions() {
     dependsOn(generateReportEligibility)
@@ -401,17 +545,89 @@ fun splitterConfigLoadModeNotice(mode: String): String {
     """.trimIndent()
 }
 
-fun Test.configureSplitterRegressionTask(mode: String) {
+fun Test.configureSplitterRegressionTask(
+    mode: String,
+    includePattern: String = "ru.sber.qa.splitter.*",
+    logFileName: String = "splitter-$mode-run.log"
+) {
+    val runLogFileProvider = splitterRegressionLogsDir.map { File(it, logFileName) }
+
     group = "verification"
     dependsOn(tasks.named("testClasses"))
+    dependsOn(prepareSplitterRegressionLogs)
+    outputs.file(runLogFileProvider)
+    outputs.upToDateWhen { false }
     testClassesDirs = sourceSets.getByName("test").output.classesDirs
     classpath = sourceSets.getByName("test").runtimeClasspath
     applyReportEligibilityExclusions()
     systemProperty("splitter.config.load.mode", mode)
-    filter.includeTestsMatching("ru.sber.qa.splitter.*")
-    doFirst("printSplitterConfigLoadModeNotice") {
+    systemProperty("splitter.regression.logs.dir", splitterRegressionLogsDir.get().absolutePath)
+    systemProperty(
+        "secure.placeholders.fail-on-unresolved",
+        configuredRuntimeSystemProperty("secure.placeholders.fail-on-unresolved") ?: "false"
+    )
+    filter.includeTestsMatching(includePattern)
+    doFirst("startSplitterRegressionTaskLog") {
+        val logFile = runLogFileProvider.get()
+        logFile.parentFile.mkdirs()
+        logFile.writeText(splitterRunLogHeader(mode, path, logFile), Charsets.UTF_8)
         logger.lifecycle(splitterConfigLoadModeNotice(mode))
+        logger.lifecycle("Splitter regression task log: ${logFile.absolutePath}")
     }
+    addTestListener(object : TestListener {
+        override fun beforeSuite(suite: TestDescriptor) {
+        }
+
+        override fun afterSuite(suite: TestDescriptor, result: TestResult) {
+            if (suite.parent != null) {
+                return
+            }
+            appendSplitterRegressionLog(
+                runLogFileProvider.get(),
+                """
+                    ${splitterRegressionLogNow()} [SUITE ${result.resultType}]
+                    tests=${result.testCount}
+                    passed=${result.successfulTestCount}
+                    failed=${result.failedTestCount}
+                    skipped=${result.skippedTestCount}
+                    finishedAt=${splitterRegressionLogNow()}
+
+                """.trimIndent() + System.lineSeparator()
+            )
+        }
+
+        override fun beforeTest(testDescriptor: TestDescriptor) {
+            appendSplitterRegressionLog(
+                runLogFileProvider.get(),
+                "${splitterRegressionLogNow()} [TEST START] ${testDescriptor.className}.${testDescriptor.name}${System.lineSeparator()}"
+            )
+        }
+
+        override fun afterTest(testDescriptor: TestDescriptor, result: TestResult) {
+            val className = testDescriptor.className ?: "<unknown class>"
+            val testName = testDescriptor.name
+            val duration = result.endTime - result.startTime
+            val exceptions = result.exceptions.joinToString(System.lineSeparator()) { throwable -> throwableStackTrace(throwable) }
+            appendSplitterRegressionLog(
+                runLogFileProvider.get(),
+                "${splitterRegressionLogNow()} [TEST ${result.resultType}] $className.$testName durationMs=$duration${System.lineSeparator()}" +
+                        if (exceptions.isBlank()) "" else exceptions + System.lineSeparator()
+            )
+        }
+    })
+    addTestOutputListener(object : TestOutputListener {
+        override fun onOutput(testDescriptor: TestDescriptor, event: TestOutputEvent) {
+            val className = testDescriptor.className ?: "<unknown class>"
+            val testName = testDescriptor.name
+            val lineSeparator = System.lineSeparator()
+            val message = event.message
+            val ending = if (message.endsWith(lineSeparator) || message.endsWith("\n")) "" else lineSeparator
+            appendSplitterRegressionLog(
+                runLogFileProvider.get(),
+                "${splitterRegressionLogNow()} [${event.destination}] $className.$testName$lineSeparator$message$ending"
+            )
+        }
+    })
 }
 
 val splitterRestRegression by tasks.registering(Test::class) {
@@ -422,6 +638,24 @@ val splitterRestRegression by tasks.registering(Test::class) {
 val splitterKafkaRegression by tasks.registering(Test::class) {
     description = "Run report-eligible splitter tests with Kafka config load flow"
     configureSplitterRegressionTask("kafka")
+}
+
+val splitterRestDebug by tasks.registering(Test::class) {
+    description = "Run CFG-01 splitter scenario with REST config load flow"
+    configureSplitterRegressionTask(
+        mode = "rest",
+        includePattern = "ru.sber.qa.splitter.SplitterFunctionalPlanTest_flow.configShouldBeLoaded",
+        logFileName = "splitter-rest-debug-run.log"
+    )
+}
+
+val splitterKafkaDebug by tasks.registering(Test::class) {
+    description = "Run CFG-01 splitter scenario with Kafka config load flow"
+    configureSplitterRegressionTask(
+        mode = "kafka",
+        includePattern = "ru.sber.qa.splitter.SplitterFunctionalPlanTest_flow.configShouldBeLoaded",
+        logFileName = "splitter-kafka-debug-run.log"
+    )
 }
 
 // Настраиваем Allure-plugin для локальных отчетов
@@ -728,6 +962,8 @@ tasks {
         systemProperty("file.encoding", "UTF-8")
         systemProperty("splitter.config.load.mode", splitterConfigLoadMode)
         systemProperty("splitter.test.profile", splitterTestProfile)
+        systemProperty("splitter.config.kafka.status.required", splitterConfigKafkaStatusRequired)
+        systemProperty("env", activeTestEnv)
         systemProperty("allure.results.directory", allureResultsDirectory.absolutePath)
         systemProperty("report.outdated.tests.file", file("config/reporting/outdated-tests.properties").absolutePath)
         val reportExclusions = if (includeDisabledTests) {
@@ -772,6 +1008,9 @@ tasks {
                         it.startsWith("splitter.reactions.endpoint.")
             }
             .forEach { systemProperty(it, System.getProperty(it)) }
+        splitterRuntimeSystemProperties.forEach { propertyName ->
+            configuredRuntimeSystemProperty(propertyName)?.let { systemProperty(propertyName, it) }
+        }
         secureLocalProperties.stringPropertyNames()
             .mapNotNull { name -> optionalLocalProperty(name)?.let { name to it } }
             .forEach { (name, value) -> systemProperty(name, value) }

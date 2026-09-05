@@ -119,6 +119,8 @@ public final class KafkaQueueAsserts {
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
             List<String> matchedByHostAndTime = new ArrayList<>();
+            KafkaAllureLog.waitForTopic(envName, topic, timeout,
+                    "ищем payload по hostname~=" + hostnameSubstring + ", expected substring");
 
             try {
                 while (System.currentTimeMillis() < deadline) {
@@ -201,6 +203,7 @@ public final class KafkaQueueAsserts {
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
             List<String> matchedByHostAndTime = new ArrayList<>();
+            KafkaAllureLog.waitForTopic(envName, topic, timeout, "ищем payload по expected substring");
 
             try {
                 while (System.currentTimeMillis() < deadline) {
@@ -279,6 +282,8 @@ public final class KafkaQueueAsserts {
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
             List<String> matched = new ArrayList<>();
+            KafkaAllureLog.waitForTopic(envName, topic, timeout,
+                    "ищем payload по hostname~=" + hostnameSubstring + ", expected substring");
 
             while (System.currentTimeMillis() < deadline) {
                 consumer.poll(Duration.ofMillis(300));

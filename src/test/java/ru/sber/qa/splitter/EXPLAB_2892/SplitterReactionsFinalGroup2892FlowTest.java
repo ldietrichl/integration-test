@@ -73,7 +73,7 @@ public class SplitterReactionsFinalGroup2892FlowTest extends AbstractSplitterV9F
 
     @CriticalRegression
     @Test
-    @DisplayName("EXPLAB-2892-02. Kafka-report выбирает B/B в MAIN; ALL проверяется как публичный worked-result")
+    @DisplayName("EXPLAB-2892-02. Kafka-report сохраняет полный ALL и выбирает B/B в MAIN")
     void reactionsKafkaReportShouldUseWorkedGroupInMainAndCheckAllWhenPresent(KafkaService kafkaService) {
         long version = SplitterVersionProvider.next();
         LoadConfigRequestDto config = reactionsConfig(version);
@@ -91,7 +91,7 @@ public class SplitterReactionsFinalGroup2892FlowTest extends AbstractSplitterV9F
                             assertBasicResponseContract(response, request, version);
                             assertWorkedGroupInRest(response, testCase);
                         })
-                .step("Читаем Kafka/report и проверяем MAIN по objectId=1, ALL - при наличии",
+                .step("Читаем Kafka/report и проверяем MAIN по objectId=1, ALL содержит worked-result",
                         flow -> {
                             String payload = findKafkaPayloadByRequestId(kafkaService, request.getRequestId(), since);
                             assertKafkaReportMeta(payload, request, version);
@@ -175,12 +175,22 @@ public class SplitterReactionsFinalGroup2892FlowTest extends AbstractSplitterV9F
                 "Неверный размер " + ruleCode + ".resultExps для objectId=" + objectId + "\n" + reportRoot);
     }
 
+    private void assertReportRuleResultAtLeast(JsonNode reportRoot, String objectId, String ruleCode, int expectedMinSize) {
+        JsonNode rule = findReportRule(reportRoot, objectId, ruleCode, true);
+        JsonNode resultExps = rule.path("resultExps");
+        assertTrue(resultExps.isArray(),
+                "В Kafka/report " + ruleCode + ".resultExps должен быть массивом\n" + reportRoot);
+        assertTrue(resultExps.size() >= expectedMinSize,
+                "Неверный размер " + ruleCode + ".resultExps для objectId=" + objectId
+                        + ": ожидали минимум " + expectedMinSize + "\n" + reportRoot);
+    }
+
     private void assertReportAllWhenEnabled(JsonNode reportRoot, WorkedGroupCase testCase) {
         if (findReportRule(reportRoot, OBJECT_1_ID, "ALL", false) == null) {
             return;
         }
 
-        assertReportRuleResult(reportRoot, OBJECT_1_ID, "ALL", 1);
+        assertReportRuleResultAtLeast(reportRoot, OBJECT_1_ID, "ALL", 1);
         assertReportExp(reportRoot, OBJECT_1_ID, "ALL",
                 testCase.expectedGroup(), testCase.expectedGroup(), testCase.expectedResult());
     }

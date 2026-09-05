@@ -21,6 +21,7 @@ import static util.TestAssertions.assertEquals;
 import static util.TestAssertions.assertFalse;
 import static util.TestAssertions.assertTrue;
 import static util.TestAssertions.fail;
+import static util.KafkaAllureLog.waitForTopic;
 
 /**
  * Kafka-проверки для КАП/reporting результата Сплиттера.
@@ -54,6 +55,7 @@ final class SplitterKapKafkaAssertions {
             consumer.poll(Duration.ofMillis(300));
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
+            waitForTopic(envName, topic, timeout, "ищем КАП payload, requestId=" + requestId);
             while (System.currentTimeMillis() < deadline) {
                 consumer.poll(Duration.ofMillis(300));
                 try {
@@ -163,6 +165,8 @@ final class SplitterKapKafkaAssertions {
             consumer.poll(Duration.ofMillis(300));
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
+            waitForTopic(envName, topic, timeout,
+                    "проверяем отсутствие SPLITTING_RESULT_REPORT/NOT_SENT, requestId=" + requestId);
             while (System.currentTimeMillis() < deadline) {
                 consumer.poll(Duration.ofMillis(300));
                 consumer.records().forEach(recordWrapper -> {

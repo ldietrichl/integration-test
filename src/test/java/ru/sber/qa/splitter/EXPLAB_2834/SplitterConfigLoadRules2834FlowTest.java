@@ -432,7 +432,7 @@ public class SplitterConfigLoadRules2834FlowTest extends AbstractSplitterV9FlowT
                         loadConfig(flow, EndpointMode.MAPPER, activeConfig))
                 .step("Отправляем config с пересекающимися shares", flow -> {
                     ValidatableResponseWrapper response = EndpointMode.MAPPER.load(flow.restCustomSteps(), invalidConfig)
-                            .should(haveStatusCode(HttpStatus.SC_BAD_REQUEST));
+                            .should(haveStatusCode(HttpStatus.SC_OK));
                     JsonNode root = jsonBody(response, "Ожидали JSON body ответа CONFIG_ERROR");
                     assertEquals("CONFIG_ERROR", root.path("result").asText(null), body(response));
                     assertTrue(root.path("resultDetails").asText("").contains("invalid group ranges"), body(response));

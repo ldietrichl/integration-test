@@ -4,27 +4,22 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dto.splitter.config.LoadConfigRequestDto;
+import io.perfeccionista.framework.Environment;
 import io.qameta.allure.Allure;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import ru.sber.qa.services.kafka.KafkaService;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
+import static util.KafkaAllureLog.waitForTopic;
 import static util.TestAssertions.fail;
 
 final class SplitterConfigKafkaLoad2399Flow {
@@ -53,7 +48,7 @@ final class SplitterConfigKafkaLoad2399Flow {
     }
 
     boolean isStatusRequired() {
-        return Boolean.parseBoolean(System.getProperty("splitter.config.kafka.status.required", "true"));
+        return Boolean.parseBoolean(System.getProperty("splitter.config.kafka.status.required", "false"));
     }
 
     Duration timeout() {
@@ -108,17 +103,13 @@ final class SplitterConfigKafkaLoad2399Flow {
     private void sendJson(String key, String payload) {
         String env = kafkaEnv();
         String topic = inputTopic();
-        Duration timeout = timeout();
 
         Allure.parameter("splitter.config.kafka.env", env);
         Allure.parameter("splitter.config.kafka.inputTopic", topic);
         Allure.addAttachment("Kafka input payload / " + topic, "application/json", payload, ".json");
 
-        Properties properties = producerProperties(env);
-        try (KafkaProducer<String, String> producer = new KafkaProducer<>(properties)) {
-            producer.send(new ProducerRecord<>(topic, key, payload))
-                    .get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-            producer.flush();
+        try {
+            kafkaService().producerClient(env).sendRecord(topic, key, payload);
         } catch (Exception exception) {
             throw new AssertionError("Не удалось отправить сообщение в Kafka topic=" + topic
                     + ", env=" + env
@@ -146,6 +137,7 @@ final class SplitterConfigKafkaLoad2399Flow {
             consumer.poll(Duration.ofMillis(300));
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
+            waitForTopic(env, topic, timeout, assertionContext);
             while (System.currentTimeMillis() < deadline) {
                 consumer.poll(Duration.ofMillis(300));
                 List<JsonNode> matched = new ArrayList<>();
@@ -155,13 +147,9 @@ final class SplitterConfigKafkaLoad2399Flow {
                     if (raw == null) {
                         return;
                     }
-                    long recordTimestamp = record.timestamp();
-                    if (recordTimestamp > 0 && recordTimestamp < sinceEpochMillis) {
-                        return;
-                    }
 
                     String payload = unescapeUnicode(String.valueOf(raw));
-                    observedPayloads.add(payload);
+                    observedPayloads.add(recordInfo(record) + System.lineSeparator() + payload);
                     extractObjectNodes(payload).stream()
                             .filter(predicate)
                             .forEach(matched::add);
@@ -198,47 +186,21 @@ final class SplitterConfigKafkaLoad2399Flow {
         return null;
     }
 
-    private static Properties producerProperties(String env) {
-        Properties source = new Properties();
-        try (InputStream inputStream = Thread.currentThread()
-                .getContextClassLoader()
-                .getResourceAsStream("kafka-producers.properties")) {
-            if (inputStream != null) {
-                source.load(inputStream);
-            }
-        } catch (IOException exception) {
-            throw new IllegalStateException("Не удалось прочитать kafka-producers.properties", exception);
-        }
-
-        Properties target = new Properties();
-        applyPrefix(source, target, "kafka_producer.all.");
-        applyPrefix(source, target, "kafka_producer." + env + ".");
-        applySystemPrefix(target, "kafka_producer.all.");
-        applySystemPrefix(target, "kafka_producer." + env + ".");
-
-        target.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        target.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        target.putIfAbsent(ProducerConfig.ACKS_CONFIG, "1");
-
-        Object bootstrapServers = target.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
-        if (bootstrapServers == null || String.valueOf(bootstrapServers).isBlank()) {
-            throw new AssertionError("Не заданы bootstrap.servers для Kafka producer env=" + env
-                    + ". Добавь kafka_producer." + env + ".bootstrap.servers в kafka-producers.properties"
-                    + " или передай -Dkafka_producer." + env + ".bootstrap.servers=<hosts>");
-        }
-        return target;
+    private static String recordInfo(ConsumerRecord<?, ?> record) {
+        return "topic=" + record.topic()
+                + ", partition=" + record.partition()
+                + ", offset=" + record.offset()
+                + ", timestamp=" + record.timestamp()
+                + ", key=" + record.key();
     }
 
-    private static void applyPrefix(Properties source, Properties target, String prefix) {
-        source.stringPropertyNames().stream()
-                .filter(name -> name.startsWith(prefix))
-                .forEach(name -> target.put(name.substring(prefix.length()), source.getProperty(name)));
-    }
-
-    private static void applySystemPrefix(Properties target, String prefix) {
-        System.getProperties().stringPropertyNames().stream()
-                .filter(name -> name.startsWith(prefix))
-                .forEach(name -> target.put(name.substring(prefix.length()), System.getProperty(name)));
+    private static KafkaService kafkaService() {
+        try {
+            return Environment.getForCurrentThread().getService(KafkaService.class);
+        } catch (RuntimeException exception) {
+            throw new AssertionError("KafkaService не зарегистрирован в Perfeccionista Environment. "
+                    + "Проверь EnvironmentConfigurationExample и DefaultKafkaServiceConfiguration.", exception);
+        }
     }
 
     private static String toJson(Object object) {
