@@ -1,0 +1,39 @@
+# Reference only; this file is NOT loaded automatically.
+# Copy a complete selected profile to the existing secure.local.override.properties.
+# Replace placeholders with values approved for that environment. Keep unused profiles commented.
+# Paths in Java properties use forward slashes. Existing certificate filenames can be kept.
+
+# ignite.dev.addresses=<DEV_HOST_1:10800,DEV_HOST_2:10800>
+# ignite.dev.username=<DEV_USERNAME>
+# ignite.dev.password=<DEV_PASSWORD>
+# ignite.dev.ssl.enabled=true
+# ignite.dev.ssl.key-store.path=<DEV_CLIENT_STORE_PATH>
+# ignite.dev.ssl.key-store.type=PKCS12
+# ignite.dev.ssl.key-store.password=<DEV_CLIENT_STORE_PASSWORD>
+# ignite.dev.ssl.trust-store.path=<DEV_SERVER_TRUST_STORE_PATH>
+# ignite.dev.ssl.trust-store.type=<ACTUAL_STORE_TYPE>
+# ignite.dev.ssl.trust-store.password=<DEV_SERVER_TRUST_STORE_PASSWORD>
+# ignite.dev.runtime.directory=<VERIFIED_RUNTIME_DIRECTORY>
+# ignite.dev.output.directory=build/ignite/dev
+# ignite.dev.operation-timeout-seconds=60
+
+# ignite.ift.addresses=<IFT_HOST_1:10800,IFT_HOST_2:10800>
+# ignite.ift.username=<IFT_USERNAME>
+# ignite.ift.password=<IFT_PASSWORD>
+# ignite.ift.ssl.enabled=true
+# ignite.ift.ssl.key-store.path=<IFT_CLIENT_STORE_PATH>
+# ignite.ift.ssl.key-store.type=PKCS12
+# ignite.ift.ssl.key-store.password=<IFT_CLIENT_STORE_PASSWORD>
+# ignite.ift.ssl.trust-store.path=<IFT_SERVER_TRUST_STORE_PATH>
+# ignite.ift.ssl.trust-store.type=<ACTUAL_STORE_TYPE>
+# ignite.ift.ssl.trust-store.password=<IFT_SERVER_TRUST_STORE_PASSWORD>
+# ignite.ift.runtime.directory=<VERIFIED_RUNTIME_DIRECTORY>
+# ignite.ift.output.directory=build/ignite/ift
+# ignite.ift.operation-timeout-seconds=60
+
+# Separate business policy. The common connection probe does not require these flags.
+# Enable only for an intended data-operator fixture run.
+# data-operator.fixture.dev.enabled=true
+# data-operator.fixture.dev.output.directory=build/explab-2974-fixtures/dev
+# data-operator.fixture.ift.enabled=true
+# data-operator.fixture.ift.output.directory=build/explab-2974-fixtures/ift

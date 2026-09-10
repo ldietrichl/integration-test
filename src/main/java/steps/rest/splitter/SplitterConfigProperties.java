@@ -1,7 +1,7 @@
 package steps.rest.splitter;
 
-import java.io.IOException;
-import java.io.InputStream;
+import config.services.core.RegressionProfileConfiguration;
+import config.services.core.TestConfigurationFiles;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Properties;
@@ -14,6 +14,9 @@ final class SplitterConfigProperties {
     }
 
     static String string(String key, String defaultValue) {
+        if (RegressionProfileConfiguration.isRoutingKey(key)) {
+            return RegressionProfileConfiguration.required(key);
+        }
         String systemValue = System.getProperty(key);
         if (hasText(systemValue)) {
             return systemValue.trim();
@@ -47,17 +50,7 @@ final class SplitterConfigProperties {
     }
 
     private static Properties loadTestProperties() {
-        Properties properties = new Properties();
-        try (InputStream inputStream = Thread.currentThread()
-                .getContextClassLoader()
-                .getResourceAsStream("test.properties")) {
-            if (inputStream != null) {
-                properties.load(inputStream);
-            }
-        } catch (IOException exception) {
-            throw new IllegalStateException("Не удалось прочитать test.properties", exception);
-        }
-        return properties;
+        return TestConfigurationFiles.load("test.properties");
     }
 
     private static String envKey(String key) {

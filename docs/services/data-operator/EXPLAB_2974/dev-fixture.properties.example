@@ -1,0 +1,17 @@
+# Values from EXPLAB-2974/config_map.txt and yaml.txt, inspected 2026-09-08.
+# Merge into the existing corporate test.properties; do not replace that file.
+# The selected project environment must be dev.
+links.fixture.dev.enabled=true
+links.fixture.dev.ignite.addresses=tsled-mvp000384.esrt.sber.ru:10800,tsled-mvp000385.esrt.sber.ru:10800,tsled-mvp000386.esrt.sber.ru:10800
+links.fixture.dev.ignite.ssl.enabled=false
+links.fixture.dev.ignite.username=ise_client
+links.fixture.dev.ignite.password=${SECURE_EXPLAB2974_DEV_IGNITE_PASSWORD}
+
+# The fixed client bundle in tools/data-operator-explab-2974 is included in the patch.
+# No links.fixture.dev.service.jar or deployed application JAR is needed.
+
+# In secure.local.override.properties set SECURE_EXPLAB2974_DEV_IGNITE_PASSWORD
+# to the actual Ignite password supplied through the stand's Vault configuration.
+# No password is present in the supplied Pod YAML / ConfigMap data.
+# Ignite SSL is false in the supplied ConfigMap; no Ignite stores are configured here.
+# Existing HTTP mTLS settings remain independently configured by the project.

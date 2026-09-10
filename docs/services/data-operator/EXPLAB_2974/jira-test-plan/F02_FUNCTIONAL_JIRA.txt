@@ -1,0 +1,79 @@
+﻿h1. EXPLAB-2974 — functional, часть 2: F026–F050
+
+*Основа статусов:* полный прогон ИФТ 09.09.2026, 19:53:55–20:56:44 МСК (16:53:55–17:56:44 UTC), до оптимизации Ignite helper. Статусы ниже относятся только к этому прогону. Написанные проверки сопоставлены с текущими исходниками; полный повтор текущей версии после патча не подтверждён. DEV в этом пакете не оценивался.
+
+Легенда: {color:#14892c}*ПРОЙДЕН*{color}; {color:#d04437}*НЕ ПРОЙДЕН — БАГ*{color}; {color:#a86b00}*ТРЕБУЕТ УТОЧНЕНИЯ*{color}. Жёлтый — техническое падение теста с неоднозначным требованием; это не подтверждённый баг и не успешный тест.
+
+h2. Порядок выполнения функционального варианта
+# Выбрать env в src/test/resources/test.properties; REST и Ignite должны относиться к одной среде. Использовать настроенный профиль доступа этой среды и совместимый helper runtime.
+# Создать свежие собственные SP1/SP2 и набор из колонки «Данные» через штатную фикстуру. Загрузить объекты REST-загрузчиком /api/v2/data-operator/kafka/stub/\{point\}; дождаться проверки собственных данных в Ignite.
+# Отправить POST /api/v2/data-operator/splitting-objects-links с условиями варианта из DataOperatorLinksFunctionalCases. Контрольные объекты SP2 не должны попадать в ответ SP1.
+# Проверить HTTP 200, Content-Type application/json, типы метаданных и точное множество пар по каждому (expId, number). Лишние/пропущенные пары, эксперименты, условия и дубликаты запрещены; порядок не проверяется. ids и parentId — строки; при отсутствии родителя поле parentId должно отсутствовать.
+# При успехе и при падении очистить только собственные данные и подтвердить нулевой остаток во всех пяти кэшах. Для воспроизведения старого запроса сначала создать новую фикстуру и заменить splittingPointCode: точки исторического прогона очищены.
+
+E1=101321, E2=101322. Обозначение E1/1 означает эксперимент/номер условия. A=(1001,101), B=(1001,102), C=(1002,103), D=(1002,101), E=(нет родителя,104), F=(1002,105). Пары приведены как (parentId,id); в HTTP-ответе оба значения строковые. Для специальных STRING-наборов точные пары приведены в ожидании строки.
+
+||D1 / объект||productName||channelId||amount||enabled||note||
+|A|Кредит|10|9.50|true|A|
+|B|Кредит|20|10.00|true|пустая строка|
+|C|Вклад|20|10.50|false|поле отсутствует|
+|D|Кредит|30|20.00|false|D|
+|E|Страхование|30|0.00|true|поле отсутствует|
+|F|Авто Кредит VIP|10|-1.00|false|F|
+
+SP2 содержит контрольный X=(9001,999), productName=Кредит, channelId=20, amount=10.00, enabled=true, note=X. D1: id — INTEGER/key, parentId — INTEGER/parentKey. Прочие типы: productName/note STRING, channelId INTEGER, amount NUMBER, enabled BOOLEAN.
+
+Пустое множество пар у существующего условия означает splittingObjects=[]; пустые условия эксперимента означают сохранённый эксперимент с objectSelectConditions=[]; отсутствие всех экспериментов означает links=[]. objectIdType/parentIdType=null в ожидании — явный JSON null. Во входе используется objectsSelectConditions, в ответе objectSelectConditions.
+
+Исходники: src/main/java/request/dataoperator/v2/DataOperatorLinksFunctionalCases.java (номера строк ниже); src/test/java/ru/sber/qa/dataoperator/EXPLAB_2974/DataOperatorLinksFunctionalFlowTest.java, метод shouldCalculateExactLinks; oracle src/main/java/util/dataoperator/DataOperatorLinksAssertions.java.
+
+||Ключ / SL||Вариант||Данные / ожидание||HTTP факт||Результат 09.09 / разбор||Группы||Источник / UUID||
+|F026 / SL-21|NUMBER equal 10.0|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → B|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 97; 27348fc6-368b-4173-abaa-13b80e2912e3|
+|F027 / SL-21|NUMBER not\_equal 10.0|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,C,D,E,F|200|FAILED; {color:#d04437}*НЕ ПРОЙДЕН — БАГ*{color}|[B06|#F2-B06]|Генератор, строка 97; 1e5c11a5-177a-4830-ade8-6ae50d36d94d|
+|F028 / SL-21|NUMBER more 10.0|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → C,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 97; 19b54ff7-21f0-46ac-92a6-dfcca926a19c|
+|F029 / SL-21|NUMBER less 10.0|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,E,F|200|FAILED; {color:#d04437}*НЕ ПРОЙДЕН — БАГ*{color}|[B06|#F2-B06]|Генератор, строка 97; 3cb73a36-819f-46c7-80f5-4744cd2d95fd|
+|F030 / SL-21|NUMBER more\_equal 10.0|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → B,C,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 97; dc44adf0-87f7-455f-92f0-47911fa16cf6|
+|F031 / SL-21|NUMBER less\_equal 10.0|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,E,F|200|FAILED; {color:#d04437}*НЕ ПРОЙДЕН — БАГ*{color}|[B06|#F2-B06]|Генератор, строка 97; 66d540d9-fb33-483a-b72b-fd92351e30f7|
+|F032 / SL-21|NUMBER: отрицательное значение|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → F|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 99; 84320280-0c1d-4c12-8e1e-367684911279|
+|F033 / SL-22|STRING equal всей строки|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 100; 6835fcdb-dc3b-46e3-afcc-146259964859|
+|F034 / SL-22|STRING not\_equal всей строки|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → C,E,F|200|FAILED; {color:#d04437}*НЕ ПРОЙДЕН — БАГ*{color}|[B06|#F2-B06]|Генератор, строка 101; ac3a5578-fca3-4d66-8f2b-3860e52de9e2|
+|F035 / SL-25|BOOLEAN equal true|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,E|200|FAILED; {color:#d04437}*НЕ ПРОЙДЕН — БАГ*{color}|[B06|#F2-B06]|Генератор, строка 102; 902e96f7-bbfa-4597-8fe3-532f982d3e29|
+|F036 / SL-25|BOOLEAN equal false|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → C,D,F|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 103; f6f7b50e-2e3d-4f19-88a3-9e4759273700|
+|F037 / SL-25|BOOLEAN not\_equal true|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → C,D,F|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 104; 93f406ea-bcec-43ff-9d64-cb85d64643a3|
+|F038 / SL-26|IN 10,20|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,C,F|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 105; be719d72-c227-4224-b091-e24a7d51b3e4|
+|F039 / SL-26|NOT IN 10,20|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → D,E|200|FAILED; {color:#d04437}*НЕ ПРОЙДЕН — БАГ*{color}|[B06|#F2-B06]|Генератор, строка 106; 28329aee-55f6-4383-b871-676fb0d5c17b|
+|F040 / SL-26|IN с повтором значения|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,C,F|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 107; 81d0e9fe-c9a6-49fb-98fb-9229774afd48|
+|F041 / SL-27|is\_null: values=absent|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → C,E|200|FAILED; {color:#a86b00}*ТРЕБУЕТ УТОЧНЕНИЯ*{color}|[Q01|#F2-Q01]|Генератор, строка 113; ea208906-ab51-4ccd-98a3-1955d24f7f0a|
+|F042 / SL-27|is\_null: values=null|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → C,E|200|FAILED; {color:#a86b00}*ТРЕБУЕТ УТОЧНЕНИЯ*{color}|[Q01|#F2-Q01]|Генератор, строка 113; 9a4db84e-3249-4960-b98b-78f5ef8eaa9f|
+|F043 / SL-27|is\_null: values=empty|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → C,E|200|FAILED; {color:#a86b00}*ТРЕБУЕТ УТОЧНЕНИЯ*{color}|[Q01|#F2-Q01]|Генератор, строка 113; 61ec61fc-90a6-4793-9fe4-fdaa6deb21ad|
+|F044 / SL-27|is\_not\_null: values=absent|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D,F|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 113; ab479e22-871a-4b97-9fc5-55eb2d93155b|
+|F045 / SL-27|is\_not\_null: values=null|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D,F|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 113; dc11d777-0efe-46cf-bf1f-1a490636565d|
+|F046 / SL-27|is\_not\_null: values=empty|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D,F|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 113; 6c261225-7fae-48df-bb39-27bf9eb2d18c|
+|F047 / SL-29|objectIds пересекается с правилом|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → B|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 116; af24be13-8dec-4d5d-b901-64bcad3b461a|
+|F048 / SL-30|parentObjectIds пересекается с правилом|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 118; a2b8b5d5-4db0-40fd-b545-47ed9331f66e|
+|F049 / SL-31|Оба фильтра: совпадение|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 120; 158e6cfa-3d48-4ace-916a-f87ffb4fedf8|
+|F050 / SL-31|Оба фильтра: несовместимые ограничения|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → \[\] (splittingObjects=\[\])|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 122; 5d481083-a0e5-4f82-834a-464ce3e0a599|
+
+Полные class.method, имя теста, длительность и SHA-256 raw result находятся в traceability.csv. При повторе текущего патча заполнить новый результат отдельно.
+
+h2. Группы багов и доказательства
+
+Ключи Jira-задач не предоставлены. B01–B09 и Q01 — обозначения групп из разбора; ссылки ведут к якорям этого текста. После заведения задач их можно заменить реальными ссылками.
+
+Архив материалов: [^EXPLAB-2974-IFT-evidence.zip]. Точная спецификация v7: [^EXPLAB-2974-specification-v7.pdf]. В архиве для каждой группы есть JIRA_DESCRIPTION.txt, cases.csv, cases.zip, вырезки запросов/ответов и лога, пункты требований. UUID строки находит конкретный случай.
+
+{anchor:F2-B06}
+h3. B06 — POST /splitting-objects-links возвращает parentId:null вместо отсутствующего ключа для объекта без родителя
+
+{color:#d04437}*ПОДТВЕРЖДЁННАЯ ГРУППА*{color}; 11 первичных падений в полном прогоне.
+
+Папка архива: B06-null-parent-id.
+
+{anchor:F2-Q01}
+h3. Q01 — Должен ли is\_null выбирать объект при физически отсутствующем поле в splitting\_field\_cache?
+
+{color:#a86b00}*ВОПРОС К ТРЕБОВАНИЯМ*{color}; 3 первичных падений в полном прогоне.
+
+Папка архива: Q01-is-null-clarification.
+
+Уточнить, должен ли is_null выбирать объект при физически отсутствующем поле EAV. Текущий oracle ожидает C/E, фактически пусто. Три is_not_null-контроля успешны.

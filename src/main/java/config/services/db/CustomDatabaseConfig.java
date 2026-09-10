@@ -32,32 +32,33 @@ import ru.sber.qa.services.configuration.converters.SecretPropertyConverter;
         "system:properties",
         "file:secure.local.override.properties",
         "file:secure.local.properties",
+        "file:src/test/resources/database.properties",
         "classpath:database.properties",
         "classpath:config/database.properties"
 })
 public interface CustomDatabaseConfig extends Reloadable {
     @DefaultValue("")
-    String env();
+    String selectedTestEnvironment();
 
     @DefaultValue("")
     String name();
 
-    @Key("db.${env}.${name}.url")
+    @Key("db.${selectedTestEnvironment}.${name}.url")
     String url();
 
-    @Key("db.${env}.${name}.login")
+    @Key("db.${selectedTestEnvironment}.${name}.login")
     @ConverterClass(SecretPropertyConverter.class)
     String login();
 
-    @Key("db.${env}.${name}.password")
+    @Key("db.${selectedTestEnvironment}.${name}.password")
     @ConverterClass(SecretPropertyConverter.class)
     String password();
 
     @DefaultValue("60")
-    @Key("db.${env}.${name}.timeout.in.seconds")
+    @Key("db.${selectedTestEnvironment}.${name}.timeout.in.seconds")
     String timeoutInSeconds();
 
     @DefaultValue("1")
-    @Key("db.${env}.${name}.connection.pool.size")
+    @Key("db.${selectedTestEnvironment}.${name}.connection.pool.size")
     int connectionPoolSize();
 }

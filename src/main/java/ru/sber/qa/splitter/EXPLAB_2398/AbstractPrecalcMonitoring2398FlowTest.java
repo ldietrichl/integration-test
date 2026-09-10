@@ -11,6 +11,7 @@ import io.qameta.allure.Allure;
 import ru.sber.qa.services.kafka.KafkaService;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import ru.sber.qa.splitter.analytictests.common.AbstractAnalyticSplitterFlowTest;
+import config.services.core.RegressionProfileConfiguration;
 import util.support.SplitterVersionProvider;
 
 import java.time.Duration;
@@ -19,7 +20,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 import static util.SplitterPrecalcAssertions.shouldBe200;
 import static util.SplitterPrecalcAssertions.shouldBeConfigLoaded;
 import static util.SplitterPrecalcAssertions.shouldHaveSoConfigVersion;
@@ -129,6 +129,24 @@ abstract class AbstractPrecalcMonitoring2398FlowTest extends AbstractAnalyticSpl
                 .counter("totalExps", totalExps);
     }
 
+    protected PrecalcMonitoring2398EventExpectation loadedExpectation(SplitterPrecalcRequestDto request,
+                                                                      long copiedObjects,
+                                                                      long objectsAdded,
+                                                                      long objectsDeleted,
+                                                                      long notLinkedObjects,
+                                                                      long totalObjects,
+                                                                      long linkedExps,
+                                                                      long totalExps) {
+        return PrecalcMonitoring2398EventExpectation.event(request.getRequestId(), "LOADED", request.getSoConfigVersion())
+                .counter("copiedObjects", copiedObjects)
+                .counter("objectsAdded", objectsAdded)
+                .counter("objectsDeleted", objectsDeleted)
+                .counter("notLinkedObjects", notLinkedObjects)
+                .counter("totalObjects", totalObjects)
+                .counter("linkedExps", linkedExps)
+                .counter("totalExps", totalExps);
+    }
+
     protected PrecalcMonitoring2398EventExpectation validationFailedExpectation(SplitterPrecalcRequestDto request) {
         return PrecalcMonitoring2398EventExpectation.event(request.getRequestId(), "VALIDATION_FAILED", request.getSoConfigVersion());
     }
@@ -145,11 +163,11 @@ abstract class AbstractPrecalcMonitoring2398FlowTest extends AbstractAnalyticSpl
     }
 
     private String monitoringKafkaEnv() {
-        return System.getProperty("splitter.precalc.monitoring.kafka.env", TEST_CONFIG.env());
+        return RegressionProfileConfiguration.required("splitter.precalc.monitoring.kafka.env");
     }
 
     private String monitoringTopic() {
-        return System.getProperty("splitter.precalc.monitoring.topic", DEFAULT_MONITORING_TOPIC);
+        return RegressionProfileConfiguration.required("splitter.precalc.monitoring.topic");
     }
 
     private Duration monitoringTimeout() {

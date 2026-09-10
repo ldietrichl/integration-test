@@ -1,0 +1,65 @@
+﻿h1. EXPLAB-2974 — functional, часть 3: F051–F070
+
+*Основа статусов:* полный прогон ИФТ 09.09.2026, 19:53:55–20:56:44 МСК (16:53:55–17:56:44 UTC), до оптимизации Ignite helper. Статусы ниже относятся только к этому прогону. Написанные проверки сопоставлены с текущими исходниками; полный повтор текущей версии после патча не подтверждён. DEV в этом пакете не оценивался.
+
+Легенда: {color:#14892c}*ПРОЙДЕН*{color}; {color:#d04437}*НЕ ПРОЙДЕН — БАГ*{color}; {color:#a86b00}*ТРЕБУЕТ УТОЧНЕНИЯ*{color}. Жёлтый — техническое падение теста с неоднозначным требованием; это не подтверждённый баг и не успешный тест.
+
+h2. Порядок выполнения функционального варианта
+# Выбрать env в src/test/resources/test.properties; REST и Ignite должны относиться к одной среде. Использовать настроенный профиль доступа этой среды и совместимый helper runtime.
+# Создать свежие собственные SP1/SP2 и набор из колонки «Данные» через штатную фикстуру. Загрузить объекты REST-загрузчиком /api/v2/data-operator/kafka/stub/\{point\}; дождаться проверки собственных данных в Ignite.
+# Отправить POST /api/v2/data-operator/splitting-objects-links с условиями варианта из DataOperatorLinksFunctionalCases. Контрольные объекты SP2 не должны попадать в ответ SP1.
+# Проверить HTTP 200, Content-Type application/json, типы метаданных и точное множество пар по каждому (expId, number). Лишние/пропущенные пары, эксперименты, условия и дубликаты запрещены; порядок не проверяется. ids и parentId — строки; при отсутствии родителя поле parentId должно отсутствовать.
+# При успехе и при падении очистить только собственные данные и подтвердить нулевой остаток во всех пяти кэшах. Для воспроизведения старого запроса сначала создать новую фикстуру и заменить splittingPointCode: точки исторического прогона очищены.
+
+E1=101321, E2=101322. Обозначение E1/1 означает эксперимент/номер условия. A=(1001,101), B=(1001,102), C=(1002,103), D=(1002,101), E=(нет родителя,104), F=(1002,105). Пары приведены как (parentId,id); в HTTP-ответе оба значения строковые. Для специальных STRING-наборов точные пары приведены в ожидании строки.
+
+||D1 / объект||productName||channelId||amount||enabled||note||
+|A|Кредит|10|9.50|true|A|
+|B|Кредит|20|10.00|true|пустая строка|
+|C|Вклад|20|10.50|false|поле отсутствует|
+|D|Кредит|30|20.00|false|D|
+|E|Страхование|30|0.00|true|поле отсутствует|
+|F|Авто Кредит VIP|10|-1.00|false|F|
+
+SP2 содержит контрольный X=(9001,999), productName=Кредит, channelId=20, amount=10.00, enabled=true, note=X. D1: id — INTEGER/key, parentId — INTEGER/parentKey. Прочие типы: productName/note STRING, channelId INTEGER, amount NUMBER, enabled BOOLEAN.
+
+Пустое множество пар у существующего условия означает splittingObjects=[]; пустые условия эксперимента означают сохранённый эксперимент с objectSelectConditions=[]; отсутствие всех экспериментов означает links=[]. objectIdType/parentIdType=null в ожидании — явный JSON null. Во входе используется objectsSelectConditions, в ответе objectSelectConditions.
+
+Исходники: src/main/java/request/dataoperator/v2/DataOperatorLinksFunctionalCases.java (номера строк ниже); src/test/java/ru/sber/qa/dataoperator/EXPLAB_2974/DataOperatorLinksFunctionalFlowTest.java, метод shouldCalculateExactLinks; oracle src/main/java/util/dataoperator/DataOperatorLinksAssertions.java.
+
+||Ключ / SL||Вариант||Данные / ожидание||HTTP факт||Результат 09.09 / разбор||Группы||Источник / UUID||
+|F051 / SL-32|objectIds=absent, parentObjectIds=absent|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 125; 2b3741ce-9e2a-4cde-b4c5-b4a1f563d3aa|
+|F052 / SL-32|objectIds=absent, parentObjectIds=null|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 125; bbc09e97-8bd8-4248-bbc3-da3f82a70393|
+|F053 / SL-32|objectIds=absent, parentObjectIds=empty|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 125; 9ab4d9b6-f5fa-4c78-88d8-a1fe94b84d5a|
+|F054 / SL-32|objectIds=null, parentObjectIds=absent|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 125; a3b487e2-c21e-44d6-9635-ea4d8df69bfa|
+|F055 / SL-32|objectIds=null, parentObjectIds=null|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 125; e989aa17-d200-4270-bd36-0ae2b2d3e12f|
+|F056 / SL-32|objectIds=null, parentObjectIds=empty|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 125; a2ed45b4-efcf-4c2f-87bf-2ec9f64e8e9a|
+|F057 / SL-32|objectIds=empty, parentObjectIds=absent|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 125; 06e22ae4-0be8-41b4-9957-8d1102345ecb|
+|F058 / SL-32|objectIds=empty, parentObjectIds=null|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 125; 472a079a-8a5d-42e5-953b-3d7bafee7a42|
+|F059 / SL-32|objectIds=empty, parentObjectIds=empty|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 125; d96b6dcf-08fd-4c3b-a325-8a4496ef3285|
+|F060 / SL-32|Пустой objectIds и непустой parentObjectIds|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 128; 79fcfcf4-1a28-4a5b-8d08-11e7d2915c64|
+|F061 / SL-32|Непустой objectIds и пустой parentObjectIds|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → B|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 130; b6729275-c5ae-410b-abc9-9163e3bbcc6e|
+|F062 / SL-33|objectIds: повторы и неизвестное значение|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → B|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 134; 404d12b3-8a3e-471d-9a9d-6d747fa8addb|
+|F063 / SL-33|objectIds: только неизвестное значение|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → \[\] (splittingObjects=\[\])|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 136; 9ac7e0ac-94a5-4e43-bfde-f7390cd1dba8|
+|F064 / SL-33|parentObjectIds: повторы и неизвестное значение|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 134; 75b41af3-02ac-4caa-bccf-6665bf740a7d|
+|F065 / SL-33|parentObjectIds: только неизвестное значение|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → \[\] (splittingObjects=\[\])|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 136; da41b8e6-e0f7-499c-aeea-449aa523eb22|
+|F066 / SL-34|Объект без родителя: контроль без фильтра|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → E|200|FAILED; {color:#d04437}*НЕ ПРОЙДЕН — БАГ*{color}|[B06|#F3-B06]|Генератор, строка 139; 20d78d60-f434-41fd-824e-7b21bfa81094|
+|F067 / SL-34|Родительский фильтр исключает объект без родителя|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/1 → \[\] (splittingObjects=\[\])|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 141; fc3abdc0-900d-4d66-b937-97184a3d9931|
+|F068 / SL-41|Точный expId=2147483648|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; 2147483648/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 144; 0d47efec-8601-40d6-b2c8-700d263d56ed|
+|F069 / SL-41|Точный expId=9223372036854775807|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; 9223372036854775807/1 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 144; f3f22452-d00f-4d66-94a9-83b09af55e0b|
+|F070 / SL-42|Точная верхняя граница number=32767|D1; HTTP 200; objectIdType=INTEGER; parentIdType=INTEGER; E1/32767 → A,B,D|200|PASSED; {color:#14892c}*ПРОЙДЕН*{color}|—|Генератор, строка 147; 69592799-8694-47b4-8d5a-22e7e83bd867|
+
+Полные class.method, имя теста, длительность и SHA-256 raw result находятся в traceability.csv. При повторе текущего патча заполнить новый результат отдельно.
+
+h2. Группы багов и доказательства
+
+Ключи Jira-задач не предоставлены. B01–B09 и Q01 — обозначения групп из разбора; ссылки ведут к якорям этого текста. После заведения задач их можно заменить реальными ссылками.
+
+Архив материалов: [^EXPLAB-2974-IFT-evidence.zip]. Точная спецификация v7: [^EXPLAB-2974-specification-v7.pdf]. В архиве для каждой группы есть JIRA_DESCRIPTION.txt, cases.csv, cases.zip, вырезки запросов/ответов и лога, пункты требований. UUID строки находит конкретный случай.
+
+{anchor:F3-B06}
+h3. B06 — POST /splitting-objects-links возвращает parentId:null вместо отсутствующего ключа для объекта без родителя
+
+{color:#d04437}*ПОДТВЕРЖДЁННАЯ ГРУППА*{color}; 11 первичных падений в полном прогоне.
+
+Папка архива: B06-null-parent-id.

@@ -32,7 +32,7 @@ import static util.KafkaRestMatchers.hasKafkaFirstPayloadByHostnameSince;
 public class MessagesPostAuditNew {
     private static final String messageServiceBaseUri = RestEndpointResolver.baseUri(RestServiceEndpoint.MESSAGES);
 
-    private static final String ENV = "dev"; // dev, ift, prod
+    private static final String ENV = config.services.core.TestEnvironment.current();
     private static final String TOPIC = "omon_explab_log";
     private static final String HOSTNAME_SUBSTR = "message-service";
     RestAssuredConfig P12_CONFIG = RestAssuredConfig.config().sslConfig(

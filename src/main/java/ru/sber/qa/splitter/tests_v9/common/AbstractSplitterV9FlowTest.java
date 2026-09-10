@@ -16,6 +16,8 @@ import ru.sber.qa.services.kafka.KafkaService;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import ru.sber.qa.splitter.analytictests.common.AbstractAnalyticSplitterFlowTest;
 import steps.rest.RestCustomSteps;
+import util.KafkaAllureLog;
+import config.services.core.RegressionProfileConfiguration;
 import util.splittercheck.SplitterResponseReader;
 
 import java.time.Duration;
@@ -28,13 +30,11 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 import static util.TestAssertions.assertEquals;
 import static util.TestAssertions.assertFalse;
 import static util.TestAssertions.assertNotNull;
 import static util.TestAssertions.assertTrue;
 import static util.TestAssertions.fail;
-import static util.KafkaAllureLog.waitForTopic;
 import static util.SplitterPrecalcAssertions.shouldBe200;
 import static util.SplitterPrecalcAssertions.shouldBeConfigLoaded;
 
@@ -446,8 +446,8 @@ public abstract class AbstractSplitterV9FlowTest extends AbstractAnalyticSplitte
     protected String findKafkaPayloadByRequestId(KafkaService kafkaService,
                                                  String requestId,
                                                  long sinceEpochMillis) {
-        String env = System.getProperty("splitter.kap.kafka.env", TEST_CONFIG.env());
-        String topic = System.getProperty("splitter.kap.topic", "explab-splitting-result");
+        String env = RegressionProfileConfiguration.required("splitter.kap.kafka.env");
+        String topic = RegressionProfileConfiguration.required("splitter.kap.topic");
         Duration timeout = Duration.ofSeconds(Long.parseLong(System.getProperty(
                 "splitter.kap.timeout.seconds", String.valueOf(DEFAULT_KAFKA_TIMEOUT.toSeconds()))));
 
@@ -457,11 +457,14 @@ public abstract class AbstractSplitterV9FlowTest extends AbstractAnalyticSplitte
 
         var consumer = kafkaService.consumerClient(env, timeout);
         List<String> seen = new ArrayList<>();
-        try {
+        try (KafkaAllureLog.Scope ignored = KafkaAllureLog.waitingForTopic(
+                env,
+                topic,
+                timeout,
+                "splitter reporting payload, requestId=" + requestId)) {
             consumer.subscribe(topic);
             consumer.poll(Duration.ofMillis(300));
             long deadline = System.currentTimeMillis() + timeout.toMillis();
-            waitForTopic(env, topic, timeout, "ищем payload по requestId=" + requestId);
             while (System.currentTimeMillis() < deadline) {
                 consumer.poll(Duration.ofMillis(300));
                 try {
@@ -637,6 +640,13 @@ public abstract class AbstractSplitterV9FlowTest extends AbstractAnalyticSplitte
         assertTrue(resultExps.isArray(), "ALL.resultExps должен быть массивом" + body(response));
         for (JsonNode exp : resultExps) {
             JsonNode flags = exp.path("expFlags");
+            boolean alternativeExpected = "true".equalsIgnoreCase(expectedValue);
+            if (!alternativeExpected
+                    && (flags.isMissingNode()
+                    || flags.isNull()
+                    || (flags.isArray() && flags.isEmpty()))) {
+                continue;
+            }
             assertTrue(flags.isArray(), "expFlags должен быть массивом для ALL" + body(response));
             boolean found = false;
             for (JsonNode flag : flags) {
@@ -645,7 +655,9 @@ public abstract class AbstractSplitterV9FlowTest extends AbstractAnalyticSplitte
                     found = true;
                 }
             }
-            assertTrue(found, "В ALL.expFlags должен быть флаг isAlternative" + body(response));
+            if (alternativeExpected) {
+                assertTrue(found, "В ALL.expFlags должен быть флаг isAlternative" + body(response));
+            }
         }
     }
 

@@ -1,0 +1,319 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
+// Applied after the regression task block exports these two values.
+def regressionEnv = rootProject.ext.regressionEnvironment.toString()
+def resultsRoot = (rootProject.ext.regressionResultsRoot as File).absoluteFile
+def expectedRoot = new File(rootProject.projectDir, "regression-results/${regressionEnv}").absoluteFile
+if (!(regressionEnv ==~ /[A-Za-z0-9_-]+/) || resultsRoot.toPath().normalize() != expectedRoot.toPath().normalize()) {
+    throw new GradleException('Regression results root must be regression-results/<environment> inside the project.')
+}
+
+def stages = ['experiment', 'splitter-rest', 'splitter-kafka', 'data-operator']
+def preparedDirectory = new File(resultsRoot, 'testops')
+def manifestFile = new File(resultsRoot, 'testops-manifest.json')
+def json = new JsonSlurper()
+
+def requireContained = { File boundary, File candidate ->
+    def base = boundary.canonicalFile.toPath()
+    def resolved = candidate.canonicalFile.toPath()
+    if (resolved == base || !resolved.startsWith(base)) {
+        throw new GradleException("Regression artifact path escapes its directory: ${candidate}")
+    }
+    candidate
+}
+
+def requireResultsRoot = {
+    requireContained(rootProject.projectDir, resultsRoot)
+    def expectedCanonicalLocation = new File(
+            rootProject.projectDir.canonicalFile,
+            "regression-results/${regressionEnv}"
+    ).absoluteFile.toPath().normalize()
+    if (resultsRoot.canonicalFile.toPath() != expectedCanonicalLocation || Files.isSymbolicLink(resultsRoot.toPath())) {
+        throw new GradleException("Refusing to use a redirected regression results directory: ${resultsRoot}")
+    }
+}
+
+def requireManagedPath = { File candidate ->
+    requireResultsRoot()
+    requireContained(resultsRoot, candidate)
+    if (Files.isSymbolicLink(candidate.toPath())) {
+        throw new GradleException("Refusing to replace or delete a symbolic link: ${candidate}")
+    }
+    candidate
+}
+
+def readJsonObject = { File file ->
+    try {
+        def parsed = json.parse(file, 'UTF-8')
+        if (!(parsed instanceof Map)) {
+            throw new GradleException("Expected JSON object: ${file}")
+        }
+        parsed
+    } catch (GradleException exception) {
+        throw exception
+    } catch (Exception exception) {
+        throw new GradleException("Cannot parse regression JSON: ${file}", exception)
+    }
+}
+
+def safeArtifactName = { Object value, String context ->
+    if (!(value instanceof String) || value.isEmpty() || value == '.' || value == '..' ||
+            value.contains('/') || value.contains('\\') || value.contains(':')) {
+        throw new GradleException("Expected a flat Allure artifact filename in ${context}: ${value}")
+    }
+    value
+}
+
+def validateAttachments
+validateAttachments = { Object node, File rawDirectory, String context ->
+    if (node instanceof Map) {
+        if (node.containsKey('attachments')) {
+            if (!(node.attachments instanceof List)) {
+                throw new GradleException("Invalid attachments list in ${context}")
+            }
+            node.attachments.each { attachment ->
+                if (!(attachment instanceof Map)) {
+                    throw new GradleException("Invalid attachment in ${context}")
+                }
+                def source = safeArtifactName(attachment.source, context)
+                def attachmentFile = requireContained(rawDirectory, new File(rawDirectory, source))
+                if (!attachmentFile.isFile()) {
+                    throw new GradleException("Missing Allure attachment ${source} referenced by ${context}")
+                }
+            }
+        }
+        node.each { key, value ->
+            if (key != 'attachments') {
+                validateAttachments(value, rawDirectory, context)
+            }
+        }
+    } else if (node instanceof List) {
+        node.each { validateAttachments(it, rawDirectory, context) }
+    }
+}
+
+tasks.register('prepareRegressionTestOpsResults') {
+    group = 'regression'
+    description = 'Validate and combine the latest completed regression stages for TestOps without uploading'
+    outputs.upToDateWhen { false }
+
+    doLast {
+        requireManagedPath(preparedDirectory)
+        requireManagedPath(manifestFile)
+        def copies = new LinkedHashMap<String, File>()
+        def records = []
+        def missing = []
+        def latestChecks = []
+        def resultUuids = new LinkedHashMap<String, File>()
+        def containerUuids = new LinkedHashMap<String, File>()
+
+        def registerUuid = { Map registry, String uuid, File artifact ->
+            if (!uuid?.trim()) {
+                throw new GradleException("Missing Allure UUID: ${artifact}")
+            }
+            def previous = registry[uuid]
+            if (previous != null && (previous.name != artifact.name || !Arrays.equals(previous.bytes, artifact.bytes))) {
+                throw new GradleException("Conflicting Allure UUID ${uuid}: ${previous} and ${artifact}")
+            }
+            registry[uuid] = artifact
+        }
+
+        stages.each { stage ->
+            def stageDirectory = requireContained(resultsRoot, new File(resultsRoot, stage))
+            def latestFile = requireContained(stageDirectory, new File(stageDirectory, 'latest.txt'))
+            if (!latestFile.exists()) {
+                latestChecks.add([file: latestFile, content: null])
+                missing.add(stage)
+                return
+            }
+            if (!latestFile.isFile()) {
+                throw new GradleException("Invalid latest-run pointer: ${latestFile}")
+            }
+            def latestContent = latestFile.getText('UTF-8')
+            latestChecks.add([file: latestFile, content: latestContent])
+            def relativeRun = latestContent.trim().replace('\\', '/')
+            if (!(relativeRun ==~ /runs\/[A-Za-z0-9_.-]+/) || relativeRun.endsWith('/..') || relativeRun.endsWith('/.')) {
+                throw new GradleException("Invalid latest-run path in ${latestFile}: ${relativeRun}")
+            }
+            def runDirectory = requireContained(stageDirectory, new File(stageDirectory, relativeRun))
+            def summaryFile = requireContained(runDirectory, new File(runDirectory, 'summary.json'))
+            if (!summaryFile.isFile()) {
+                throw new GradleException("Incomplete regression stage ${stage}: summary.json is missing in ${runDirectory}")
+            }
+            def summary = readJsonObject(summaryFile)
+            if (summary.completed != true || summary.environment != regressionEnv || summary.stage != stage) {
+                throw new GradleException("Incomplete or mismatched regression summary: ${summaryFile}")
+            }
+            def counters = [:]
+            ['total', 'passed', 'failed', 'skipped'].each { key ->
+                def value = summary[key]
+                if (!(value instanceof Number) || !(value.toString() ==~ /0|[1-9][0-9]*/)) {
+                    throw new GradleException("Invalid regression summary counter ${key}: ${summaryFile}")
+                }
+                counters[key] = new BigInteger(value.toString())
+            }
+            if (counters.passed + counters.failed + counters.skipped != counters.total) {
+                throw new GradleException("Regression summary counts do not add up: ${summaryFile}")
+            }
+            def rawDirectory = requireContained(runDirectory, new File(runDirectory, 'allure-results'))
+            if (!rawDirectory.isDirectory()) {
+                throw new GradleException("Missing Allure results for regression stage ${stage}: ${rawDirectory}")
+            }
+            def rawFiles = rawDirectory.listFiles()
+            if (rawFiles == null) {
+                throw new GradleException("Cannot read Allure results: ${rawDirectory}")
+            }
+            rawFiles.each { artifact ->
+                requireContained(rawDirectory, artifact)
+                if (!artifact.isFile()) {
+                    throw new GradleException("Expected flat Allure results; unsupported entry: ${artifact}")
+                }
+            }
+            def resultFiles = rawFiles.findAll { it.name.endsWith('-result.json') }
+            def containerFiles = rawFiles.findAll { it.name.endsWith('-container.json') }
+            if (resultFiles.isEmpty()) {
+                throw new GradleException("Completed regression stage ${stage} has no Allure test results: ${runDirectory}")
+            }
+            def countMatches = counters.total == BigInteger.valueOf(resultFiles.size())
+            if (!countMatches) {
+                logger.warn("REGRESSION COUNT MISMATCH (${stage}): Gradle summary=${counters.total}, Allure results=${resultFiles.size()}; preserving all raw results.")
+            }
+            def localResultUuids = new HashSet<String>()
+            resultFiles.each { artifact ->
+                def result = readJsonObject(artifact)
+                if (!(result.uuid instanceof String)) {
+                    throw new GradleException("Invalid result UUID: ${artifact}")
+                }
+                registerUuid(resultUuids, result.uuid, artifact)
+                localResultUuids.add(result.uuid)
+                validateAttachments(result, rawDirectory, artifact.name)
+            }
+            containerFiles.each { artifact ->
+                def container = readJsonObject(artifact)
+                if (!(container.uuid instanceof String)) {
+                    throw new GradleException("Invalid container UUID: ${artifact}")
+                }
+                registerUuid(containerUuids, container.uuid, artifact)
+                if (container.children != null && !(container.children instanceof List)) {
+                    throw new GradleException("Invalid container children: ${artifact}")
+                }
+                (container.children ?: []).each { child ->
+                    if (!(child instanceof String) || !localResultUuids.contains(child)) {
+                        throw new GradleException("Dangling Allure container child ${child}: ${artifact}")
+                    }
+                }
+                validateAttachments(container, rawDirectory, artifact.name)
+            }
+            rawFiles.each { artifact ->
+                // Run-independent metadata is generated once for the combined result set.
+                if (artifact.name in ['categories.json', 'environment.properties']) {
+                    return
+                }
+                def previous = copies[artifact.name]
+                if (previous != null && !Arrays.equals(previous.bytes, artifact.bytes)) {
+                    throw new GradleException("Different Allure files have the same name: ${previous} and ${artifact}")
+                }
+                copies[artifact.name] = artifact
+            }
+            records.add([
+                stage: stage,
+                run: relativeRun,
+                results: resultFiles.size(),
+                containers: containerFiles.size(),
+                junitAllureCountMatches: countMatches,
+                summary: summary
+            ])
+        }
+
+        if (records.isEmpty()) {
+            throw new GradleException("No completed regression results for ${regressionEnv}. Run a regression stage first.")
+        }
+        if (!Collections.disjoint(resultUuids.keySet(), containerUuids.keySet())) {
+            throw new GradleException('An Allure UUID is shared by a test result and a container.')
+        }
+        if (!missing.isEmpty()) {
+            logger.warn("PARTIAL REGRESSION REPORT (${regressionEnv}): missing stages: ${missing.join(', ')}")
+        }
+
+        def suffix = UUID.randomUUID().toString()
+        def staging = requireManagedPath(new File(resultsRoot, ".testops-staging-${suffix}"))
+        def backup = requireManagedPath(new File(resultsRoot, ".testops-backup-${suffix}"))
+        def manifestStaging = requireManagedPath(new File(resultsRoot, ".testops-manifest-${suffix}.json"))
+        def manifestBackup = requireManagedPath(new File(resultsRoot, ".testops-manifest-backup-${suffix}.json"))
+        def promoted = false
+        def oldDirectoryMoved = false
+        def oldManifestMoved = false
+        try {
+            if (!staging.mkdirs() && !staging.isDirectory()) {
+                throw new GradleException("Cannot create prepared results directory: ${staging}")
+            }
+            copies.each { name, source -> Files.copy(source.toPath(), new File(staging, name).toPath()) }
+            def categories = rootProject.file('allure/categories.json')
+            if (categories.isFile()) {
+                Files.copy(categories.toPath(), new File(staging, 'categories.json').toPath())
+            }
+            new File(staging, 'environment.properties').setText("env=${regressionEnv}\n", 'UTF-8')
+            manifestStaging.setText(JsonOutput.prettyPrint(JsonOutput.toJson([
+                environment: regressionEnv,
+                preparedAt: java.time.Instant.now().toString(),
+                partial: !missing.isEmpty(),
+                missingStages: missing,
+                sources: records,
+                resultCount: resultUuids.size(),
+                containerCount: containerUuids.size(),
+                destination: 'testops'
+            ])) + '\n', 'UTF-8')
+
+            latestChecks.each { check ->
+                def changed = check.content == null
+                        ? check.file.exists()
+                        : !check.file.isFile() || check.file.getText('UTF-8') != check.content
+                if (changed) {
+                    throw new GradleException("A regression stage changed during preparation: ${check.file}. Finish active runs and prepare again.")
+                }
+            }
+
+            if (preparedDirectory.exists()) {
+                Files.move(preparedDirectory.toPath(), backup.toPath())
+                oldDirectoryMoved = true
+            }
+            if (manifestFile.exists()) {
+                Files.move(manifestFile.toPath(), manifestBackup.toPath())
+                oldManifestMoved = true
+            }
+            Files.move(staging.toPath(), preparedDirectory.toPath())
+            promoted = true
+            Files.move(manifestStaging.toPath(), manifestFile.toPath())
+        } catch (Exception exception) {
+            if (promoted && preparedDirectory.exists()) {
+                project.delete(requireManagedPath(preparedDirectory))
+            }
+            if (oldDirectoryMoved && backup.exists()) {
+                Files.move(backup.toPath(), preparedDirectory.toPath())
+            }
+            if (oldManifestMoved && manifestBackup.exists()) {
+                Files.move(manifestBackup.toPath(), manifestFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            }
+            throw new GradleException('Could not prepare regression TestOps results; previous prepared results were retained where possible.', exception)
+        } finally {
+            project.delete(requireManagedPath(staging), requireManagedPath(manifestStaging))
+        }
+        project.delete(requireManagedPath(backup), requireManagedPath(manifestBackup))
+        logger.lifecycle("Prepared ${resultUuids.size()} Allure results for ${regressionEnv}: ${preparedDirectory}")
+        logger.lifecycle("Regression preparation manifest: ${manifestFile}")
+    }
+}
+
+tasks.register('cleanRegressionResults') {
+    group = 'regression'
+    description = 'Clear all regression results for the selected environment; retain fixture ownership manifests'
+    doLast {
+        requireResultsRoot()
+        project.delete(resultsRoot)
+        logger.lifecycle("Cleared all regression results for ${regressionEnv}: ${resultsRoot}")
+        logger.lifecycle('Fixture ownership manifests remain outside regression-results in regression-fixtures.')
+    }
+}

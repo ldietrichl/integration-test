@@ -18,6 +18,7 @@ import ru.sber.qa.services.kafka.KafkaService;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import steps.rest.RestCustomSteps;
 import ru.sber.qa.splitter.analytictests.common.AbstractAnalyticSplitterFlowTest;
+import config.services.core.RegressionProfileConfiguration;
 import util.splittercheck.SplitterResponseReader;
 
 import java.time.Duration;
@@ -26,7 +27,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 import static util.TestAssertions.assertEquals;
 import static util.TestAssertions.assertFalse;
 import static util.TestAssertions.assertTrue;
@@ -68,16 +68,15 @@ abstract class AbstractEmptyObjectsResponse2603FlowTest extends AbstractAnalytic
                 return steps.splitterSteps().split(request);
             }
         },
-        // EXPLAB-2603 checks the MAPPER response contract; included/excluded is controlled by app config.
-        EMPTY_OBJECTS_EXCLUDED("MAPPER") {
+        EMPTY_OBJECTS_EXCLUDED("REACTIONS") {
             @Override
             ValidatableResponseWrapper load(RestCustomSteps steps, LoadConfigRequestDto request) {
-                return steps.splitterSteps().loadConfig(request);
+                return steps.splitterSteps().loadReactionsConfig(request);
             }
 
             @Override
             ValidatableResponseWrapper split(RestCustomSteps steps, SplitRequestDto request) {
-                return steps.splitterSteps().split(request);
+                return steps.splitterSteps().splitReactions(request);
             }
         };
 
@@ -238,15 +237,15 @@ abstract class AbstractEmptyObjectsResponse2603FlowTest extends AbstractAnalytic
     }
 
     private String kapKafkaEnv() {
-        return System.getProperty("splitter.kap.kafka.env", TEST_CONFIG.env());
+        return RegressionProfileConfiguration.required("splitter.kap.kafka.env");
     }
 
     private String kapTopic() {
-        return System.getProperty("splitter.kap.topic", DEFAULT_KAP_TOPIC);
+        return RegressionProfileConfiguration.required("splitter.kap.topic");
     }
 
     private String monitoringTopic() {
-        return System.getProperty("splitter.kap.monitoring.topic", DEFAULT_MONITORING_TOPIC);
+        return RegressionProfileConfiguration.required("splitter.kap.monitoring.topic");
     }
 
     private Duration kapKafkaTimeout() {

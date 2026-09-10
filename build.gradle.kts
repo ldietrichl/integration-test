@@ -5,12 +5,15 @@ import org.gradle.api.tasks.testing.TestListener
 import org.gradle.api.tasks.testing.TestOutputEvent
 import org.gradle.api.tasks.testing.TestOutputListener
 import org.gradle.api.tasks.testing.TestResult
+import org.gradle.process.JavaForkOptions
+import groovy.json.JsonOutput
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Properties
+import java.util.UUID
 
 val gradleLocalProperties = Properties()
 val gradleLocalPropertiesFile = rootProject.file("gradle.local.properties")
@@ -128,9 +131,9 @@ val includeSplitterDataOperatorTests =
 val splitterConfigLoadMode = resolveSplitterConfigLoadMode()
 val splitterTestProfile = usableLocalProperty(System.getProperty("splitter.test.profile"))
     ?: configValue("splitter.test.profile", "SPLITTER_TEST_PROFILE", defaultValue = "current")!!
-val activeTestEnv = configValue("env", "ENV")
-    ?: optionalTestRuntimeProperty("env")
-    ?: "ift"
+// test.properties is authoritative for both IDEA and Gradle runs.
+val activeTestEnv = optionalTestRuntimeProperty("env")
+    ?: throw GradleException("Set env in src/test/resources/test.properties")
 val splitterConfigKafkaStatusRequired =
     configValue("splitter.config.kafka.status.required", "SPLITTER_CONFIG_KAFKA_STATUS_REQUIRED")
         ?: optionalTestRuntimeProperty("splitter.config.kafka.status.required")
@@ -176,9 +179,17 @@ val splitterRuntimeSystemProperties = listOf(
 fun propertyEnvName(propertyName: String): String =
     propertyName.replace('.', '_').replace('-', '_').uppercase()
 
-fun configuredRuntimeSystemProperty(propertyName: String): String? =
-    configValue(propertyName, propertyEnvName(propertyName))
+fun configuredRuntimeSystemProperty(propertyName: String): String? {
+    val profiles = Properties()
+    val profileFile = rootProject.file("src/test/resources/regression-profiles.properties")
+    if (profileFile.isFile) profileFile.inputStream().use { profiles.load(it) }
+    val scopedName = "${normalizedFileEnvironment()}.$propertyName"
+    if (profiles.containsKey(scopedName)) {
+        return profiles.getProperty(scopedName).trim()
+    }
+    return configValue(propertyName, propertyEnvName(propertyName))
         ?: optionalTestRuntimeProperty(propertyName)
+}
 
 val splitterRegressionLogLock = Any()
 val splitterRegressionLogTimestampFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
@@ -211,7 +222,7 @@ fun splitterRunLogPropertyValue(propertyName: String, mode: String): String =
         else -> configuredRuntimeSystemProperty(propertyName) ?: ""
     }
 
-fun splitterRunLogHeader(mode: String, taskPath: String, logFile: File): String {
+fun splitterRunLogHeader(mode: String, taskPath: String, logFile: File, runtimeProperties: Map<String, *> = emptyMap<String, Any>()): String {
     val propertyNames = (listOf(
         "env",
         "splitter.config.load.mode",
@@ -221,7 +232,7 @@ fun splitterRunLogHeader(mode: String, taskPath: String, logFile: File): String 
         "splitter.regression.logs.dir"
     ) + splitterRuntimeSystemProperties).distinct()
     val properties = propertyNames.joinToString(System.lineSeparator()) { propertyName ->
-        "$propertyName=${splitterRunLogPropertyValue(propertyName, mode)}"
+        "$propertyName=${runtimeProperties[propertyName] ?: splitterRunLogPropertyValue(propertyName, mode)}"
     }
     return """
         Splitter regression Gradle task log
@@ -241,18 +252,20 @@ fun splitterRunLogHeader(mode: String, taskPath: String, logFile: File): String 
     """.trimIndent() + System.lineSeparator()
 }
 
+fun normalizedFileEnvironment(): String =
+    when (val value = activeTestEnv.trim().lowercase().replace('_', '-')) {
+        "eift", "ift-ds", "eift-ds" -> "ift"
+        "eift-dm" -> "ift-dm"
+        "localhost" -> "local"
+        "dev", "ift", "ift-dm", "lt", "local" -> value
+        else -> throw GradleException("Unsupported env in src/test/resources/test.properties: $value")
+    }
+
 fun resolveAllureUploadResultsDirectory(): File =
-    fileFromProjectOrAbsolute(
-        configValue(
-            "allureResultsDir",
-            "ALLURE_RESULTS_DIR",
-            "ALLURE_RESULTS",
-            "ALLURE_RESULTS_DIRECTORY"
-        )
-            ?: usableLocalProperty(System.getProperty("allure.results.directory"))
-            ?: optionalConfigProperty("allure.results.directory")
-            ?: "build/allure-results"
-    )
+    rootProject.file("testops-results/${normalizedFileEnvironment()}/allure-results")
+
+fun resolveRegressionUploadResultsDirectory(): File =
+    rootProject.file("regression-results/${normalizedFileEnvironment()}/testops")
 
 plugins {
     java
@@ -425,8 +438,12 @@ val generateReportEligibility by tasks.registering(JavaExec::class) {
     systemProperty("includeManualTests", includeManualTests.toString())
     systemProperty("includeSplitterDataOperatorTests", includeSplitterDataOperatorTests.toString())
     systemProperty("env", activeTestEnv)
+    environment("ENV", normalizedFileEnvironment())
     splitterRuntimeSystemProperties.forEach { propertyName ->
-        configuredRuntimeSystemProperty(propertyName)?.let { systemProperty(propertyName, it) }
+        configuredRuntimeSystemProperty(propertyName)?.let {
+            systemProperty(propertyName, it)
+            environment(propertyEnvName(propertyName), it)
+        }
     }
     System.getProperties().stringPropertyNames()
         .filter { it.startsWith("SECURE_") || it.startsWith("splitter.kap.") }
@@ -454,6 +471,8 @@ val generateReportEligibility by tasks.registering(JavaExec::class) {
     inputs.property("includeManualTests", includeManualTests)
     inputs.property("includeSplitterDataOperatorTests", includeSplitterDataOperatorTests)
     outputs.dir(reportEligibilityOutputDir)
+    // Eligibility also depends on current credentials and Kafka availability.
+    outputs.upToDateWhen { false }
 }
 
 val generateBypassTests by tasks.registering(JavaExec::class) {
@@ -559,7 +578,8 @@ fun Test.configureSplitterRegressionTask(
     outputs.upToDateWhen { false }
     testClassesDirs = sourceSets.getByName("test").output.classesDirs
     classpath = sourceSets.getByName("test").runtimeClasspath
-    applyReportEligibilityExclusions()
+    // Full regressions have a scanner per stage below; debug tasks use the generic scanner.
+    if (includePattern != "ru.sber.qa.splitter.*") applyReportEligibilityExclusions()
     systemProperty("splitter.config.load.mode", mode)
     systemProperty("splitter.regression.logs.dir", splitterRegressionLogsDir.get().absolutePath)
     systemProperty(
@@ -570,7 +590,7 @@ fun Test.configureSplitterRegressionTask(
     doFirst("startSplitterRegressionTaskLog") {
         val logFile = runLogFileProvider.get()
         logFile.parentFile.mkdirs()
-        logFile.writeText(splitterRunLogHeader(mode, path, logFile), Charsets.UTF_8)
+        logFile.writeText(splitterRunLogHeader(mode, path, logFile, systemProperties), Charsets.UTF_8)
         logger.lifecycle(splitterConfigLoadModeNotice(mode))
         logger.lifecycle("Splitter regression task log: ${logFile.absolutePath}")
     }
@@ -684,30 +704,12 @@ tasks.register("copyAllureCategories") {
             return@doLast
         }
 
-        val destinations = linkedSetOf(allureResultsDirectory)
-        if (isTestOpsUploadRequested()) {
-            destinations.add(resolveAllureUploadResultsDirectory())
-        }
-
-        destinations.forEach { destination ->
-            project.copy {
-                from(categoriesFile)
-                into(destination)
-            }
+        project.copy {
+            from(categoriesFile)
+            into(allureResultsDirectory)
         }
     }
 }
-
-fun isRequestedTask(taskName: String): Boolean =
-    gradle.startParameter.taskNames.any { requested ->
-        requested == taskName || requested == ":$taskName" || requested.endsWith(":$taskName")
-    }
-
-fun isTestOpsUploadRequested(): Boolean =
-    configFlag("allureUploadEnabled", "ALLURE_UPLOAD_ENABLED") ||
-            isRequestedTask("testOpsUpload") ||
-            isRequestedTask("testAndUploadToTestOps") ||
-            isRequestedTask("bypassTestsAndUploadToTestOps")
 
 fun findExecutableOnPath(executableName: String): File? {
     val windows = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
@@ -770,10 +772,7 @@ fun testOpsLaunchName(): String {
 
 val validateTestOpsUploadConfig by tasks.registering {
     group = "verification"
-    description = "Validate Allure TestOps upload settings before running tests"
-    onlyIf {
-        isTestOpsUploadRequested()
-    }
+    description = "Validate credentials and executable for an explicit Allure TestOps upload"
 
     doLast {
         val endpoint = configValue(
@@ -809,14 +808,18 @@ val validateTestOpsUploadConfig by tasks.registering {
     }
 }
 
-val testOpsUpload by tasks.registering {
-    group = "verification"
-    description = "Upload existing Allure results to Allure TestOps via allurectl"
+fun registerTestOpsUploadTask(
+    taskName: String,
+    taskGroup: String,
+    preparationTask: String,
+    resultsDirectory: () -> File
+) = tasks.register(taskName) {
+    group = taskGroup
+    description = if (taskGroup == "regression")
+        "Prepare and upload the latest regression stages to TestOps without running tests"
+    else "Prepare and upload results of selected IDEA/Gradle tests to TestOps without running tests"
     dependsOn(validateTestOpsUploadConfig)
-    dependsOn("copyAllureCategories")
-    onlyIf {
-        isTestOpsUploadRequested()
-    }
+    dependsOn(preparationTask)
 
     doLast {
         val endpoint = configValue(
@@ -830,7 +833,7 @@ val testOpsUpload by tasks.registering {
         )
         val projectUrl = configValue("allureProjectUrl", "ALLURE_PROJECT_URL")
             ?: "$endpoint/project/$projectId"
-        val resultsDir = resolveAllureUploadResultsDirectory()
+        val resultsDir = resultsDirectory()
         val uploadBatch = parsePositiveInt(
             configValue(
                 "allureUploadBatch",
@@ -856,8 +859,7 @@ val testOpsUpload by tasks.registering {
         if (!resultsDir.isDirectory) {
             throw GradleException(
                 "Allure results directory not found: ${resultsDir.absolutePath}. " +
-                        "Run test/bypassTests/splitter regression first, " +
-                        "or set allureResultsDir/ALLURE_RESULTS_DIR/allure.results.directory."
+                        "Inspect the output of $preparationTask."
             )
         }
 
@@ -929,28 +931,6 @@ val testOpsUpload by tasks.registering {
     }
 }
 
-val testAndUploadToTestOps by tasks.registering {
-    group = "verification"
-    description = "Run functional tests and upload produced Allure results to TestOps"
-    dependsOn(tasks.named("test"))
-}
-
-val bypassTestsAndUploadToTestOps by tasks.registering {
-    group = "verification"
-    description = "Run TestOps registration-only bypass tests and upload produced Allure results"
-    dependsOn(bypassTests)
-}
-
-tasks.named<Test>("test") {
-    dependsOn(validateTestOpsUploadConfig)
-    finalizedBy(testOpsUpload)
-}
-
-bypassTests.configure {
-    dependsOn(validateTestOpsUploadConfig)
-    finalizedBy(testOpsUpload)
-}
-
 tasks {
     // Для компиляции ставим кодировку UTF-8
     withType<JavaCompile> {
@@ -1014,6 +994,221 @@ tasks {
         secureLocalProperties.stringPropertyNames()
             .mapNotNull { name -> optionalLocalProperty(name)?.let { name to it } }
             .forEach { (name, value) -> systemProperty(name, value) }
+        doFirst {
+            systemProperty("env", normalizedFileEnvironment())
+            environment("ENV", normalizedFileEnvironment())
+        }
         finalizedBy("copyAllureCategories")
     }
 }
+
+val testOpsUpload = registerTestOpsUploadTask(
+    "testOpsUpload", "testops", "prepareTestOpsResults", ::resolveAllureUploadResultsDirectory
+)
+val regressionTestOpsUpload = registerTestOpsUploadTask(
+    "regressionTestOpsUpload", "regression", "prepareRegressionTestOpsResults", ::resolveRegressionUploadResultsDirectory
+)
+
+// One Gradle panel for the rebuilt suites. Each stage has its own discovery, run and evidence.
+val regressionEnvironment = normalizedFileEnvironment()
+val regressionResultsRoot = rootProject.file("regression-results/$regressionEnvironment")
+val regressionProfileFile = rootProject.file("src/test/resources/regression-profiles.properties")
+val regressionProfiles = Properties().apply {
+    if (regressionProfileFile.isFile) regressionProfileFile.inputStream().use { load(it) }
+}
+val regressionRunId = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")) +
+        "-" + UUID.randomUUID().toString().take(8)
+
+fun regressionRuntimeProperties(mode: String, dataOperator: Boolean): Map<String, String> {
+    val result = linkedMapOf(
+        "env" to regressionEnvironment,
+        "splitter.config.load.mode" to mode,
+        "splitter.test.profile" to "current",
+        "splitter.config.kafka.status.required" to splitterConfigKafkaStatusRequired,
+        "includeSplitterDataOperatorTests" to dataOperator.toString(),
+        "includeManualTests" to "false",
+        "secure.placeholders.fail-on-unresolved" to "false"
+    )
+    splitterRuntimeSystemProperties.forEach { key ->
+        configuredRuntimeSystemProperty(key)?.let { result[key] = it }
+    }
+    val prefix = "$regressionEnvironment."
+    regressionProfiles.stringPropertyNames().filter { it.startsWith(prefix) }.forEach { key ->
+        val property = key.removePrefix(prefix)
+        result[property] = regressionProfiles.getProperty(key).trim()
+    }
+    return result
+}
+
+fun applyRegressionRuntime(task: JavaForkOptions, properties: Map<String, String>) {
+    // Let the Java profile reader retain env-var > secure-file precedence for Ignite.
+    val effective = LinkedHashMap<String, Any>(task.systemProperties)
+    effective.keys.removeAll { it.matches(Regex("(?:ignite|data-operator\\.fixture|links\\.fixture)\\.(?:dev|ift|ift-dm|lt|local)\\..+")) }
+    val cli = gradle.startParameter.projectProperties
+    (System.getProperties().stringPropertyNames() + cli.keys).filter { key ->
+        key.startsWith("ignite.") || key.startsWith("data-operator.fixture.") || key.startsWith("links.fixture.")
+    }.forEach { key -> (cli[key] ?: System.getProperty(key))?.let { effective[key] = it } }
+    effective.putAll(properties)
+    task.setSystemProperties(effective)
+    task.environment("ENV", regressionEnvironment)
+    properties.filterKeys { it.startsWith("splitter.") }.forEach { (key, value) ->
+        task.environment(propertyEnvName(key), value)
+    }
+}
+
+fun configureRebuiltRegression(taskName: String, stage: String, mode: String, patterns: List<String>) {
+    val dataOperator = stage == "data-operator"
+    val includeDisabledInStage = stage == "splitter-rest" || stage == "splitter-kafka"
+    val runtime = regressionRuntimeProperties(mode, dataOperator)
+    val stageDir = File(regressionResultsRoot, stage)
+    val runDir = File(stageDir, "runs/$regressionRunId")
+    val rawDir = File(runDir, "allure-results")
+    val discoveryDir = layout.buildDirectory.dir("report-eligibility/$regressionEnvironment/$stage")
+    val exclusions = discoveryDir.map {
+        it.file(if (includeDisabledInStage) "excluded-tests-include-disabled.txt" else "excluded-tests.txt").asFile
+    }
+    val scanner = tasks.register<JavaExec>("${taskName}Eligibility") {
+        val scannerTask = this
+        dependsOn(auditReportingTags, tasks.named(bypassToolSourceSet.classesTaskName))
+        classpath = bypassToolSourceSet.runtimeClasspath
+        mainClass.set("ru.sber.qa.tools.reporting.TestReportEligibilityScanner")
+        args(file("src/test/java").absolutePath, file("config/reporting/outdated-tests.properties").absolutePath,
+            discoveryDir.get().asFile.absolutePath)
+        inputs.dir("src/test/java")
+        inputs.files("src/test/resources/test.properties", regressionProfileFile,
+            "src/test/resources/kafka-consumers.properties", "config/reporting/outdated-tests.properties")
+        inputs.properties(runtime)
+        outputs.dir(discoveryDir)
+        // Credential availability can change without a tracked source change.
+        outputs.upToDateWhen { false }
+        doFirst {
+            if (regressionEnvironment !in setOf("dev", "ift")) {
+                throw GradleException("Rebuilt regression profiles are configured for dev/ift; selected $regressionEnvironment")
+            }
+            if (!regressionProfileFile.isFile) throw GradleException("Install ${regressionProfileFile.name}")
+            secureLocalProperties.stringPropertyNames().filter { it.startsWith("SECURE_") }.forEach { key ->
+                optionalLocalProperty(key)?.let { scannerTask.systemProperty(key, it) }
+            }
+            System.getProperties().stringPropertyNames().filter { it.startsWith("SECURE_") }.forEach { key ->
+                scannerTask.systemProperty(key, System.getProperty(key))
+            }
+            applyRegressionRuntime(scannerTask, runtime)
+        }
+    }
+    tasks.named<Test>(taskName) {
+        val regressionTest = this
+        group = "regression"
+        dependsOn(tasks.named("testClasses"), scanner)
+        testClassesDirs = sourceSets.getByName("test").output.classesDirs
+        classpath = sourceSets.getByName("test").runtimeClasspath
+        filter.setIncludePatterns(*patterns.toTypedArray())
+        filter.setFailOnNoMatchingTests(true)
+        outputs.upToDateWhen { false }
+        maxParallelForks = 1
+        reports.junitXml.outputLocation.set(File(runDir, "test-results"))
+        reports.html.outputLocation.set(File(runDir, "reports"))
+        doFirst {
+            val effective = LinkedHashMap(runtime)
+            effective["allure.results.directory"] = rawDir.absolutePath
+            effective["report.exclusions.file"] = exclusions.get().absolutePath
+            if (includeDisabledInStage) effective["junit.jupiter.conditions.deactivate"] = "org.junit.*DisabledCondition"
+            else effective["junit.jupiter.conditions.deactivate"] = ""
+            effective["junit.jupiter.execution.parallel.enabled"] = "false"
+            if (dataOperator) {
+                effective["data-operator.fixture.$regressionEnvironment.enabled"] = "true"
+                effective["data-operator.fixture.$regressionEnvironment.output.directory"] =
+                    rootProject.file("regression-fixtures/$regressionEnvironment/$regressionRunId").absolutePath
+            }
+            if (stage == "experiment") {
+                val toggle = optionalTestRuntimeProperty("EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED") ?: "false"
+                if (toggle !in setOf("true", "false")) throw GradleException("EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED must be true/false in test.properties")
+                effective["EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED"] = toggle
+                effective["exlab2696.running.cache.wait.timeout.ms"] = "60000"
+                effective["exlab2696.running.cache.wait.poll.ms"] = "3000"
+                val base = "ru.sber.qa.experiments.EXPLAB_2696."
+                if (toggle == "true") {
+                    filter.excludeTestsMatching(base + "RunningExperimentsV1Cache2696FlowTest")
+                    filter.excludeTestsMatching(base + "RunningSplitsV1Cache2696FlowTest")
+                } else filter.excludeTestsMatching(base + "RunningV1CacheV2CjEnabled2696FlowTest")
+                logger.lifecycle("Experiment server must have EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED=$toggle")
+            }
+            applyRegressionRuntime(regressionTest, effective)
+            if (!exclusions.get().isFile) throw GradleException("Missing regression eligibility output")
+            exclusions.get().readLines().map(String::trim).filter { it.isNotEmpty() && !it.startsWith("#") }
+                .forEach { filter.excludeTestsMatching(it) }
+            if (!dataOperator) filter.excludeTestsMatching("ru.sber.qa.splitter.EXPLAB_2729.*")
+            if (!rawDir.mkdirs() && !rawDir.isDirectory) throw GradleException("Cannot create $rawDir")
+            file("allure/categories.json").takeIf { it.isFile }?.copyTo(File(rawDir, "categories.json"), overwrite = true)
+            File(stageDir, "latest.txt").writeText("runs/$regressionRunId\n", Charsets.UTF_8)
+            File(runDir, "summary.json").writeText(JsonOutput.toJson(mapOf(
+                "environment" to regressionEnvironment, "stage" to stage, "completed" to false
+            )), Charsets.UTF_8)
+            logger.lifecycle("Regression $stage: env=$regressionEnvironment (test.properties), results=$runDir")
+        }
+        addTestOutputListener(object : TestOutputListener {
+            override fun onOutput(descriptor: TestDescriptor, event: TestOutputEvent) {
+                appendSplitterRegressionLog(File(runDir, "console.log"),
+                    "[${event.destination}] ${descriptor.className}.${descriptor.name}: ${event.message}")
+            }
+        })
+        addTestListener(object : TestListener {
+            override fun beforeSuite(suite: TestDescriptor) { }
+            override fun beforeTest(testDescriptor: TestDescriptor) { }
+            override fun afterTest(testDescriptor: TestDescriptor, result: TestResult) {
+                appendSplitterRegressionLog(File(runDir, "console.log"),
+                    "[${result.resultType}] ${testDescriptor.className}.${testDescriptor.name}\n" +
+                        result.exceptions.joinToString("\n") { throwableStackTrace(it) })
+            }
+            override fun afterSuite(suite: TestDescriptor, result: TestResult) {
+                if (suite.parent != null) return
+                File(runDir, "summary.json").writeText(JsonOutput.prettyPrint(JsonOutput.toJson(mapOf(
+                    "environment" to regressionEnvironment, "stage" to stage, "completed" to true,
+                    "total" to result.testCount, "passed" to result.successfulTestCount,
+                    "failed" to result.failedTestCount, "skipped" to result.skippedTestCount
+                ))), Charsets.UTF_8)
+            }
+        })
+    }
+}
+
+tasks.register<Test>("experimentServiceRegression") {
+    description = "Run experiment-service and refBook regressions using test.properties"
+}
+tasks.register<Test>("dataOperatorRegression") {
+    description = "Run data-operator REST, EXPLAB-2411/2729/2974 regressions with owned Ignite fixtures"
+}
+configureRebuiltRegression("experimentServiceRegression", "experiment", "rest", listOf(
+    "ru.sber.qa.experiments.*", "ru.sber.qa.controllers.refBookController.*"))
+configureRebuiltRegression("splitterRestRegression", "splitter-rest", "rest", listOf("ru.sber.qa.splitter.*"))
+configureRebuiltRegression("splitterKafkaRegression", "splitter-kafka", "kafka", listOf("ru.sber.qa.splitter.*"))
+configureRebuiltRegression("dataOperatorRegression", "data-operator", "rest", listOf(
+    "ru.sber.qa.dataoperator.regression.*", "ru.sber.qa.dataoperator.EXPLAB_2411.*",
+    "ru.sber.qa.dataoperator.EXPLAB_2974.DataOperatorLinksFunctionalFlowTest",
+    "ru.sber.qa.dataoperator.EXPLAB_2974.DataOperatorLinksValidationFlowTest",
+    "ru.sber.qa.splitter.EXPLAB_2729.*"))
+
+extra["regressionResultsRoot"] = regressionResultsRoot
+extra["regressionEnvironment"] = regressionEnvironment
+extra["testOpsSourceResultsDir"] =
+    configValue("testOpsSourceResultsDir", "TESTOPS_SOURCE_RESULTS_DIR")?.let(::fileFromProjectOrAbsolute)
+        ?: allureResultsDirectory
+apply(from = "gradle/regression-results.gradle")
+apply(from = "gradle/testops-results.gradle")
+val regressionTaskNames = listOf("experimentServiceRegression", "splitterRestRegression", "splitterKafkaRegression", "dataOperatorRegression")
+regressionTaskNames.forEachIndexed { index, taskName ->
+    tasks.named(taskName) { mustRunAfter(regressionTaskNames.take(index)) }
+}
+// REST/Kafka need an operator to switch the server flag between independent Gradle invocations.
+gradle.taskGraph.whenReady {
+    if (hasTask(splitterRestRegression.get()) && hasTask(splitterKafkaRegression.get())) {
+        throw GradleException("Run splitterRestRegression and splitterKafkaRegression separately; switch SPLITTER_CONFIG_API_CONFIG_LOAD on MAPPER and REACTIONS between them.")
+    }
+}
+tasks.named("prepareRegressionTestOpsResults") { mustRunAfter(regressionTaskNames) }
+tasks.named("cleanRegressionResults") { mustRunAfter(regressionTaskNames + listOf("prepareRegressionTestOpsResults", "regressionTestOpsUpload")) }
+tasks.named("prepareTestOpsResults") { mustRunAfter(tasks.withType<Test>(), tasks.named("copyAllureCategories")) }
+tasks.withType<Test>().configureEach { mustRunAfter("cleanTestOpsResults") }
+// Keep support/debug/bypass tasks callable without duplicating the operator's Gradle panel.
+listOf("auditReportingTags", "generateReportEligibility", "generateBypassTests", "bypassTests",
+    "prepareSplitterRegressionLogs", "splitterRestDebug", "splitterKafkaDebug", "validateTestOpsUploadConfig"
+).forEach { taskName -> tasks.named(taskName) { group = null } }

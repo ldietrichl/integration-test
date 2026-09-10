@@ -1,0 +1,19 @@
+{
+  "mainRoots": [
+    "config/services/core", "config/services/data", "config/services/rest",
+    "constants", "dto", "feeders", "request", "steps/rest", "util"
+  ],
+  "mainFiles": ["config/environment/EnvironmentConfigWithRest.java", "flow/RestFlows.java", "flow/RestCustomFlow.java"],
+  "testFiles": [
+    "ru/sber/qa/dataoperator/EXPLAB_2974/DataOperatorLinksValidationFlowTest.java",
+    "ru/sber/qa/dataoperator/EXPLAB_2974/DataOperatorLinksFixtureFlowTest.java",
+    "ru/sber/qa/dataoperator/EXPLAB_2974/DataOperatorLinksFunctionalFlowTest.java",
+    "ru/sber/qa/dataoperator/EXPLAB_2974/DataOperatorLinksConnectionTest.java",
+    "util/dataoperator/LinksHttpEvidence.java",
+    "util/dataoperator/LinksFixtureConfiguration.java",
+    "util/dataoperator/LinksFixtureData.java",
+    "util/dataoperator/LinksFixtureRuntime.java",
+    "util/dataoperator/LinksFixtureSession.java",
+    "util/dataoperator/LinksFixtureRecovery.java"
+  ]
+}

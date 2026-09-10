@@ -79,4 +79,4 @@ resolver использует `rest.<env>.gateway.base-uri`. Абсолютны�
 ./gradlew bypassTests
 ```
 
-Канонические tags формируются централизованно: задача, сервис, regress/critical-regress и manual/automated. Подробности приведены в `TAGGING_AND_REPORTING_POLICY.md`.
+Канонические tags формируются централизованно: задача, сервис, regress/critical-regress и manual/automated. Подробности приведены в `docs/reporting/TAGGING_AND_REPORTING_POLICY.md`.

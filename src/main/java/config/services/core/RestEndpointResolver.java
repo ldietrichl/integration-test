@@ -1,7 +1,6 @@
 package config.services.core;
 
 import java.net.URI;
-import java.util.Locale;
 
 /**
  * Разрешает логический REST-сервис в base URI выбранного окружения.
@@ -18,7 +17,7 @@ public final class RestEndpointResolver {
     }
 
     public static String currentEnvironment() {
-        return normalizeEnvironment(TestPropertiesLoader.required("env"));
+        return TestEnvironment.current();
     }
 
     public static String baseUri(RestServiceEndpoint endpoint) {
@@ -57,23 +56,6 @@ public final class RestEndpointResolver {
 
     private static String propertyKey(String environment, String service) {
         return REST_PREFIX + environment + "." + service + BASE_URI_SUFFIX;
-    }
-
-    private static String normalizeEnvironment(String rawEnvironment) {
-        String normalized = rawEnvironment.trim()
-                .toLowerCase(Locale.ROOT)
-                .replace('_', '-');
-
-        return switch (normalized) {
-            case "dev" -> "dev";
-            case "ift", "eift", "ift-ds", "eift-ds" -> "ift";
-            case "ift-dm", "eift-dm" -> "ift-dm";
-            case "lt" -> "lt";
-            case "local", "localhost" -> "local";
-            default -> throw new IllegalStateException(
-                    "Неподдерживаемое значение env='" + rawEnvironment
-                            + "' в src/test/resources/test.properties. Допустимо: dev, ift, ift-dm, lt, local");
-        };
     }
 
     private static String validateAndNormalize(String rawUri, String propertyKey) {

@@ -12,6 +12,7 @@ import ru.sber.qa.services.configuration.converters.SecretPropertyConverter;
         "system:env",
         "file:secure.local.override.properties",
         "file:secure.local.properties",
+        "file:src/test/resources/test.properties",
         "classpath:test.properties"
 })
 public interface CustomTestConfig extends Reloadable {

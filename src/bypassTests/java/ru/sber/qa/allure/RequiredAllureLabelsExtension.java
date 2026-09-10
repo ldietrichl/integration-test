@@ -1,5 +1,8 @@
 package ru.sber.qa.allure;
 
+import config.services.core.TestEnvironment;
+import config.services.core.TestConfigurationFiles;
+
 import io.qameta.allure.listener.TestLifecycleListener;
 import io.qameta.allure.model.Label;
 import io.qameta.allure.model.TestResult;
@@ -83,6 +86,7 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
         replaceLabel(testResult, "functionalArea", service);
         replaceLabel(testResult, "serviceUnderTest", service);
         replaceLabel(testResult, "testStage", testStage);
+        replaceLabel(testResult, "testEnvironment", TestEnvironment.current());
         addLabel(testResult, "testFramework", TEST_FRAMEWORK);
 
         if (regression) {
@@ -225,26 +229,27 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
     }
 
     private static Set<String> loadExcludedTestNames() {
-        Set<String> result = new LinkedHashSet<>();
-        List<Path> candidates = Arrays.asList(
-                optionalPath(System.getProperty("report.exclusions.file")),
-                PROJECT_DIRECTORY.resolve("build/report-eligibility/excluded-tests.txt")
-        );
-        for (Path candidate : candidates) {
-            if (candidate == null || !Files.isRegularFile(candidate)) {
-                continue;
-            }
-            try {
-                Files.readAllLines(candidate, StandardCharsets.UTF_8).stream()
-                        .map(String::trim)
-                        .filter(line -> !line.isEmpty() && !line.startsWith("#"))
-                        .forEach(result::add);
-            } catch (IOException exception) {
-                System.err.println("Cannot read report exclusions from " + candidate + ": "
-                        + exception.getMessage());
-            }
+        return loadExcludedTestNames(PROJECT_DIRECTORY, System.getProperty("report.exclusions.file"));
+    }
+
+    static Set<String> loadExcludedTestNames(Path projectDirectory, String configured) {
+        // Generated exclusions belong to one Gradle stage. Direct IDEA launches have no stage file.
+        if (configured == null || configured.isBlank()) return Set.of();
+        Path candidate = Path.of(configured.trim());
+        if (!candidate.isAbsolute()) candidate = projectDirectory.resolve(candidate);
+        if (!Files.isRegularFile(candidate)) {
+            throw new IllegalStateException("Configured report exclusions are missing: " + candidate);
         }
-        return result;
+        try {
+            Set<String> result = new LinkedHashSet<>();
+            Files.readAllLines(candidate, StandardCharsets.UTF_8).stream()
+                    .map(String::trim)
+                    .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+                    .forEach(result::add);
+            return result;
+        } catch (IOException error) {
+            throw new IllegalStateException("Cannot read report exclusions: " + candidate, error);
+        }
     }
 
     private static List<OutdatedRule> loadOutdatedRules() {
@@ -334,13 +339,10 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
         String rawStage = firstNotBlank(
                 System.getProperty("allure.testStage"),
                 System.getProperty("testStage"),
-                System.getProperty("env"),
                 System.getenv("allure.testStage"),
                 System.getenv("testStage"),
                 System.getenv("TEST_STAGE"),
-                System.getenv("env"),
-                System.getenv("ENV"),
-                readPropertyFromTestProperties("env"),
+                TestEnvironment.current(),
                 DEFAULT_TEST_STAGE
         );
 
@@ -354,6 +356,8 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
 
     private static String normalizeTestStage(String value) {
         String trimmed = value.trim();
+        if ("ift-dm".equalsIgnoreCase(trimmed)) return "ift";
+        if ("local".equalsIgnoreCase(trimmed)) return "code";
         if ("devbarier".equals(trimmed.toLowerCase(Locale.ROOT))) {
             return "devBarier";
         }
@@ -370,18 +374,7 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
     }
 
     private static String readPropertyFromTestProperties(String propertyName) {
-        Properties properties = new Properties();
-        try (InputStream inputStream = RequiredAllureLabelsExtension.class
-                .getClassLoader()
-                .getResourceAsStream("test.properties")) {
-            if (inputStream == null) {
-                return null;
-            }
-            properties.load(inputStream);
-            return properties.getProperty(propertyName);
-        } catch (IOException exception) {
-            return null;
-        }
+        return TestConfigurationFiles.load("test.properties").getProperty(propertyName);
     }
 
     private static String resolveService(TestResult testResult, Optional<Class<?>> testClass) {

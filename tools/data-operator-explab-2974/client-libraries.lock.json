@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "runtime": "Apache Ignite 2.18.0 / Jackson 2.17.2",
+  "libraries": [
+    {
+      "file": "annotations-16.0.3.jar",
+      "sha256": "04b16e8d2309bf7771fbee16187b76f63af6ccd023cf664ec846e4e8e65c5b3f",
+      "group": "org.jetbrains",
+      "artifact": "annotations",
+      "version": "16.0.3"
+    },
+    {
+      "file": "cache-api-1.0.0.jar",
+      "sha256": "d2836213144722e2eb1d7461f6e2ea3349d6fbbf9cd5f345c7133bc29bd39ca1",
+      "group": "javax.cache",
+      "artifact": "cache-api",
+      "version": "1.0.0"
+    },
+    {
+      "file": "ignite-binary-api-2.18.0.jar",
+      "sha256": "388c77689a1bd75a7e6cd30de693de9ee71d6918efee3cc519c74a77be2350e3",
+      "group": "org.apache.ignite",
+      "artifact": "ignite-binary-api",
+      "version": "2.18.0"
+    },
+    {
+      "file": "ignite-binary-impl-2.18.0.jar",
+      "sha256": "a766b0388817ddb53f92955503f4d07e35bd7c78d145592d6922f165157c8f7d",
+      "group": "org.apache.ignite",
+      "artifact": "ignite-binary-impl",
+      "version": "2.18.0"
+    },
+    {
+      "file": "ignite-commons-2.18.0.jar",
+      "sha256": "daf592b18a476677a07db0c7b5ee3ad102dcaed30a10b984f3cf34641537c2dc",
+      "group": "org.apache.ignite",
+      "artifact": "ignite-commons",
+      "version": "2.18.0"
+    },
+    {
+      "file": "ignite-core-2.18.0.jar",
+      "sha256": "f12296bc612ac53a318d89aa8eebd45433b845a1eaedb651548c307e3200b03b",
+      "group": "org.apache.ignite",
+      "artifact": "ignite-core",
+      "version": "2.18.0"
+    },
+    {
+      "file": "ignite-grid-unsafe-2.18.0.jar",
+      "sha256": "0102be8425d5b8a2ea187e7fae567f015cc266993e0509674831c87ab0ffb319",
+      "group": "org.apache.ignite",
+      "artifact": "ignite-grid-unsafe",
+      "version": "2.18.0"
+    },
+    {
+      "file": "jackson-annotations-2.17.2.jar",
+      "sha256": "873a606e23507969f9bbbea939d5e19274a88775ea5a169ba7e2d795aa5156e1",
+      "group": "com.fasterxml.jackson.core",
+      "artifact": "jackson-annotations",
+      "version": "2.17.2"
+    },
+    {
+      "file": "jackson-core-2.17.2.jar",
+      "sha256": "721a189241dab0525d9e858e5cb604d3ecc0ede081e2de77d6f34fa5779a5b46",
+      "group": "com.fasterxml.jackson.core",
+      "artifact": "jackson-core",
+      "version": "2.17.2"
+    },
+    {
+      "file": "jackson-databind-2.17.2.jar",
+      "sha256": "c04993f33c0f845342653784f14f38373d005280e6359db5f808701cfae73c0c",
+      "group": "com.fasterxml.jackson.core",
+      "artifact": "jackson-databind",
+      "version": "2.17.2"
+    }
+  ]
+}

@@ -10,6 +10,7 @@
 # Gradle project files are trackable: *.gradle, *.gradle.kts and gradle/wrapper/**.
 # Only Gradle local cache/output directories stay ignored.
 .gradle/
+.gradle-user-home-check/
 build/
 out/
 target/
@@ -26,6 +27,9 @@ allure-report*/
 build/allure-results*/
 build/reports/
 attachments/
+regression-results/
+regression-fixtures/
+testops-results/
 *.log
 *.tmp
 

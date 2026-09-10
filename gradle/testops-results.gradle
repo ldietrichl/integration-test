@@ -1,0 +1,438 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.nio.channels.FileChannel
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
+import java.security.MessageDigest
+
+// The build exports the resolved raw-results directory and test.properties environment.
+def environment = rootProject.ext.regressionEnvironment.toString()
+def sourceDirectory = (rootProject.ext.testOpsSourceResultsDir as File).absoluteFile
+def bundleParent = new File(rootProject.projectDir, 'testops-results').absoluteFile
+def bundleDirectory = new File(bundleParent, environment)
+def preparedDirectory = new File(bundleDirectory, 'allure-results')
+def supportedEnvironments = ['dev', 'ift', 'ift-dm', 'lt', 'local'] as Set
+def supportedStatuses = ['passed', 'failed', 'broken', 'skipped', 'unknown'] as Set
+def metadataNames = ['categories.json', 'executor.json', 'environment.properties', 'environment.xml'] as Set
+def json = new JsonSlurper()
+
+if (!supportedEnvironments.contains(environment)) {
+    throw new GradleException("Unsupported TestOps environment: ${environment}")
+}
+
+def requireUnredirected = { File candidate ->
+    def absolute = candidate.absoluteFile.toPath().normalize()
+    if (candidate.canonicalFile.toPath() != absolute || Files.isSymbolicLink(absolute)) {
+        throw new GradleException("Refusing a redirected TestOps artifact path: ${candidate}")
+    }
+    candidate
+}
+
+def requireManaged = { File candidate ->
+    requireUnredirected(bundleParent)
+    requireUnredirected(candidate)
+    def base = bundleParent.canonicalFile.toPath()
+    def resolved = candidate.canonicalFile.toPath()
+    if (resolved == base || !resolved.startsWith(base)) {
+        throw new GradleException("TestOps output path escapes testops-results: ${candidate}")
+    }
+    candidate
+}
+
+def deleteManaged = { File candidate ->
+    requireManaged(candidate)
+    if (candidate.exists()) {
+        def paths = Files.walk(candidate.toPath())
+        try {
+            paths.forEach { path -> requireUnredirected(path.toFile()) }
+        } finally {
+            paths.close()
+        }
+        project.delete(candidate)
+    }
+}
+
+def requireSource = {
+    requireUnredirected(sourceDirectory)
+    def source = sourceDirectory.canonicalFile.toPath()
+    def output = bundleParent.canonicalFile.toPath()
+    if (source.startsWith(output) || output.startsWith(source)) {
+        throw new GradleException('TestOps raw input and prepared output must be separate directories.')
+    }
+}
+
+def safeName = { Object name, String context ->
+    if (!(name instanceof String) || name.isEmpty() || name in ['.', '..'] ||
+            name.contains('/') || name.contains('\\') || name.contains(':')) {
+        throw new GradleException("Invalid flat Allure filename in ${context}: ${name}")
+    }
+    name
+}
+
+def sha256 = { byte[] bytes ->
+    MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString()
+}
+
+def fileHash = { File file ->
+    def digest = MessageDigest.getInstance('SHA-256')
+    file.withInputStream { stream ->
+        byte[] buffer = new byte[65536]
+        int length
+        while ((length = stream.read(buffer)) != -1) {
+            digest.update(buffer, 0, length)
+        }
+    }
+    digest.digest().encodeHex().toString()
+}
+
+def readObject = { File file ->
+    try {
+        def value = json.parse(file, 'UTF-8')
+        if (!(value instanceof Map)) {
+            throw new GradleException("Expected Allure JSON object: ${file.name}")
+        }
+        value
+    } catch (GradleException error) {
+        throw error
+    } catch (Exception error) {
+        throw new GradleException("Cannot parse Allure JSON: ${file.name}", error)
+    }
+}
+
+// Snapshot every input file, including ignored files, to detect a changing source.
+def snapshot = {
+    requireSource()
+    if (!sourceDirectory.isDirectory()) {
+        throw new GradleException("Allure source directory does not exist: ${sourceDirectory}. Run selected tests first.")
+    }
+    def entries = sourceDirectory.listFiles()
+    if (entries == null) {
+        throw new GradleException("Cannot list Allure source directory: ${sourceDirectory}")
+    }
+    def files = new TreeMap<String, Map>()
+    entries.each { file ->
+        requireUnredirected(file)
+        if (!file.isFile()) {
+            throw new GradleException("Expected flat Allure results, found a directory or unsupported entry: ${file}")
+        }
+        files[file.name] = [size: file.length(), sha256: fileHash(file)]
+    }
+    files
+}
+
+def normalizedEnvironment = { String value ->
+    def normalized = value.trim().toLowerCase(Locale.ROOT).replace('_', '-')
+    ['eift': 'ift', 'ift-ds': 'ift', 'eift-ds': 'ift', 'eift-dm': 'ift-dm', 'localhost': 'local'][normalized] ?: normalized
+}
+
+def expectedLegacyStage = environment == 'ift-dm' ? 'ift' : environment == 'local' ? 'code' : environment
+
+def validateEnvironment = { Map result, String filename ->
+    if (!(result.labels instanceof List)) {
+        throw new GradleException("Missing Allure environment labels in ${filename}. Re-run with the current reporting extension.")
+    }
+    def labelValues = { String name ->
+        result.labels.findAll { it instanceof Map && it.name == name }.collect {
+            if (!(it.value instanceof String) || !it.value.trim()) {
+                throw new GradleException("Invalid ${name} label in ${filename}")
+            }
+            it.value.trim()
+        }.toSet()
+    }
+    def actualEnvironments = labelValues('testEnvironment').collect { normalizedEnvironment(it) }.toSet()
+    if (!actualEnvironments.isEmpty()) {
+        if (actualEnvironments != ([environment] as Set)) {
+            throw new GradleException("Allure environment mismatch in ${filename}: ${actualEnvironments}; test.properties selects ${environment}. Use a source containing only the selected environment.")
+        }
+        return false
+    }
+    def legacyStages = labelValues('testStage').collect { it.toLowerCase(Locale.ROOT) }.toSet()
+    if (legacyStages.isEmpty()) {
+        throw new GradleException("Allure result ${filename} has no testEnvironment or legacy testStage label. Re-run with the current reporting extension; environment is not inferred from the directory or current configuration.")
+    }
+    if (legacyStages != ([expectedLegacyStage] as Set)) {
+        throw new GradleException("Legacy Allure testStage mismatch in ${filename}: ${legacyStages}; expected ${expectedLegacyStage} for ${environment}. Do not combine environments.")
+    }
+    true
+}
+
+def collectAttachments
+collectAttachments = { Object node, Set<String> references, String context ->
+    if (node instanceof Map) {
+        if (node.containsKey('status') && !(node.status in supportedStatuses)) {
+            throw new GradleException("Unsupported Allure status in ${context}: ${node.status}")
+        }
+        if (node.containsKey('stage') && node.stage != 'finished') {
+            throw new GradleException("Unfinished Allure artifact in ${context}: stage=${node.stage}. Wait for tests to finish.")
+        }
+        if (node.containsKey('attachments')) {
+            if (!(node.attachments instanceof List)) {
+                throw new GradleException("Invalid Allure attachments list: ${context}")
+            }
+            node.attachments.each { attachment ->
+                if (!(attachment instanceof Map)) {
+                    throw new GradleException("Invalid Allure attachment: ${context}")
+                }
+                references.add(safeName(attachment.source, context))
+            }
+        }
+        node.each { key, value ->
+            if (key != 'attachments') collectAttachments(value, references, context)
+        }
+    } else if (node instanceof List) {
+        node.each { collectAttachments(it, references, context) }
+    }
+}
+
+def recognizableAttachment = { String name ->
+    name ==~ /[A-Za-z0-9_-]+-attachment(?:\.[A-Za-z0-9._-]+)?/
+}
+
+def withBundleLock = { Closure action ->
+    requireUnredirected(bundleParent)
+    if (!bundleParent.mkdirs() && !bundleParent.isDirectory()) {
+        throw new GradleException("Cannot create TestOps output directory: ${bundleParent}")
+    }
+    def lockFile = requireManaged(new File(bundleParent, ".${environment}.lock"))
+    FileChannel channel = FileChannel.open(lockFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE)
+    def lock = null
+    try {
+        lock = channel.tryLock()
+        if (lock == null) throw new GradleException("Another TestOps preparation or cleanup is active for ${environment}.")
+        action.call()
+    } finally {
+        if (lock != null) lock.release()
+        channel.close()
+    }
+}
+
+tasks.register('prepareTestOpsResults') {
+    group = 'testops'
+    description = 'Validate all selected-test Allure results and prepare a separate TestOps bundle without running tests or uploading'
+    outputs.upToDateWhen { false }
+
+    doLast {
+        withBundleLock {
+            requireManaged(bundleDirectory)
+            def original = snapshot()
+            def resultNames = original.keySet().findAll { it.endsWith('-result.json') }
+            def containerNames = original.keySet().findAll { it.endsWith('-container.json') }
+            if (resultNames.isEmpty()) {
+                throw new GradleException("No *-result.json files in ${sourceDirectory}. Run selected tests first.")
+            }
+            def suffix = UUID.randomUUID().toString()
+            def staging = requireManaged(new File(bundleParent, ".${environment}-staging-${suffix}"))
+            def backup = requireManaged(new File(bundleParent, ".${environment}-backup-${suffix}"))
+            def stagedRaw = new File(staging, 'allure-results')
+            boolean previousMoved = false
+            boolean promoted = false
+            try {
+                if (!stagedRaw.mkdirs()) throw new GradleException("Cannot create TestOps staging directory: ${stagedRaw}")
+                // Copy the snapshot before parsing, then validate the exact immutable upload bytes.
+                original.each { name, details ->
+                    def target = new File(stagedRaw, name)
+                    Files.copy(new File(sourceDirectory, name).toPath(), target.toPath())
+                    if (target.length() != details.size || fileHash(target) != details.sha256) {
+                        throw new GradleException("Allure source changed while copying ${name}. Finish active tests and prepare again.")
+                    }
+                }
+                def allUuids = new HashSet<String>()
+                def resultUuids = new HashSet<String>()
+                def references = new LinkedHashSet<String>()
+                def statuses = new TreeMap<String, Integer>()
+                def classes = new TreeMap<String, Integer>()
+                def historyCounts = new LinkedHashMap<String, Integer>()
+                long earliest = Long.MAX_VALUE
+                long latest = 0L
+                int legacyEnvironmentCount = 0
+                def registerUuid = { Map object, String name ->
+                    if (!(object.uuid instanceof String) || !object.uuid.trim() || !allUuids.add(object.uuid)) {
+                        throw new GradleException("Missing or duplicate Allure UUID in ${name}")
+                    }
+                }
+                resultNames.each { name ->
+                    def result = readObject(new File(stagedRaw, name))
+                    registerUuid(result, name)
+                    resultUuids.add(result.uuid)
+                    if (!(result.status in supportedStatuses) || result.stage != 'finished') {
+                        throw new GradleException("Allure result ${name} is unfinished or has an invalid status. Finish the test run before preparation.")
+                    }
+                    ['start', 'stop'].each { field ->
+                        def value = result[field]
+                        if (!(value instanceof Number) || !(value.toString() ==~ /0|[1-9][0-9]*/) ||
+                                new BigInteger(value.toString()) > BigInteger.valueOf(Long.MAX_VALUE)) {
+                            throw new GradleException("Invalid Allure ${field} timestamp in ${name}")
+                        }
+                    }
+                    if (result.stop.longValue() < result.start.longValue()) {
+                        throw new GradleException("Allure stop precedes start in ${name}")
+                    }
+                    earliest = Math.min(earliest, result.start.longValue())
+                    latest = Math.max(latest, result.stop.longValue())
+                    if (validateEnvironment(result, name)) legacyEnvironmentCount++
+                    statuses[result.status] = (statuses[result.status] ?: 0) + 1
+                    def classLabel = result.labels.find { it instanceof Map && it.name == 'testClass' }
+                    def className = classLabel?.value instanceof String ? classLabel.value : '(unlabelled)'
+                    classes[className] = (classes[className] ?: 0) + 1
+                    if (result.historyId instanceof String && result.historyId.trim()) {
+                        historyCounts[result.historyId] = (historyCounts[result.historyId] ?: 0) + 1
+                    }
+                    collectAttachments(result, references, name)
+                }
+                containerNames.each { name ->
+                    def container = readObject(new File(stagedRaw, name))
+                    registerUuid(container, name)
+                    if (container.children != null && !(container.children instanceof List)) {
+                        throw new GradleException("Invalid Allure container children in ${name}")
+                    }
+                    (container.children ?: []).each { child ->
+                        if (!(child instanceof String) || !resultUuids.contains(child)) {
+                            throw new GradleException("Dangling Allure container child ${child} in ${name}. Re-export a complete raw-results set; do not remove result JSONs alone.")
+                        }
+                    }
+                    collectAttachments(container, references, name)
+                }
+                references.each { name ->
+                    if (!original.containsKey(name)) throw new GradleException("Missing Allure attachment: ${name}")
+                }
+                def keepNames = new LinkedHashSet<String>()
+                keepNames.addAll(resultNames)
+                keepNames.addAll(containerNames)
+                keepNames.addAll(references)
+                keepNames.addAll(original.keySet().findAll { metadataNames.contains(it) || recognizableAttachment(it) })
+                def ignoredNames = original.keySet().findAll { !keepNames.contains(it) }
+                ignoredNames.each { name -> Files.delete(new File(stagedRaw, name).toPath()) }
+                def sourceEnvironmentProperties = new File(stagedRaw, 'environment.properties')
+                if (sourceEnvironmentProperties.isFile()) {
+                    def properties = new Properties()
+                    sourceEnvironmentProperties.withInputStream { properties.load(it) }
+                    ['env', 'environment', 'testEnvironment'].each { key ->
+                        def value = properties.getProperty(key)
+                        if (value != null && normalizedEnvironment(value) != environment) {
+                            throw new GradleException("Allure environment.properties ${key} does not match ${environment}. Use an unmixed source directory.")
+                        }
+                    }
+                } else {
+                    sourceEnvironmentProperties.setText("env=${environment}\n", 'UTF-8')
+                }
+                def categories = new File(stagedRaw, 'categories.json')
+                def projectCategories = rootProject.file('allure/categories.json')
+                if (!categories.exists() && projectCategories.isFile()) {
+                    Files.copy(projectCategories.toPath(), categories.toPath())
+                }
+                def duplicateHistoryIds = historyCounts.findAll { historyId, count -> count > 1 }
+                if (!duplicateHistoryIds.isEmpty()) {
+                    logger.warn("TESTOPS ACCUMULATED ATTEMPTS: ${duplicateHistoryIds.size()} historyId values repeat. Preserving every raw result; old runs and retries are not deduplicated.")
+                }
+                if (legacyEnvironmentCount > 0) {
+                    logger.warn("TESTOPS LEGACY ENVIRONMENT: ${legacyEnvironmentCount} results use testStage only. This cannot distinguish ift from ift-dm and can be overridden independently; re-run with testEnvironment for exact attribution.")
+                }
+                if (!ignoredNames.isEmpty()) logger.warn("TestOps preparation ignored ${ignoredNames.size()} non-Allure source files; source files were retained.")
+                def sourceDigest = sha256(JsonOutput.toJson(original).getBytes('UTF-8'))
+                new File(staging, 'manifest.json').setText(JsonOutput.prettyPrint(JsonOutput.toJson([
+                    environment: environment,
+                    preparedAt: java.time.Instant.now().toString(),
+                    sourceDirectory: sourceDirectory.canonicalPath,
+                    sourceSnapshotSha256: sourceDigest,
+                    sourceFiles: original,
+                    resultCount: resultNames.size(),
+                    containerCount: containerNames.size(),
+                    attachmentCount: references.size(),
+                    statuses: statuses,
+                    classes: classes,
+                    firstResultStart: earliest,
+                    lastResultStop: latest,
+                    legacyEnvironmentCount: legacyEnvironmentCount,
+                    environmentEvidence: legacyEnvironmentCount == 0 ? 'testEnvironment' :
+                            legacyEnvironmentCount == resultNames.size() ? 'legacy-testStage' : 'testEnvironment-and-legacy-testStage',
+                    duplicateHistoryIds: duplicateHistoryIds,
+                    ignoredSourceFiles: ignoredNames,
+                    selection: 'all raw results in source; no deduplication or latest-run inference',
+                    destination: 'allure-results'
+                ])) + '\n', 'UTF-8')
+                if (snapshot() != original) {
+                    throw new GradleException('Allure source changed during preparation. Finish active tests and prepare again; previous prepared results are retained.')
+                }
+                if (bundleDirectory.exists()) {
+                    Files.move(bundleDirectory.toPath(), backup.toPath())
+                    previousMoved = true
+                }
+                Files.move(staging.toPath(), bundleDirectory.toPath())
+                promoted = true
+            } catch (Exception error) {
+                if (promoted && bundleDirectory.exists()) deleteManaged(bundleDirectory)
+                if (previousMoved && backup.exists()) Files.move(backup.toPath(), bundleDirectory.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                throw new GradleException('TestOps preparation failed; previous prepared results were retained where possible.', error)
+            } finally {
+                deleteManaged(staging)
+            }
+            deleteManaged(backup)
+            logger.lifecycle("Prepared ${resultNames.size()} TestOps results for ${environment}: ${preparedDirectory}")
+            logger.lifecycle("Manifest: ${new File(bundleDirectory, 'manifest.json')}")
+            logger.lifecycle('Preparation includes every result in the source. Use cleanTestOpsResults before a new selected-test run to avoid accumulation.')
+        }
+    }
+}
+
+tasks.register('cleanTestOpsResults') {
+    group = 'testops'
+    description = 'Clear the selected TestOps bundle and recognized default raw Allure files before a new selected-test run'
+    doLast {
+        withBundleLock {
+            requireSource()
+            requireManaged(bundleDirectory)
+            def allowedSources = [rootProject.file('build/allure-results'), rootProject.file('allure-results')]
+                    .collect { it.absoluteFile.toPath().normalize() }
+            if (!allowedSources.contains(sourceDirectory.absoluteFile.toPath().normalize())) {
+                throw new GradleException("Refusing automatic cleanup of custom Allure source ${sourceDirectory}. Clean that source manually, then use a default raw source for cleanTestOpsResults; prepared results were retained.")
+            }
+            def recognized = new LinkedHashSet<String>()
+            def before = sourceDirectory.exists() ? snapshot() : new TreeMap<String, Map>()
+            before.keySet().each { name ->
+                if (name.endsWith('-result.json') || name.endsWith('-container.json')) {
+                    recognized.add(name)
+                    // Read attachment references, but cleanup does not require a successful run.
+                    def collectForCleanup
+                    collectForCleanup = { Object node ->
+                        if (node instanceof Map) {
+                            if (node.attachments instanceof List) node.attachments.each { attachment ->
+                                if (attachment instanceof Map && attachment.source instanceof String) {
+                                    recognized.add(safeName(attachment.source, name))
+                                }
+                            }
+                            node.each { key, value -> if (key != 'attachments') collectForCleanup(value) }
+                        } else if (node instanceof List) node.each { collectForCleanup(it) }
+                    }
+                    try {
+                        collectForCleanup(readObject(new File(sourceDirectory, name)))
+                    } catch (GradleException malformed) {
+                        // A killed test JVM may leave partial JSON. Known Allure filenames are
+                        // still disposable; unrecognizable attachments remain for manual review.
+                        logger.warn("Cleanup could not inspect attachment references in ${name}; recognized Allure files will still be cleared.")
+                    }
+                } else if (metadataNames.contains(name) || recognizableAttachment(name)) {
+                    recognized.add(name)
+                }
+            }
+            if (sourceDirectory.exists() && snapshot() != before) {
+                throw new GradleException('Allure source changed during cleanup inspection. Stop active tests before cleanup.')
+            }
+            recognized.findAll { before.containsKey(it) }.each { name ->
+                def file = requireUnredirected(new File(sourceDirectory, safeName(name, 'cleanup')))
+                Files.delete(file.toPath())
+            }
+            deleteManaged(bundleDirectory)
+            logger.lifecycle("Cleared ${recognized.count { before.containsKey(it) }} recognized raw Allure files and ${bundleDirectory}")
+            logger.lifecycle('Regression runs, fixture ownership manifests and unrecognized source files were retained.')
+        }
+    }
+}
+
+gradle.taskGraph.whenReady { graph ->
+    if (graph.hasTask(tasks.named('cleanTestOpsResults').get()) &&
+            (graph.hasTask(tasks.named('prepareTestOpsResults').get()) ||
+                    graph.allTasks.any { it.project == project && it.name == 'testOpsUpload' })) {
+        throw new GradleException('Run cleanTestOpsResults separately before tests. Do not combine cleanup with TestOps preparation or upload in one command.')
+    }
+}

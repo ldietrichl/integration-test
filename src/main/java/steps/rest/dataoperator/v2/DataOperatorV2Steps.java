@@ -1,12 +1,15 @@
 package steps.rest.dataoperator.v2;
 
 import constants.Endpoints;
+import config.services.core.RestEndpointResolver;
+import config.services.core.RestServiceEndpoint;
 import dto.dataoperator.v2.ExplicitNullReturnIdsRequestDto;
 import dto.dataoperator.v2.InvalidSplittingObjectsRequestDto;
 import dto.dataoperator.v2.SoDictByParamsRequestDto;
 import dto.dataoperator.v2.SoFieldValuesDictRequestDto;
 import dto.dataoperator.v2.SplittingObjectsIdsRequestDto;
 import dto.dataoperator.v2.SplittingObjectsRequestDto;
+import dto.dataoperator.v2.SplittingObjectsLinksRequestDto;
 import org.apache.http.HttpStatus;
 import ru.sber.qa.matchers.RestMatchers;
 import ru.sber.qa.services.rest.RestClient;
@@ -118,8 +121,36 @@ public class DataOperatorV2Steps {
 
     public ValidatableResponseWrapper getSplittingObjectLinks(Object body) {
         return step("Вызываем back-метод расчета связей объектов", () -> client.post(
-                specification -> specification.body(body),
+                specification -> specification
+                        .baseUri(RestEndpointResolver.baseUri(RestServiceEndpoint.DATA_OPERATOR))
+                        .body(body),
                 Endpoints.DataOperatorV2.SPLITTING_OBJECTS_LINKS));
+    }
+
+    public ValidatableResponseWrapper getSplittingObjectLinks(SplittingObjectsLinksRequestDto body) {
+        return getSplittingObjectLinks(SplittingObjectsLinksRequestDto.toJson(body));
+    }
+
+    public ValidatableResponseWrapper getSplittingObjectLinksStatusOk(SplittingObjectsLinksRequestDto body) {
+        return step("Проверяем 200 OK метода splitting-objects-links", () -> getSplittingObjectLinks(body)
+                .should(RestMatchers.haveStatusCode(HttpStatus.SC_OK)));
+    }
+
+    public ValidatableResponseWrapper getSplittingObjectLinksWithoutBody() {
+        return step("Вызываем splitting-objects-links без HTTP-тела", () -> client.post(
+                specification -> specification.baseUri(RestEndpointResolver.baseUri(RestServiceEndpoint.DATA_OPERATOR)),
+                Endpoints.DataOperatorV2.SPLITTING_OBJECTS_LINKS));
+    }
+
+    /** Calls the archived service's real ingestion controller; this does not mock its response. */
+    public ValidatableResponseWrapper loadSplittingObjectsFixture(String point, String payload) {
+        if (point == null || !point.matches("EXPLAB2974_[0-9a-f]{32}_SP[12]")) {
+            throw new IllegalArgumentException("Fixture upload requires an owned EXPLAB-2974 point");
+        }
+        return step("Загружаем собственные тестовые объекты через REST data-operator", () -> client.post(
+                specification -> specification.baseUri(RestEndpointResolver.baseUri(RestServiceEndpoint.DATA_OPERATOR))
+                        .pathParam("point", point).body(payload),
+                "/api/v2/data-operator/kafka/stub/{point}"));
     }
 
     public ValidatableResponseWrapper getSplittingObjectLinksStatusBadRequest(Object body) {

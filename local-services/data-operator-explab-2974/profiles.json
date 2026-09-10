@@ -1,0 +1,10 @@
+{
+  "local": {
+    "project": "explab-2974-local", "igniteVersion": "2.17.0", "kafkaVersion": "4.0.2",
+    "servicePort": 18074, "dependencyPort": 18075, "ignitePort": 10874, "kafkaPort": 19074, "reportPort": 18076
+  },
+  "compatible": {
+    "project": "explab-2974-compatible", "igniteVersion": "2.18.0", "kafkaVersion": "3.9.1",
+    "servicePort": 18084, "dependencyPort": 18085, "ignitePort": 10884, "kafkaPort": 19084, "reportPort": 18086
+  }
+}

@@ -14,7 +14,7 @@ class RestEndpointResolverTest {
     void currentEnvironmentAndAllRestUrisMustBeValid() {
         RestEndpointResolver.validateCurrentEnvironment();
 
-        assertTrue(Set.of("dev", "ift", "ift-dm", "lt")
+        assertTrue(Set.of("dev", "ift", "ift-dm", "lt", "local")
                 .contains(RestEndpointResolver.currentEnvironment()));
         for (RestServiceEndpoint endpoint : RestServiceEndpoint.values()) {
             String uri = RestEndpointResolver.baseUri(endpoint);

@@ -1,12 +1,11 @@
 package config.services.db;
 
 import org.aeonbits.owner.ConfigFactory;
+import config.services.core.TestEnvironment;
 import ru.sber.qa.services.configuration.scope.ConfigScope;
 
 import java.util.Map;
 import java.util.Properties;
-
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 
 public class CustomDatabaseConfigScope implements ConfigScope {
 
@@ -23,7 +22,7 @@ public class CustomDatabaseConfigScope implements ConfigScope {
                 CustomDatabaseConfig.class
                 , Map.of(
                         "name", databaseName,
-                        "env", dbEnv(TEST_CONFIG.env())));
+                        "selectedTestEnvironment", dbEnv(TestEnvironment.current())));
         properties.put("url", valueOrEmpty(config.url()));
         properties.put("login", valueOrEmpty(config.login()));
         properties.put("password", valueOrEmpty(config.password()));

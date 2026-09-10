@@ -1,0 +1,18 @@
+{
+  "objects": {
+    "SP1": [
+      {"parentId":1001,"id":101,"productName":"Кредит","channelId":10,"amount":9.50,"enabled":true,"note":"A"},
+      {"parentId":1001,"id":102,"productName":"Кредит","channelId":20,"amount":10.00,"enabled":true,"note":""},
+      {"parentId":1002,"id":103,"productName":"Вклад","channelId":20,"amount":10.50,"enabled":false},
+      {"parentId":1002,"id":101,"productName":"Кредит","channelId":30,"amount":20.00,"enabled":false,"note":"D"},
+      {"id":104,"productName":"Страхование","channelId":30,"amount":0.00,"enabled":true},
+      {"parentId":1002,"id":105,"productName":"Авто Кредит VIP","channelId":10,"amount":-1.00,"enabled":false,"note":"F"}
+    ],
+    "SP2": [{"parentId":9001,"id":999,"productName":"Кредит","channelId":20,"amount":10.00,"enabled":true,"note":"X"}]
+  },
+  "splits": [
+    {"id":101321,"name":"EXPLAB-2974 D1 E1","type":"SCG","status":"IN_PROGRESS"},
+    {"id":101322,"parentId":101321,"name":"EXPLAB-2974 D1 E2","type":"SCG","status":"DRAFT"}
+  ],
+  "expectedPairs": [["1001","101"],["1001","102"],["1002","101"]]
+}
