@@ -1,0 +1,119 @@
+import groovy.json.JsonOutput
+import org.gradle.api.GradleException
+import org.gradle.api.tasks.testing.Test
+import org.gradle.api.tasks.testing.TestDescriptor
+import org.gradle.api.tasks.testing.TestListener
+import org.gradle.api.tasks.testing.TestResult
+
+/** Completion is not a service verdict: three executed failures are complete, but not successful. */
+class SchedulerHttpCompletionPolicy {
+    static final String TEST_CLASS = 'ru.sber.qa.scheduler.infrastructure.SchedulerHttpDiagnosticFlowTest'
+    static final List<String> EXPECTED = ['http001', 'http002', 'http003']
+
+    static Map evaluate(List<Map> events) {
+        def observations = events.collect { event ->
+            String name = (event.name ?: '').toString()
+            String display = (event.displayName ?: '').toString()
+            String method = EXPECTED.find { id ->
+                name == id || name == id + '()' ||
+                    display == id || display == id + '()' ||
+                    display.startsWith('SCH-HTTP-' + id.substring(4) + '.')
+            }
+            [
+                className: (event.className ?: '').toString(),
+                method: method,
+                name: name.take(256),
+                displayName: display.take(256),
+                resultType: (event.resultType ?: '').toString()
+            ]
+        }
+        def frequencies = observations.countBy { it.method }
+        boolean identitiesMatch = observations.size() == EXPECTED.size() &&
+            observations.every { it.className == TEST_CLASS && it.method in EXPECTED } &&
+            EXPECTED.every { frequencies[it] == 1 }
+        boolean statusesKnown = observations.every { it.resultType in ['SUCCESS', 'FAILURE', 'SKIPPED'] }
+        int skipped = observations.count { it.resultType == 'SKIPPED' }
+        int failed = observations.count { it.resultType == 'FAILURE' }
+        boolean complete = identitiesMatch && statusesKnown && skipped == 0
+        [
+            expectedMethods: EXPECTED,
+            observedCount: observations.size(),
+            failed: failed,
+            skipped: skipped,
+            runComplete: complete,
+            allPassed: complete && failed == 0,
+            observations: observations
+        ]
+    }
+}
+
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    def diagnostics = project.tasks.findByName('schedulerInfrastructureDiagnostics')
+    if (!(diagnostics instanceof Test))
+        throw new GradleException('Expected root Test task schedulerInfrastructureDiagnostics. No fallback test task is created.')
+
+    String invocation = gradle.startParameter.projectProperties['schedulerHttpDiagnosticsInvocation'] ?:
+        UUID.randomUUID().toString().replace('-', '')
+    if (!(invocation ==~ /[a-f0-9]{32}/))
+        throw new GradleException('schedulerHttpDiagnosticsInvocation must be a lowercase 32-character hex identifier.')
+
+    def observations = Collections.synchronizedList(new ArrayList<Map>())
+    diagnostics.filter.setIncludePatterns(SchedulerHttpCompletionPolicy.TEST_CLASS)
+    diagnostics.filter.setFailOnNoMatchingTests(true)
+    diagnostics.ignoreFailures = false
+    diagnostics.outputs.upToDateWhen { false }
+    diagnostics.addTestListener(new TestListener() {
+        void beforeSuite(TestDescriptor descriptor) {}
+        void afterSuite(TestDescriptor descriptor, TestResult result) {}
+        void beforeTest(TestDescriptor descriptor) {}
+        void afterTest(TestDescriptor descriptor, TestResult result) {
+            observations.add([
+                className: descriptor.className,
+                name: descriptor.name,
+                displayName: descriptor.displayName,
+                resultType: result.resultType.toString()
+            ])
+        }
+    })
+
+    def completion = project.tasks.register('schedulerHttpDiagnosticsCompletionGuard') {
+        group = 'verification'
+        description = 'Requires all three scheduler HTTP diagnostics, without skips, duplicates or hidden failures.'
+        // Pure policy entry point for offline package validation; does not inject events into the real listener.
+        extensions.extraProperties.set('evaluateCompletion', { List<Map> events ->
+            SchedulerHttpCompletionPolicy.evaluate(events)
+        })
+        doLast {
+            List<Map> snapshot
+            synchronized (observations) { snapshot = new ArrayList<Map>(observations) }
+            def result = SchedulerHttpCompletionPolicy.evaluate(snapshot)
+            def receipt = new LinkedHashMap(result)
+            receipt.putAll([
+                schemaVersion: 1,
+                invocation: invocation,
+                testClass: SchedulerHttpCompletionPolicy.TEST_CLASS,
+                generatedAtUtc: java.time.Instant.now().toString(),
+                source: 'GRADLE_TEST_LISTENER',
+                task: diagnostics.path
+            ])
+            File receiptFile = new File(project.layout.buildDirectory.get().asFile,
+                'diagnostics/scheduler-http/http-completion-' + invocation + '.json').canonicalFile
+            if (!receiptFile.parentFile.mkdirs() && !receiptFile.parentFile.isDirectory())
+                throw new GradleException('Cannot create HTTP diagnostic completion directory.')
+            if (receiptFile.exists())
+                throw new GradleException('Completion receipt already exists; use a fresh invocation identifier.')
+            receiptFile.setText(JsonOutput.prettyPrint(JsonOutput.toJson(receipt)), 'UTF-8')
+            logger.lifecycle('SchedulerHttpGuardReceipt=' + receiptFile.absolutePath)
+            logger.lifecycle('SchedulerHttpExpected=3; Observed=' + result.observedCount +
+                '; Skipped=' + result.skipped + '; Failed=' + result.failed +
+                '; RunComplete=' + result.runComplete + '; AllPassed=' + result.allPassed)
+            if (!result.runComplete)
+                throw new GradleException('INCOMPLETE_HTTP_DIAGNOSTICS: expected http001/http002/http003 exactly once, without skips. Inspect the completion receipt and eligibility report.')
+            if (!result.allPassed)
+                throw new GradleException('HTTP_DIAGNOSTICS_FAILED: all three ran, but service/transport assertions failed. Preserve the original JUnit/Allure failures.')
+        }
+    }
+    // The finalizer also runs when the Test task fails or is skipped, rejecting a zero-test invocation.
+    diagnostics.finalizedBy(completion)
+}

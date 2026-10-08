@@ -1,0 +1,129 @@
+{
+  "requestId": "Dumanskaja10-c8c9-4af6-aa25-7c1bfa1500",
+  "splittingId": "2000",
+  "requestParams": null,
+  "splittingObjects": [
+    {
+      "objectId": "d37d34a3-19bc-4766-9383-6a1b1e389c5d",
+      "objectParams": [
+        {
+          "paramCode": "cjId",
+          "paramValues": [
+            "1"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "modelId",
+          "paramValues": [
+            "-1000"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "modelTemplate",
+          "paramValues": [
+            "0"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "modelSource",
+          "paramValues": [
+            "SAS"
+          ],
+          "dataType": "STRING"
+        },
+        {
+          "paramCode": "sellingProductId",
+          "paramValues": [
+            "1-AVDHSSS"
+          ],
+          "dataType": "STRING"
+        },
+        {
+          "paramCode": "channel",
+          "paramValues": [
+            "19"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "templateId",
+          "paramValues": [
+            "2"
+          ],
+          "dataType": "STRING"
+        },
+        {
+          "paramCode": "configCommId",
+          "paramValues": [
+            "1"
+          ],
+          "dataType": "INTEGER"
+        }
+      ]
+    },
+    {
+      "objectId": "b32c2e48-eae0-43c5-bf7d-8d2a7ebf2375",
+      "objectParams": [
+        {
+          "paramCode": "cjId",
+          "paramValues": [
+            "2"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "modelId",
+          "paramValues": [
+            "-1000"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "modelTemplate",
+          "paramValues": [
+            "0"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "modelSource",
+          "paramValues": [
+            "SAS"
+          ],
+          "dataType": "STRING"
+        },
+        {
+          "paramCode": "sellingProductId",
+          "paramValues": [
+            "1-AVDHSSS"
+          ],
+          "dataType": "STRING"
+        },
+        {
+          "paramCode": "channel",
+          "paramValues": [
+            "19"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "templateId",
+          "paramValues": [
+            "2"
+          ],
+          "dataType": "STRING"
+        },
+        {
+          "paramCode": "configCommId",
+          "paramValues": [
+            "2"
+          ],
+          "dataType": "INTEGER"
+        }
+      ]
+    }
+  ]
+}

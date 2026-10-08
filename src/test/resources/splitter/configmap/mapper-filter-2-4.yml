@@ -1,0 +1,13 @@
+# Variant for filtered/suppression tests.
+# Based on mapper-current.yml. The important part is filter-rule.values=[2,4].
+
+include: mapper-current.yml
+required:
+  filter-rule.rule-code: FILT
+  filter-rule.proc-code: mapperFilter
+  filter-rule.enabled: true
+  filter-rule.proc-params.param-code: actionType
+  filter-rule.proc-params.values:
+    - 2
+    - 4
+  filtered-flag-rule.enabled: true

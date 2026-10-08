@@ -1,0 +1,8 @@
+# Профиль приложения для полного документного покрытия, если требуется проверять ALL и пустые MAIN по документу.
+# Это не загрузочная splittingConfig, а ожидаемые настройки приложения/ConfigMap сплиттера.
+splitter:
+  config:
+    return-suppressed: true
+    all-rule-code-exp-enabled: true
+    empty-objects-response-enabled: true
+    allow-result-without-main: true

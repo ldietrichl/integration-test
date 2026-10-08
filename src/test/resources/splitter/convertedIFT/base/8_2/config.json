@@ -1,0 +1,126 @@
+{
+  "messageId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "requestId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "configVersion": 1774961075,
+  "forceConfigLoad": true,
+  "splittingPointCode": "MAPPER",
+  "splittingConfig": {
+    "experiments": [{
+      "id": 1,
+      "salt": "24096d2M1e",
+      "objectSelectConditions": [{
+        "id": 1,
+        "rules":
+        [[{
+          "dataType": "INTEGER",
+          "paramCode": "cjId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "in",
+          "values": ["1"]
+        }
+        ]]
+      }, {
+        "id": 2,
+        "rules":
+        [[{
+          "dataType": "INTEGER",
+          "paramCode": "cjId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "in",
+          "values": ["2"]
+        }
+        ]]
+      }
+      ],
+      "groups": [{
+        "code": "A",
+        "shares": [{
+          "shareFrom": 0,
+          "shareTo": 5000
+        }
+        ],
+        "splittingResults": [{
+          "conditionId": 1,
+          "resultParams": [{
+            "paramCode": "actionType",
+            "paramValues": ["0"],
+            "dataType": "INTEGER"
+          }
+          ]
+        }
+        ]
+      }, {
+        "code": "B",
+        "shares": [{
+          "shareFrom": 5000,
+          "shareTo": 10000
+        }
+        ],
+        "splittingResults": [{
+          "conditionId": 2,
+          "resultParams": [{
+            "paramCode": "actionType",
+            "paramValues": ["1"],
+            "dataType": "INTEGER"
+          }
+          ]
+        }
+        ]
+      }
+      ]
+    }, {
+      "id": 2,
+      "salt": "2409w13Bw6",
+      "objectSelectConditions": [{
+        "id": 1,
+        "rules":
+        [[{
+          "dataType": "INTEGER",
+          "paramCode": "cjId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "in",
+          "values": ["1", "2"]
+        }
+        ]]
+      }
+      ],
+      "groups": [{
+        "code": "A",
+        "shares": [{
+          "shareFrom": 0,
+          "shareTo": 5000
+        }
+        ],
+        "splittingResults": [{
+          "conditionId": 1,
+          "resultParams": [{
+            "paramCode": "actionType",
+            "paramValues": ["1"],
+            "dataType": "INTEGER"
+          }
+          ]
+        }
+        ]
+      }, {
+        "code": "B",
+        "shares": [{
+          "shareFrom": 5000,
+          "shareTo": 10000
+        }
+        ],
+        "splittingResults": [{
+          "conditionId": 1,
+          "resultParams": [{
+            "paramCode": "actionType",
+            "paramValues": ["0"],
+            "dataType": "INTEGER"
+          }
+          ]
+        }
+        ]
+      }
+      ]
+    }
+    ]
+  }
+}

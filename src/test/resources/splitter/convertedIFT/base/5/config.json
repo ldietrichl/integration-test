@@ -1,0 +1,361 @@
+{
+  "messageId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "requestId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "configVersion": "1773943855",
+  "forceConfigLoad": true,
+  "splittingPointCode": "MAPPER",
+  "splittingConfig": {
+    "experiments": [
+      {
+        "id": 6,
+        "purpose": "DCG",
+        "layerId": 1,
+        "salt": "24096d2M1e",
+        "objectSelectConditions": [
+          {
+            "id": 1,
+            "rules": [
+              [
+                {
+                  "dataType": "INTEGER",
+                  "paramCode": "channel",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "20"
+                  ]
+                },
+                {
+                  "dataType": "STRING",
+                  "paramCode": "sellingProductId",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "1-AVDHSSS"
+                  ]
+                }
+              ]
+            ]
+          }
+        ],
+        "groups": [
+          {
+            "code": "A",
+            "shares": [
+              {
+                "shareFrom": 0,
+                "shareTo": 7500
+              }
+            ],
+            "splittingResults": [
+              {
+                "conditionId": 1,
+                "resultParams": [
+                  {
+                    "paramCode": "actionType",
+                    "paramValues": [
+                      "2"
+                    ],
+                    "dataType": "INTEGER"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "purpose": "DCG",
+        "layerId": 1,
+        "salt": "24096d2M1e",
+        "objectSelectConditions": [
+          {
+            "id": 1,
+            "rules": [
+              [
+                {
+                  "dataType": "INTEGER",
+                  "paramCode": "channel",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "20"
+                  ]
+                },
+                {
+                  "dataType": "STRING",
+                  "paramCode": "sellingProductId",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "1-AVDHSSS"
+                  ]
+                }
+              ]
+            ]
+          }
+        ],
+        "groups": [
+          {
+            "code": "A",
+            "shares": [
+              {
+                "shareFrom": 0,
+                "shareTo": 7500
+              }
+            ],
+            "splittingResults": [
+              {
+                "conditionId": 1,
+                "resultParams": [
+                  {
+                    "paramCode": "actionType",
+                    "paramValues": [
+                      "2"
+                    ],
+                    "dataType": "INTEGER"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "purpose": "DCG",
+        "layerId": 1,
+        "salt": "24096d2M1e",
+        "objectSelectConditions": [
+          {
+            "id": 1,
+            "rules": [
+              [
+                {
+                  "dataType": "INTEGER",
+                  "paramCode": "channel",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "20"
+                  ]
+                },
+                {
+                  "dataType": "STRING",
+                  "paramCode": "sellingProductId",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "1-AVDHSSS"
+                  ]
+                }
+              ]
+            ]
+          }
+        ],
+        "groups": [
+          {
+            "code": "A",
+            "shares": [
+              {
+                "shareFrom": 0,
+                "shareTo": 7500
+              }
+            ],
+            "splittingResults": [
+              {
+                "conditionId": 1,
+                "resultParams": [
+                  {
+                    "paramCode": "actionType",
+                    "paramValues": [
+                      "3"
+                    ],
+                    "dataType": "INTEGER"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "purpose": "DCG",
+        "layerId": 1,
+        "salt": "24096d2M1e",
+        "objectSelectConditions": [
+          {
+            "id": 1,
+            "rules": [
+              [
+                {
+                  "dataType": "INTEGER",
+                  "paramCode": "channel",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "20"
+                  ]
+                },
+                {
+                  "dataType": "STRING",
+                  "paramCode": "sellingProductId",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "1-AVDHSSS"
+                  ]
+                }
+              ]
+            ]
+          }
+        ],
+        "groups": [
+          {
+            "code": "A",
+            "shares": [
+              {
+                "shareFrom": 0,
+                "shareTo": 7500
+              }
+            ],
+            "splittingResults": [
+              {
+                "conditionId": 1,
+                "resultParams": [
+                  {
+                    "paramCode": "actionType",
+                    "paramValues": [
+                      "3"
+                    ],
+                    "dataType": "INTEGER"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "purpose": "DCG",
+        "layerId": 1,
+        "salt": "24096d2M1e",
+        "objectSelectConditions": [
+          {
+            "id": 1,
+            "rules": [
+              [
+                {
+                  "dataType": "INTEGER",
+                  "paramCode": "channel",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "20"
+                  ]
+                },
+                {
+                  "dataType": "STRING",
+                  "paramCode": "sellingProductId",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "1-AVDHSSS"
+                  ]
+                }
+              ]
+            ]
+          }
+        ],
+        "groups": [
+          {
+            "code": "A",
+            "shares": [
+              {
+                "shareFrom": 0,
+                "shareTo": 7500
+              }
+            ],
+            "splittingResults": [
+              {
+                "conditionId": 1,
+                "resultParams": [
+                  {
+                    "paramCode": "actionType",
+                    "paramValues": [
+                      "4"
+                    ],
+                    "dataType": "INTEGER"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "purpose": "DCG",
+        "layerId": 1,
+        "salt": "24096d2M1e",
+        "objectSelectConditions": [
+          {
+            "id": 1,
+            "rules": [
+              [
+                {
+                  "dataType": "INTEGER",
+                  "paramCode": "channel",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "20"
+                  ]
+                },
+                {
+                  "dataType": "STRING",
+                  "paramCode": "sellingProductId",
+                  "paramSource": "SPLITTING_OBJECTS",
+                  "operatorCode": "in",
+                  "values": [
+                    "1-AVDHSSS"
+                  ]
+                }
+              ]
+            ]
+          }
+        ],
+        "groups": [
+          {
+            "code": "A",
+            "shares": [
+              {
+                "shareFrom": 0,
+                "shareTo": 7500
+              }
+            ],
+            "splittingResults": [
+              {
+                "conditionId": 1,
+                "resultParams": [
+                  {
+                    "paramCode": "actionType",
+                    "paramValues": [
+                      "4"
+                    ],
+                    "dataType": "INTEGER"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+
+
+    ]
+  }
+}

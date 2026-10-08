@@ -1,0 +1,68 @@
+{
+  "requestId": "Dumanskaja10-c8c9-4af6-aa25-7c1bfa1500",
+  "splittingId": "300",
+  "requestParams": null,
+  "splittingObjects": [
+    {
+      "objectId": "94de7e86-9c89-4977-af56-b9d0e1b6aaaa",
+      "objectParams": [
+        {
+          "paramCode": "cjId",
+          "paramValues": [
+            "1"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "modelId",
+          "paramValues": [
+            "-1000"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "modelTemplate",
+          "paramValues": [
+            "0"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "modelSource",
+          "paramValues": [
+            "SAS"
+          ],
+          "dataType": "STRING"
+        },
+        {
+          "paramCode": "sellingProductId",
+          "paramValues": [
+            "1-AVDHSSS"
+          ],
+          "dataType": "STRING"
+        },
+        {
+          "paramCode": "channel",
+          "paramValues": [
+            "19"
+          ],
+          "dataType": "INTEGER"
+        },
+        {
+          "paramCode": "templateId",
+          "paramValues": [
+            "2"
+          ],
+          "dataType": "STRING"
+        },
+        {
+          "paramCode": "configCommId",
+          "paramValues": [
+            "1"
+          ],
+          "dataType": "INTEGER"
+        }
+      ]
+    }
+  ]
+}

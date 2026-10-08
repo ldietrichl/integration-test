@@ -1,0 +1,6 @@
+tasks.register('allureSourceLayoutCheck', GradleBuild) {
+    group = 'verification'
+    description = 'Check flat/task Allure preparation, integrity failures and cleanup using isolated synthetic results'
+    dir = file('tools/reporting/allure-source-layout-check')
+    tasks = ['verify']
+}

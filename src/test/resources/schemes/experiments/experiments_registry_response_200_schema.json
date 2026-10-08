@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "totalPages": {
+      "type": "integer",
+      "minimum": -1e19,
+      "maximum": 1e19
+    },
+    "content": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 255,
+      "items": {
+        "type": "object",
+        "properties": {
+          "access": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object",
+              "properties": {
+                "permission": {
+                  "type": ["string", "null"],
+                  "maxLength": 255
+                },
+                "permissionParams": {
+                  "type": ["object", "null"]
+                }
+              }
+            }
+          },
+          "id": {
+            "type": "integer",
+            "minimum": -1e19,
+            "maximum": 1e19
+          },
+          "splittingPoint": {
+            "$ref": "#/$defs/codeName"
+          },
+          "expTemplate": {
+            "$ref": "#/$defs/codeName"
+          },
+          "name": {
+            "type": ["string", "null"],
+            "maxLength": 255
+          },
+          "hypothesis": {
+            "type": ["string", "null"],
+            "maxLength": 255
+          },
+          "salt": {
+            "type": ["string", "null"],
+            "maxLength": 255
+          },
+          "hashAlgorithm": {
+            "type": ["string", "null"],
+            "maxLength": 255
+          },
+          "layer": {
+            "type": ["object", "null"],
+            "properties": {
+              "id": {
+                "type": ["integer", "null"],
+                "minimum": -1e19,
+                "maximum": 1e19
+              },
+              "name": {
+                "type": ["string", "null"],
+                "maxLength": 255
+              },
+              "priority": {
+                "type": ["integer", "null"],
+                "minimum": -1e19,
+                "maximum": 1e19
+              }
+            }
+          },
+          "status": {
+            "$ref": "#/$defs/codeName"
+          },
+          "scheduleParam": {
+            "type": ["object", "null"],
+            "properties": {
+              "repeatPeriod": {
+                "type": ["integer", "null"],
+                "minimum": -1e19,
+                "maximum": 1e19
+              },
+              "repeatStartDate": {
+                "type": ["integer", "null"],
+                "minimum": -1e19,
+                "maximum": 1e19
+              },
+              "repeatStoptDate": {
+                "type": ["integer", "null"],
+                "minimum": -1e19,
+                "maximum": 1e19
+              },
+              "saltTextPart": {
+                "type": ["string", "null"],
+                "maxLength": 255
+              },
+              "monthShift": {
+                "type": ["integer", "null"],
+                "minimum": -1e19,
+                "maximum": 1e19
+              },
+              "taskNumber": {
+                "type": ["integer", "null"],
+                "minimum": -1e19,
+                "maximum": 1e19
+              },
+              "autoStart": {
+                "type": ["boolean", "null"]
+              },
+              "autoStop": {
+                "type": ["boolean", "null"]
+              },
+              "autoActionError": {
+                "type": ["string", "null"],
+                "maxLength": 255
+              }
+            }
+          },
+          "targetGroup": {
+            "type": ["object", "null"],
+            "properties": {
+              "code": {
+                "type": ["string", "null"],
+                "maxLength": 255
+              },
+              "name": {
+                "type": ["string", "null"],
+                "maxLength": 255
+              }
+            }
+          },
+          "startDt": {
+            "type": ["integer", "null"],
+            "minimum": -1e19,
+            "maximum": 1e19
+          },
+          "endDt": {
+            "type": ["integer", "null"],
+            "minimum": -1e19,
+            "maximum": 1e19
+          },
+          "realStartDt": {
+            "type": ["integer", "null"],
+            "minimum": -1e19,
+            "maximum": 1e19
+          },
+          "realEndDt": {
+            "type": ["integer", "null"],
+            "minimum": -1e19,
+            "maximum": 1e19
+          },
+          "updatedDt": {
+            "type": "integer",
+            "minimum": -1e19,
+            "maximum": 1e19
+          },
+          "creator": {
+            "type": ["string", "null"],
+            "maxLength": 255
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -1e19,
+            "maximum": 1e19
+          }
+        },
+        "required": [
+          "id",
+          "splittingPoint",
+          "expTemplate",
+          "name",
+          "salt",
+          "status",
+          "updatedDt",
+          "creator",
+          "version"
+        ]
+      }
+    }
+  },
+  "required": ["totalPages", "content"],
+  "$defs": {
+    "codeName": {
+      "type": ["object", "null"],
+      "properties": {
+        "code": {
+          "type": ["string", "null"],
+          "maxLength": 255
+        },
+        "name": {
+          "type": ["string", "null"],
+          "maxLength": 255
+        }
+      }
+    }
+  }
+}

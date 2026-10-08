@@ -1,0 +1,1095 @@
+{
+  "schemaVersion": 1,
+  "description": "Explicit local REST test runtime; no arbitrary cache discovery. Jackson aligns with project 2.17.2, JUnit aligns with bundled Platform 1.10.3.",
+  "libraries": [
+    {
+      "group": "com.fasterxml.jackson.dataformat",
+      "artifact": "jackson-dataformat-yaml",
+      "version": "2.17.2",
+      "file": "jackson-dataformat-yaml-2.17.2.jar",
+      "source": "bundle",
+      "path": "com.fasterxml.jackson.dataformat/jackson-dataformat-yaml/2.17.2/78d2c73dbec62044d7cf3b544b2e0d24a1a093b0/jackson-dataformat-yaml-2.17.2.jar",
+      "sha256": "941bcd8b1381bb3b0d726fab41624fa8ece0ee7b6cf2860ad95e8157ce673376"
+    },
+    {
+      "group": "com.fasterxml.jackson.datatype",
+      "artifact": "jackson-datatype-jsr310",
+      "version": "2.17.2",
+      "file": "jackson-datatype-jsr310-2.17.2.jar",
+      "source": "bundle",
+      "path": "com.fasterxml.jackson.datatype/jackson-datatype-jsr310/2.17.2/267b85e9ba2892a37be6d80aa9ca1438a0d8c210/jackson-datatype-jsr310-2.17.2.jar",
+      "sha256": "9b80024a9822e70b07f6bb13824c76c137c1064a1b5eb518374ab141870fdbcc"
+    },
+    {
+      "group": "com.github.java-json-tools",
+      "artifact": "btf",
+      "version": "1.3",
+      "file": "btf-1.3.jar",
+      "source": "bundle",
+      "path": "com.github.java-json-tools/btf/1.3/6cf5405e214cbc83337a107cdef8401fb6aa6383/btf-1.3.jar",
+      "sha256": "67c3e462eb50807f4e0a5f4dee304bbf17cd986a42ee5eb0b2f4c9bf64d130d9"
+    },
+    {
+      "group": "com.github.java-json-tools",
+      "artifact": "jackson-coreutils",
+      "version": "2.0",
+      "file": "jackson-coreutils-2.0.jar",
+      "source": "bundle",
+      "path": "com.github.java-json-tools/jackson-coreutils/2.0/6374371261b91b829d10f21256b2feefdf8f0a78/jackson-coreutils-2.0.jar",
+      "sha256": "16b3aabd3a9eb25655dda433e35f9bd9c7c1aa7991427702f5f11f000813dbb0"
+    },
+    {
+      "group": "com.github.java-json-tools",
+      "artifact": "jackson-coreutils-equivalence",
+      "version": "1.0",
+      "file": "jackson-coreutils-equivalence-1.0.jar",
+      "source": "bundle",
+      "path": "com.github.java-json-tools/jackson-coreutils-equivalence/1.0/8b928cf1f95dc5fe6b1648f5da93befab031da19/jackson-coreutils-equivalence-1.0.jar",
+      "sha256": "eb4a9ad7d803fb084bffcf793c8a81f51d745b6d438c28470ef9d5aa5fb8a182"
+    },
+    {
+      "group": "com.github.java-json-tools",
+      "artifact": "json-schema-core",
+      "version": "1.2.14",
+      "file": "json-schema-core-1.2.14.jar",
+      "source": "bundle",
+      "path": "com.github.java-json-tools/json-schema-core/1.2.14/39d4efcf7e538684200fea15e08d47d0198c19fb/json-schema-core-1.2.14.jar",
+      "sha256": "c859942fdda29c26ccb2be83a8453a130de35fde6f88ae189785516b5d14f81c"
+    },
+    {
+      "group": "com.github.java-json-tools",
+      "artifact": "json-schema-validator",
+      "version": "2.2.14",
+      "file": "json-schema-validator-2.2.14.jar",
+      "source": "bundle",
+      "path": "com.github.java-json-tools/json-schema-validator/2.2.14/10c42918adc1fd4454e83bb21365f30df497a076/json-schema-validator-2.2.14.jar",
+      "sha256": "cd9e3c599bb32296517fd3ac38beeac709f0a6ab81b2d4289495d0361ba59899"
+    },
+    {
+      "group": "com.github.java-json-tools",
+      "artifact": "msg-simple",
+      "version": "1.2",
+      "file": "msg-simple-1.2.jar",
+      "source": "bundle",
+      "path": "com.github.java-json-tools/msg-simple/1.2/a06afa2d5d75c98e54ab370107930978fc3f9937/msg-simple-1.2.jar",
+      "sha256": "bef4111b993a5b3e6148d8f585621cceac2a1889cdbc34448b11632e0d8a9a8f"
+    },
+    {
+      "group": "com.github.java-json-tools",
+      "artifact": "uri-template",
+      "version": "0.10",
+      "file": "uri-template-0.10.jar",
+      "source": "bundle",
+      "path": "com.github.java-json-tools/uri-template/0.10/6e8cf7b04f5ed679c76f15e0b19918906d84dbc4/uri-template-0.10.jar",
+      "sha256": "3936f67d8e7dfa3eedefe450ff58871749308982c6b8b706535a884391df4fb0"
+    },
+    {
+      "group": "com.github.ulisesbocchio",
+      "artifact": "jasypt-spring-boot",
+      "version": "3.0.5",
+      "file": "jasypt-spring-boot-3.0.5.jar",
+      "source": "bundle",
+      "path": "com.github.ulisesbocchio/jasypt-spring-boot/3.0.5/b75dd4d668ccaf176e89846b37ef0ba1c80149ec/jasypt-spring-boot-3.0.5.jar",
+      "sha256": "a5e41b432c2fda7d50bd4c2d7937f294ea3b42e5b087124e973100917b492f0e"
+    },
+    {
+      "group": "com.github.ulisesbocchio",
+      "artifact": "jasypt-spring-boot-starter",
+      "version": "3.0.5",
+      "file": "jasypt-spring-boot-starter-3.0.5.jar",
+      "source": "bundle",
+      "path": "com.github.ulisesbocchio/jasypt-spring-boot-starter/3.0.5/53d848a8d5be9b29f1768d00562ef51e5e2c21b6/jasypt-spring-boot-starter-3.0.5.jar",
+      "sha256": "7cdd6cda85cfa218a0c488fee4888fe1687f89100efa82ee3987d24e010929ba"
+    },
+    {
+      "group": "com.google.code.findbugs",
+      "artifact": "jsr305",
+      "version": "3.0.2",
+      "file": "jsr305-3.0.2.jar",
+      "source": "bundle",
+      "path": "com.google.code.findbugs/jsr305/3.0.2/25ea2e8b0c338a877313bd4672d3fe056ea78f0d/jsr305-3.0.2.jar",
+      "sha256": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7"
+    },
+    {
+      "group": "com.google.errorprone",
+      "artifact": "error_prone_annotations",
+      "version": "2.26.1",
+      "file": "error_prone_annotations-2.26.1.jar",
+      "source": "bundle",
+      "path": "com.google.errorprone/error_prone_annotations/2.26.1/c1fde57694bdc14e8618899aaa6e857d9465d7de/error_prone_annotations-2.26.1.jar",
+      "sha256": "de25f2d9a2156529bd765f51d8efdfc0dfa7301e04efb9cc75b7f10cf5d0e0fb"
+    },
+    {
+      "group": "com.google.j2objc",
+      "artifact": "j2objc-annotations",
+      "version": "3.0.0",
+      "file": "j2objc-annotations-3.0.0.jar",
+      "source": "bundle",
+      "path": "com.google.j2objc/j2objc-annotations/3.0.0/7399e65dd7e9ff3404f4535b2f017093bdb134c7/j2objc-annotations-3.0.0.jar",
+      "sha256": "88241573467ddca44ffd4d74aa04c2bbfd11bf7c17e0c342c94c9de7a70a7c64"
+    },
+    {
+      "group": "com.googlecode.javaewah",
+      "artifact": "JavaEWAH",
+      "version": "1.2.3",
+      "file": "JavaEWAH-1.2.3.jar",
+      "source": "bundle",
+      "path": "com.googlecode.javaewah/JavaEWAH/1.2.3/13a27c856e0c8808cee9a64032c58eee11c3adc9/JavaEWAH-1.2.3.jar",
+      "sha256": "d65226949713c4c61a784f41c51167e7b0316f93764398ebba9e4336b3d954c2"
+    },
+    {
+      "group": "com.googlecode.libphonenumber",
+      "artifact": "libphonenumber",
+      "version": "8.11.1",
+      "file": "libphonenumber-8.11.1.jar",
+      "source": "bundle",
+      "path": "com.googlecode.libphonenumber/libphonenumber/8.11.1/6bb6115fd5a0bf00964afec358496faea66b7db5/libphonenumber-8.11.1.jar",
+      "sha256": "f430c92394c2053f168715853da96d99996e94e34e5a291b97c5c86a5ad62a98"
+    },
+    {
+      "group": "com.jayway.jsonpath",
+      "artifact": "json-path",
+      "version": "2.9.0",
+      "file": "json-path-2.9.0.jar",
+      "source": "bundle",
+      "path": "com.jayway.jsonpath/json-path/2.9.0/37fe2217f577b0b68b18e62c4d17a8858ecf9b69/json-path-2.9.0.jar",
+      "sha256": "11a9ee6f88bb31f1450108d1cf6441377dec84aca075eb6bb2343be157575bea"
+    },
+    {
+      "group": "com.squareup.okhttp3",
+      "artifact": "logging-interceptor",
+      "version": "3.12.12",
+      "file": "logging-interceptor-3.12.12.jar",
+      "source": "bundle",
+      "path": "com.squareup.okhttp3/logging-interceptor/3.12.12/d952189f6abb148ff72aab246aa8c28cf99b469f/logging-interceptor-3.12.12.jar",
+      "sha256": "dbf83bebfae07c7d9823eb0cd3a11d74e3b387f9fd98ce6438c6c12c1d9f870f"
+    },
+    {
+      "group": "com.squareup.okhttp3",
+      "artifact": "okhttp",
+      "version": "3.12.12",
+      "file": "okhttp-3.12.12.jar",
+      "source": "bundle",
+      "path": "com.squareup.okhttp3/okhttp/3.12.12/d3e1ce1d2b3119adf270b2d00d947beb03fe3321/okhttp-3.12.12.jar",
+      "sha256": "36f1cd0798fb231e5be189d0bfe2634d5879f73082be5718ca30a73d1ee15e4b"
+    },
+    {
+      "group": "com.squareup.okio",
+      "artifact": "okio",
+      "version": "1.15.0",
+      "file": "okio-1.15.0.jar",
+      "source": "bundle",
+      "path": "com.squareup.okio/okio/1.15.0/bc28b5a964c8f5721eb58ee3f3c47a9bcbf4f4d8/okio-1.15.0.jar",
+      "sha256": "693fa319a7e8843300602b204023b7674f106ebcb577f2dd5807212b66118bd2"
+    },
+    {
+      "group": "com.sun.mail",
+      "artifact": "mailapi",
+      "version": "1.6.2",
+      "file": "mailapi-1.6.2.jar",
+      "source": "bundle",
+      "path": "com.sun.mail/mailapi/1.6.2/208b6439dfbe6713c384ebf54ecd62cd4423cc50/mailapi-1.6.2.jar",
+      "sha256": "d37c0f88efa5973ccb4100f4cc49aee3510cd01ab25012d1f085b1b798ae2ebb"
+    },
+    {
+      "group": "commons-beanutils",
+      "artifact": "commons-beanutils",
+      "version": "1.9.4",
+      "file": "commons-beanutils-1.9.4.jar",
+      "source": "bundle",
+      "path": "commons-beanutils/commons-beanutils/1.9.4/d52b9abcd97f38c81342bb7e7ae1eee9b73cba51/commons-beanutils-1.9.4.jar",
+      "sha256": "7d938c81789028045c08c065e94be75fc280527620d5bd62b519d5838532368a"
+    },
+    {
+      "group": "commons-codec",
+      "artifact": "commons-codec",
+      "version": "1.17.0",
+      "file": "commons-codec-1.17.0.jar",
+      "source": "bundle",
+      "path": "commons-codec/commons-codec/1.17.0/dbe8eef6e14460e73da07f7b11bf994d6626355/commons-codec-1.17.0.jar",
+      "sha256": "f700de80ac270d0344fdea7468201d8b9c805e5c648331c3619f2ee067ccfc59"
+    },
+    {
+      "group": "commons-io",
+      "artifact": "commons-io",
+      "version": "2.16.1",
+      "file": "commons-io-2.16.1.jar",
+      "source": "bundle",
+      "path": "commons-io/commons-io/2.16.1/377d592e740dc77124e0901291dbfaa6810a200e/commons-io-2.16.1.jar",
+      "sha256": "f41f7baacd716896447ace9758621f62c1c6b0a91d89acee488da26fc477c84f"
+    },
+    {
+      "group": "commons-logging",
+      "artifact": "commons-logging",
+      "version": "1.2",
+      "file": "commons-logging-1.2.jar",
+      "source": "bundle",
+      "path": "commons-logging/commons-logging/1.2/4bfc12adfe4842bf07b657f0369c4cb522955686/commons-logging-1.2.jar",
+      "sha256": "daddea1ea0be0f56978ab3006b8ac92834afeefbd9b7e4e6316fca57df0fa636"
+    },
+    {
+      "group": "Functional",
+      "artifact": "BACK",
+      "version": "01_reference_sources",
+      "file": "failureaccess-1.0.2.jar",
+      "source": "bundle",
+      "path": "failureaccess-1.0.2.jar",
+      "sha256": "8a8f81cf9b359e3f6dfa691a1e776985c061ef2f223c9b2c80753e1b458e8064"
+    },
+    {
+      "group": "io.perfeccionista.framework",
+      "artifact": "environment",
+      "version": "0.9.3-Beta",
+      "file": "environment-0.9.3-Beta.jar",
+      "source": "bundle",
+      "path": "io.perfeccionista.framework/environment/0.9.3-Beta/8d2ef422711d50d400069723ccd03316279f2a96/environment-0.9.3-Beta.jar",
+      "sha256": "55dad924e0c7fbbca7ac56151cccdc72cfc51c1de86205acf4f81acf588b11b1"
+    },
+    {
+      "group": "io.perfeccionista.framework",
+      "artifact": "environment-junit5",
+      "version": "0.9.3-Beta",
+      "file": "environment-junit5-0.9.3-Beta.jar",
+      "source": "bundle",
+      "path": "io.perfeccionista.framework/environment-junit5/0.9.3-Beta/2ae1baa25d9ea9b38372d783ab17f16838c45523/environment-junit5-0.9.3-Beta.jar",
+      "sha256": "493954fa2ef091f223f43801de4b38c435866080d027acfdb3199b2476952e53"
+    },
+    {
+      "group": "io.perfeccionista.framework",
+      "artifact": "utils",
+      "version": "0.9.3-Beta",
+      "file": "utils-0.9.3-Beta.jar",
+      "source": "bundle",
+      "path": "io.perfeccionista.framework/utils/0.9.3-Beta/5a60c13c22f776eb087aee670009967ed9f1e1be/utils-0.9.3-Beta.jar",
+      "sha256": "63470cf9fff1c0c1eda3adb97f70d682b7b4c59027823da438e4c2c5a9db9944"
+    },
+    {
+      "group": "io.rest-assured",
+      "artifact": "json-path",
+      "version": "5.5.0",
+      "file": "json-path-5.5.0.jar",
+      "source": "bundle",
+      "path": "io.rest-assured/json-path/5.5.0/56a579e89ca36df1d1770237c457439af3b12bd7/json-path-5.5.0.jar",
+      "sha256": "1c1597e4d42a0b45ee6e0010f0e2375d16031b3828b03353839ef73783659898"
+    },
+    {
+      "group": "io.rest-assured",
+      "artifact": "json-schema-validator",
+      "version": "5.5.0",
+      "file": "json-schema-validator-5.5.0.jar",
+      "source": "bundle",
+      "path": "io.rest-assured/json-schema-validator/5.5.0/fdc2cbd72be729b868a490ce2fb97098f98646f9/json-schema-validator-5.5.0.jar",
+      "sha256": "589df260f32ff4888e546305cae6659fe82ad2bc50322d92c5143c79198d7d4a"
+    },
+    {
+      "group": "io.rest-assured",
+      "artifact": "rest-assured",
+      "version": "5.5.0",
+      "file": "rest-assured-5.5.0.jar",
+      "source": "bundle",
+      "path": "io.rest-assured/rest-assured/5.5.0/1bc7b4c046c2e00a37bf78f2d9d7b41a43fdd5d1/rest-assured-5.5.0.jar",
+      "sha256": "78e7efe14e7f021f0ccc064c6c4538b225ef657199dc21e80fb79f6e28a92a53"
+    },
+    {
+      "group": "io.rest-assured",
+      "artifact": "rest-assured-common",
+      "version": "5.5.0",
+      "file": "rest-assured-common-5.5.0.jar",
+      "source": "bundle",
+      "path": "io.rest-assured/rest-assured-common/5.5.0/924f72feb179423acf329860e47487e74649d686/rest-assured-common-5.5.0.jar",
+      "sha256": "d5324a18e13a504dfbf50a1ab6809fd377b9a390ca915956c20f3d55998ed317"
+    },
+    {
+      "group": "io.rest-assured",
+      "artifact": "xml-path",
+      "version": "5.5.0",
+      "file": "xml-path-5.5.0.jar",
+      "source": "bundle",
+      "path": "io.rest-assured/xml-path/5.5.0/c9baca3bda6cd9a808be7054b1ee734cd815c5b9/xml-path-5.5.0.jar",
+      "sha256": "2fd433011ba9fa9d8585262d879d2d2f6914ffd5b8daaebfc8a9ab338fa99cab"
+    },
+    {
+      "group": "javax.ws.rs",
+      "artifact": "javax.ws.rs-api",
+      "version": "2.1.1",
+      "file": "javax.ws.rs-api-2.1.1.jar",
+      "source": "bundle",
+      "path": "javax.ws.rs/javax.ws.rs-api/2.1.1/d3466bc9321fe84f268a1adb3b90373fc14b0eb5/javax.ws.rs-api-2.1.1.jar",
+      "sha256": "2c309eb2c9455ffee9da8518c70a3b6d46be2a269b2e2a101c806a537efe79a4"
+    },
+    {
+      "group": "joda-time",
+      "artifact": "joda-time",
+      "version": "2.10.5",
+      "file": "joda-time-2.10.5.jar",
+      "source": "bundle",
+      "path": "joda-time/joda-time/2.10.5/7f1d89817cd20a32444d5ab4160f035ab9b864e7/joda-time-2.10.5.jar",
+      "sha256": "4ee73e7ff8e2df0d4e3408cf1a1527a59f265dd9fb43fb9b2eb818d87f93759e"
+    },
+    {
+      "group": "net.javacrumbs.json-unit",
+      "artifact": "json-unit",
+      "version": "2.35.0",
+      "file": "json-unit-2.35.0.jar",
+      "source": "bundle",
+      "path": "net.javacrumbs.json-unit/json-unit/2.35.0/36247fc5b6536b12233fc3c6be752d44d72e94/json-unit-2.35.0.jar",
+      "sha256": "a7652f920224f6ff6e8fd61d10d6a67ae9c10f24ae1b2d05bae231804f1a948b"
+    },
+    {
+      "group": "net.javacrumbs.json-unit",
+      "artifact": "json-unit-core",
+      "version": "2.35.0",
+      "file": "json-unit-core-2.35.0.jar",
+      "source": "bundle",
+      "path": "net.javacrumbs.json-unit/json-unit-core/2.35.0/a03d04a57e261857ce265dac9cef0df771e16eb6/json-unit-core-2.35.0.jar",
+      "sha256": "68118a7e43000211e7edeb6c107a44adb6a48d6362d954e381346b367fbdaa69"
+    },
+    {
+      "group": "net.minidev",
+      "artifact": "accessors-smart",
+      "version": "2.5.0",
+      "file": "accessors-smart-2.5.0.jar",
+      "source": "bundle",
+      "path": "net.minidev/accessors-smart/2.5.0/aca011492dfe9c26f4e0659028a4fe0970829dd8/accessors-smart-2.5.0.jar",
+      "sha256": "12314fc6881d66a413fd66370787adba16e504fbf7e138690b0f3952e3fbd321"
+    },
+    {
+      "group": "net.minidev",
+      "artifact": "json-smart",
+      "version": "2.5.0",
+      "file": "json-smart-2.5.0.jar",
+      "source": "bundle",
+      "path": "net.minidev/json-smart/2.5.0/57a64f421b472849c40e77d2e7cce3a141b41e99/json-smart-2.5.0.jar",
+      "sha256": "432b9e545848c4141b80717b26e367f83bf33f19250a228ce75da6e967da2bc7"
+    },
+    {
+      "group": "net.sf.jopt-simple",
+      "artifact": "jopt-simple",
+      "version": "5.0.4",
+      "file": "jopt-simple-5.0.4.jar",
+      "source": "bundle",
+      "path": "net.sf.jopt-simple/jopt-simple/5.0.4/4fdac2fbe92dfad86aa6e9301736f6b4342a3f5c/jopt-simple-5.0.4.jar",
+      "sha256": "df26cc58f235f477db07f753ba5a3ab243ebe5789d9f89ecf68dd62ea9a66c28"
+    },
+    {
+      "group": "org.aeonbits.owner",
+      "artifact": "owner",
+      "version": "1.0.12",
+      "file": "owner-1.0.12.jar",
+      "source": "bundle",
+      "path": "org.aeonbits.owner/owner/1.0.12/c6ee88593294674c8c8ccdbd855db3f5396a4d19/owner-1.0.12.jar",
+      "sha256": "62c6e0e126430f15f5a2ed22625cae19413d3838e724bbe947f444d86c490645"
+    },
+    {
+      "group": "org.apiguardian",
+      "artifact": "apiguardian-api",
+      "version": "1.1.2",
+      "file": "apiguardian-api-1.1.2.jar",
+      "source": "bundle",
+      "path": "org.apiguardian/apiguardian-api/1.1.2/a231e0d844d2721b0fa1b238006d15c6ded6842a/apiguardian-api-1.1.2.jar",
+      "sha256": "b509448ac506d607319f182537f0b35d71007582ec741832a1f111e5b5b70b38"
+    },
+    {
+      "group": "org.awaitility",
+      "artifact": "awaitility",
+      "version": "4.2.1",
+      "file": "awaitility-4.2.1.jar",
+      "source": "bundle",
+      "path": "org.awaitility/awaitility/4.2.1/e56b600e0b184182ba5b2baccd2bab593a98a624/awaitility-4.2.1.jar",
+      "sha256": "53e7d64cd2c9a96e1cb05321d26c1cea5d55625be75e39ad98c773ce5fffa6a7"
+    },
+    {
+      "group": "org.ccil.cowan.tagsoup",
+      "artifact": "tagsoup",
+      "version": "1.2.1",
+      "file": "tagsoup-1.2.1.jar",
+      "source": "bundle",
+      "path": "org.ccil.cowan.tagsoup/tagsoup/1.2.1/5584627487e984c03456266d3f8802eb85a9ce97/tagsoup-1.2.1.jar",
+      "sha256": "ac97f7b4b1d8e9337edfa0e34044f8d0efe7223f6ad8f3a85d54cc1018ea2e04"
+    },
+    {
+      "group": "org.checkerframework",
+      "artifact": "checker-qual",
+      "version": "3.49.3",
+      "file": "checker-qual-3.49.3.jar",
+      "source": "bundle",
+      "path": "org.checkerframework/checker-qual/3.49.3/119a4df4ba2e6a432b23989a785f81be38a56849/checker-qual-3.49.3.jar",
+      "sha256": "367edbf2fe9f606c1fdb5a8ba6e1c9c27625993e1ff954e3868de70bcc6416b7"
+    },
+    {
+      "group": "org.hamcrest",
+      "artifact": "hamcrest",
+      "version": "2.2",
+      "file": "hamcrest-2.2.jar",
+      "source": "bundle",
+      "path": "org.hamcrest/hamcrest/2.2/1820c0968dba3a11a1b30669bb1f01978a91dedc/hamcrest-2.2.jar",
+      "sha256": "5e62846a89f05cd78cd9c1a553f340d002458380c320455dd1f8fc5497a8a1c1"
+    },
+    {
+      "group": "org.hamcrest",
+      "artifact": "hamcrest-core",
+      "version": "2.2",
+      "file": "hamcrest-core-2.2.jar",
+      "source": "bundle",
+      "path": "org.hamcrest/hamcrest-core/2.2/3f2bd07716a31c395e2837254f37f21f0f0ab24b/hamcrest-core-2.2.jar",
+      "sha256": "094f5d92b4b7d9c8a2bf53cc69d356243ae89c3499457bcb4b92f7ed3bf95879"
+    },
+    {
+      "group": "org.jasypt",
+      "artifact": "jasypt",
+      "version": "1.9.3",
+      "file": "jasypt-1.9.3.jar",
+      "source": "bundle",
+      "path": "org.jasypt/jasypt/1.9.3/d99ef9540f51c617f2a293b460f025d2ee563dd/jasypt-1.9.3.jar",
+      "sha256": "f481fbb8dd8ce754bfde7552af4fcbe8c5e303d53663bb3d8ce9d4338e0e55aa"
+    },
+    {
+      "group": "org.jetbrains",
+      "artifact": "annotations",
+      "version": "24.1.0",
+      "file": "annotations-24.1.0.jar",
+      "source": "bundle",
+      "path": "org.jetbrains/annotations/24.1.0/7af6a669488450c4a07c2c3254e2151df42d7d04/annotations-24.1.0.jar",
+      "sha256": "27a770dc7ce50500918bb8c3c0660c98290630ec796b5e3cf6b90f403b3033c6"
+    },
+    {
+      "group": "org.json",
+      "artifact": "json",
+      "version": "20240303",
+      "file": "json-20240303.jar",
+      "source": "bundle",
+      "path": "org.json/json/20240303/ebb88e8fb5122b7506d5cf1d69f1ccdb790d22a/json-20240303.jar",
+      "sha256": "3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed"
+    },
+    {
+      "group": "org.jsoup",
+      "artifact": "jsoup",
+      "version": "1.18.1",
+      "file": "jsoup-1.18.1.jar",
+      "source": "bundle",
+      "path": "org.jsoup/jsoup/1.18.1/cb7cd991d47b44101cbe4655dec611cdc01f8a02/jsoup-1.18.1.jar",
+      "sha256": "3bb5b0ec02998abe45a51f37d7ce67c3068b4ccd4ab63c965929ec5074d64e91"
+    },
+    {
+      "group": "org.junit.platform",
+      "artifact": "junit-platform-commons",
+      "version": "1.10.3",
+      "file": "junit-platform-commons-1.10.3.jar",
+      "source": "bundle",
+      "path": "org.junit.platform/junit-platform-commons/1.10.3/a353d42a2f13343a7cb80c5228ae66ff64495481/junit-platform-commons-1.10.3.jar",
+      "sha256": "9787f04d49db59397cdd7555d421a5bd2d1445666997d327b94f85e38bed57f1"
+    },
+    {
+      "group": "org.junit.platform",
+      "artifact": "junit-platform-engine",
+      "version": "1.10.3",
+      "file": "junit-platform-engine-1.10.3.jar",
+      "source": "bundle",
+      "path": "org.junit.platform/junit-platform-engine/1.10.3/365a320c3cfd47f3346625e541e424e35dc75c42/junit-platform-engine-1.10.3.jar",
+      "sha256": "df7c32bf75cf47c4c8ddd1942091027947a7d765d30b731fe00830115fafa133"
+    },
+    {
+      "group": "org.junit.platform",
+      "artifact": "junit-platform-launcher",
+      "version": "1.10.3",
+      "file": "junit-platform-launcher-1.10.3.jar",
+      "source": "bundle",
+      "path": "org.junit.platform/junit-platform-launcher/1.10.3/2e07e6389624f3e93fb2e87aec2fdc30cc84b069/junit-platform-launcher-1.10.3.jar",
+      "sha256": "deaeede2f011eaf94f5bc681e04eee2f4a0f6d69771e1a79aa950d898b405d8d"
+    },
+    {
+      "group": "org.lz4",
+      "artifact": "lz4-java",
+      "version": "1.8.0",
+      "file": "lz4-java-1.8.0.jar",
+      "source": "bundle",
+      "path": "org.lz4/lz4-java/1.8.0/4b986a99445e49ea5fbf5d149c4b63f6ed6c6780/lz4-java-1.8.0.jar",
+      "sha256": "d74a3334fb35195009b338a951f918203d6bbca3d1d359033dc33edd1cadc9ef"
+    },
+    {
+      "group": "org.mockito",
+      "artifact": "mockito-core",
+      "version": "5.2.0",
+      "file": "mockito-core-5.2.0.jar",
+      "source": "bundle",
+      "path": "org.mockito/mockito-core/5.2.0/bc22d2ee9596a5fd2d9f9f7c49599f71aac5a88a/mockito-core-5.2.0.jar",
+      "sha256": "46e3f8dacd8ec62c8aa6fb11f8867624fb44a03e97fdfc628609346d5dc7e159"
+    },
+    {
+      "group": "org.mockito",
+      "artifact": "mockito-inline",
+      "version": "5.2.0",
+      "file": "mockito-inline-5.2.0.jar",
+      "source": "bundle",
+      "path": "org.mockito/mockito-inline/5.2.0/3d1dffee9a8a1998ec782383ca2f818848f2d5f1/mockito-inline-5.2.0.jar",
+      "sha256": "ee52e1c299a632184fba274a9370993e09140429f5e516e6c5570fd6574b297f"
+    },
+    {
+      "group": "org.mockito",
+      "artifact": "mockito-junit-jupiter",
+      "version": "5.2.0",
+      "file": "mockito-junit-jupiter-5.2.0.jar",
+      "source": "bundle",
+      "path": "org.mockito/mockito-junit-jupiter/5.2.0/f2dfc695d0359565e56ee6f543a10a3dd269df2d/mockito-junit-jupiter-5.2.0.jar",
+      "sha256": "c7dd82180320799c167d714499ac64fb5ad4ae8790e1d93da531c82236febe07"
+    },
+    {
+      "group": "org.objenesis",
+      "artifact": "objenesis",
+      "version": "3.3",
+      "file": "objenesis-3.3.jar",
+      "source": "bundle",
+      "path": "org.objenesis/objenesis/3.3/1049c09f1de4331e8193e579448d0916d75b7631/objenesis-3.3.jar",
+      "sha256": "02dfd0b0439a5591e35b708ed2f5474eb0948f53abf74637e959b8e4ef69bfeb"
+    },
+    {
+      "group": "org.opentest4j",
+      "artifact": "opentest4j",
+      "version": "1.3.0",
+      "file": "opentest4j-1.3.0.jar",
+      "source": "bundle",
+      "path": "org.opentest4j/opentest4j/1.3.0/152ea56b3a72f655d4fd677fc0ef2596c3dd5e6e/opentest4j-1.3.0.jar",
+      "sha256": "48e2df636cab6563ced64dcdff8abb2355627cb236ef0bf37598682ddf742f1b"
+    },
+    {
+      "group": "org.ow2.asm",
+      "artifact": "asm",
+      "version": "9.3",
+      "file": "asm-9.3.jar",
+      "source": "bundle",
+      "path": "org.ow2.asm/asm/9.3/8e6300ef51c1d801a7ed62d07cd221aca3a90640/asm-9.3.jar",
+      "sha256": "1263369b59e29c943918de11d6d6152e2ec6085ce63e5710516f8c67d368e4bc"
+    },
+    {
+      "group": "org.slf4j",
+      "artifact": "slf4j-api",
+      "version": "2.0.16",
+      "file": "slf4j-api-2.0.16.jar",
+      "source": "bundle",
+      "path": "org.slf4j/slf4j-api/2.0.16/172931663a09a1fa515567af5fbef00897d3c04/slf4j-api-2.0.16.jar",
+      "sha256": "a12578dde1ba00bd9b816d388a0b879928d00bab3c83c240f7013bf4196c579a"
+    },
+    {
+      "group": "org.slf4j",
+      "artifact": "slf4j-simple",
+      "version": "2.0.16",
+      "file": "slf4j-simple-2.0.16.jar",
+      "source": "bundle",
+      "path": "org.slf4j/slf4j-simple/2.0.16/56d3d8e59293543780ad35af4ee4a5d9c111a588/slf4j-simple-2.0.16.jar",
+      "sha256": "effc32018658bea09d1e08c7d1060ccad46c086960f583d07dd7ffe9c1172a47"
+    },
+    {
+      "group": "org.snakeyaml",
+      "artifact": "snakeyaml-engine",
+      "version": "2.7",
+      "file": "snakeyaml-engine-2.7.jar",
+      "source": "bundle",
+      "path": "org.snakeyaml/snakeyaml-engine/2.7/5213e62e87e62ac009d80aeb64c8240075bf078a/snakeyaml-engine-2.7.jar",
+      "sha256": "4053f878c171692aab8782f53a3974f43e55e2b6ed12c3682b36a46968c5ded1"
+    },
+    {
+      "group": "org.sql2o",
+      "artifact": "sql2o",
+      "version": "1.8.0",
+      "file": "sql2o-1.8.0.jar",
+      "source": "bundle",
+      "path": "org.sql2o/sql2o/1.8.0/42f90cb7e11be5fba0c3185de30b08f4879170a7/sql2o-1.8.0.jar",
+      "sha256": "6131a0aefccd498398cffdbe332100c486a7260ffda350f496e6c66191fe9a70"
+    },
+    {
+      "group": "org.yaml",
+      "artifact": "snakeyaml",
+      "version": "2.2",
+      "file": "snakeyaml-2.2.jar",
+      "source": "bundle",
+      "path": "org.yaml/snakeyaml/2.2/3af797a25458550a16bf89acc8e4ab2b7f2bfce0/snakeyaml-2.2.jar",
+      "sha256": "1467931448a0817696ae2805b7b8b20bfb082652bf9c4efaed528930dc49389b"
+    },
+    {
+      "group": "ru.sber.credit.machine",
+      "artifact": "otel-client-lib",
+      "version": "1.0.0",
+      "file": "otel-client-lib-1.0.0.jar",
+      "source": "bundle",
+      "path": "ru.sber.credit.machine/otel-client-lib/1.0.0/3c6c2b7207444023df071ed4fe002708187fc7ae/otel-client-lib-1.0.0.jar",
+      "sha256": "a3c430f085c0fe9c43870203186a00d43a87a39c1b177c08f9832d26a39658d3"
+    },
+    {
+      "group": "ru.sber.qa",
+      "artifact": "allure-annotations",
+      "version": "2.0.2",
+      "file": "allure-annotations-2.0.2.jar",
+      "source": "bundle",
+      "path": "ru.sber.qa/allure-annotations/2.0.2/2ef327f1f2b9591b5cff621a35936504d57ee4b/allure-annotations-2.0.2.jar",
+      "sha256": "2b447f05b117d59e7722f45dac5f4dca3156d3453d1e68644095072067a14e5a"
+    },
+    {
+      "group": "ru.sber.qa.platform-v-at-framework",
+      "artifact": "allure2",
+      "version": "1.10.3-beta",
+      "file": "allure2-1.10.3-beta.jar",
+      "source": "bundle",
+      "path": "ru.sber.qa.platform-v-at-framework/allure2/1.10.3-beta/444c4dcd0a1e406b5db1e1ddeb1472ef8f5fa871/allure2-1.10.3-beta.jar",
+      "sha256": "1c7dbb4bbcf52789ac954604eb0cf57d6a9ad67eedc2355e4c413bc5811a65e6"
+    },
+    {
+      "group": "ru.sber.qa.platform-v-at-framework",
+      "artifact": "api",
+      "version": "1.10.3-beta",
+      "file": "api-1.10.3-beta.jar",
+      "source": "bundle",
+      "path": "ru.sber.qa.platform-v-at-framework/api/1.10.3-beta/657f2545aeb9bdf972247c20986f13ad7f74bf16/api-1.10.3-beta.jar",
+      "sha256": "c3b48f236c713d916fa180202f1ff0b49aa02b6dff6b56e42201beaff0a9a830"
+    },
+    {
+      "group": "ru.sber.qa.platform-v-at-framework",
+      "artifact": "containers",
+      "version": "1.10.3-beta",
+      "file": "containers-1.10.3-beta.jar",
+      "source": "bundle",
+      "path": "ru.sber.qa.platform-v-at-framework/containers/1.10.3-beta/abbbc7900bd3eda23f142418d4fa1c7594d46281/containers-1.10.3-beta.jar",
+      "sha256": "c3889d6a7f79c3fe37d7d3e8e31e15459041c85ec166f6ca69c2e67d5fe11a65"
+    },
+    {
+      "group": "ru.sber.qa.platform-v-at-framework",
+      "artifact": "core",
+      "version": "1.10.3-beta",
+      "file": "core-1.10.3-beta.jar",
+      "source": "bundle",
+      "path": "ru.sber.qa.platform-v-at-framework/core/1.10.3-beta/7a91462745779195f9b0de0c71e678750b8a0e82/core-1.10.3-beta.jar",
+      "sha256": "9d07405562a7c2652ef51d69f042b76fc00c90719bfdaddd2fd9513dea700fcf"
+    },
+    {
+      "group": "ru.sber.qa.platform-v-at-framework",
+      "artifact": "database",
+      "version": "1.10.3-beta",
+      "file": "database-1.10.3-beta.jar",
+      "source": "bundle",
+      "path": "ru.sber.qa.platform-v-at-framework/database/1.10.3-beta/319d64a9415372087ba6a9de158956f3d7322d5b/database-1.10.3-beta.jar",
+      "sha256": "33474c2d7575d994e5993b3c1a1fd695b2285c248dd13e353e7a8098e9d12a33"
+    },
+    {
+      "group": "ru.sber.qa.platform-v-at-framework",
+      "artifact": "exceptions",
+      "version": "1.10.3-beta",
+      "file": "exceptions-1.10.3-beta.jar",
+      "source": "bundle",
+      "path": "ru.sber.qa.platform-v-at-framework/exceptions/1.10.3-beta/b6e76417807b58c46a9956ca0f133f31347de3b3/exceptions-1.10.3-beta.jar",
+      "sha256": "70d72de57d7c714818a0d568d46afca4a9d7bb54fd9d20ad01094617aa2ac40a"
+    },
+    {
+      "group": "ru.sber.qa.platform-v-at-framework",
+      "artifact": "kafka",
+      "version": "1.10.3-beta",
+      "file": "kafka-1.10.3-beta.jar",
+      "source": "bundle",
+      "path": "ru.sber.qa.platform-v-at-framework/kafka/1.10.3-beta/380aa2cac0edd3ed5cc8ec47e1153961f66bed2a/kafka-1.10.3-beta.jar",
+      "sha256": "746d20ea8bb17266aae31506d94fefc260f59b1dd025bfccc281b8a924d1c3c7"
+    },
+    {
+      "group": "ru.sber.qa.platform-v-at-framework",
+      "artifact": "sbermock",
+      "version": "1.10.3-beta",
+      "file": "sbermock-1.10.3-beta.jar",
+      "source": "bundle",
+      "path": "ru.sber.qa.platform-v-at-framework/sbermock/1.10.3-beta/de53ec62b60bf1610725422401513c375eb2a5db/sbermock-1.10.3-beta.jar",
+      "sha256": "29f410f83792a3106a77056a8bf4de4c1e27a680650c28f12c2a8431117cf335"
+    },
+    {
+      "group": "ru.sber.qa.platform-v-at-framework",
+      "artifact": "session",
+      "version": "1.10.3-beta",
+      "file": "session-1.10.3-beta.jar",
+      "source": "bundle",
+      "path": "ru.sber.qa.platform-v-at-framework/session/1.10.3-beta/78f78b44e2e7e3b6889acbd2a6deac62c73cc0ee/session-1.10.3-beta.jar",
+      "sha256": "fa0894c21a240229d03195d4307718cc075d26445762771d8ffaf4baf71df030"
+    },
+    {
+      "group": "ru.sbrf.sbermock",
+      "artifact": "sbermock-api-client",
+      "version": "0.1.10",
+      "file": "sbermock-api-client-0.1.10-j17.jar",
+      "source": "bundle",
+      "path": "ru.sbrf.sbermock/sbermock-api-client/0.1.10/4413f7fcab47670370ef97aaba8931e383dbacff/sbermock-api-client-0.1.10-j17.jar",
+      "sha256": "c269f2f1e298b2e539d16af1b7bb488ff6402e02e7d1fa68f695703464be2207"
+    },
+    {
+      "group": "ru.sbrf.sbermock",
+      "artifact": "sbermock-public-api-dto",
+      "version": "0.9.50",
+      "file": "sbermock-public-api-dto-0.9.50-j17.jar",
+      "source": "bundle",
+      "path": "ru.sbrf.sbermock/sbermock-public-api-dto/0.9.50/785af6c1363f18e6419cb98e31deec4f1dfcb5f3/sbermock-public-api-dto-0.9.50-j17.jar",
+      "sha256": "68ec9cecd9df6290f52b2b7a4b849f4f7b8523c6d276f4c1e8329816a2330ad5"
+    },
+    {
+      "group": "ru.sbrf.ufs.sbolpro",
+      "artifact": "sbolpro-session-data",
+      "version": "0.3.2",
+      "file": "sbolpro-session-data-0.3.2.jar",
+      "source": "bundle",
+      "path": "ru.sbrf.ufs.sbolpro/sbolpro-session-data/0.3.2/664e981f368a01e660d0be6faa3e7ccf402226b6/sbolpro-session-data-0.3.2.jar",
+      "sha256": "1861f9608e3c0e1fefa12e9e1042011ff8217f4a6477c1bef1b0b3f00284b453"
+    },
+    {
+      "group": "xmlunit",
+      "artifact": "xmlunit",
+      "version": "1.5",
+      "file": "xmlunit-1.5.jar",
+      "source": "bundle",
+      "path": "xmlunit/xmlunit/1.5/7789cef5caffdecab50fd6099535ad2bc2e98044/xmlunit-1.5.jar",
+      "sha256": "b041399902889bef7fa489370d0e8f4d862812938beb14c88d93d250d464fb0d"
+    },
+    {
+      "group": "org.xerial.snappy",
+      "artifact": "snappy-java",
+      "version": "1.1.10.5",
+      "file": "snappy-java-1.1.10.5.jar",
+      "source": "cache",
+      "path": "org.xerial.snappy/snappy-java/1.1.10.5/ac605269f3598506196e469f1fb0d7ed5c55059e/snappy-java-1.1.10.5.jar",
+      "sha256": "0f3f1857ed33116583f480b4df5c0218836c47bfbc9c6221c0d73f356decf37b"
+    },
+    {
+      "group": "org.projectlombok",
+      "artifact": "lombok",
+      "version": "1.18.30",
+      "file": "lombok-1.18.30.jar",
+      "source": "cache",
+      "path": "org.projectlombok/lombok/1.18.30/f195ee86e6c896ea47a1d39defbe20eb59cd149d/lombok-1.18.30.jar",
+      "sha256": "14151b47582d570b4de16a147ece3bdbd19ace4aee5bde3a5578c87db9ecb998"
+    },
+    {
+      "group": "org.postgresql",
+      "artifact": "postgresql",
+      "version": "42.7.7",
+      "file": "postgresql-42.7.7.jar",
+      "source": "cache",
+      "path": "org.postgresql/postgresql/42.7.7/67f8093e8d8104c74bbf588392ac3229803f5d17/postgresql-42.7.7.jar",
+      "sha256": "157963d60ae66d607e09466e8c0cdf8087e9cb20d0159899ffca96bca2528460"
+    },
+    {
+      "group": "org.latencyutils",
+      "artifact": "LatencyUtils",
+      "version": "2.0.3",
+      "file": "LatencyUtils-2.0.3.jar",
+      "source": "cache",
+      "path": "org.latencyutils/LatencyUtils/2.0.3/769c0b82cb2421c8256300e907298a9410a2a3d3/LatencyUtils-2.0.3.jar",
+      "sha256": "a32a9ffa06b2f4e01c5360f8f9df7bc5d9454a5d373cd8f361347fa5a57165ec"
+    },
+    {
+      "group": "org.junit.jupiter",
+      "artifact": "junit-jupiter-params",
+      "version": "5.10.3",
+      "file": "junit-jupiter-params-5.10.3.jar",
+      "source": "cache",
+      "path": "org.junit.jupiter/junit-jupiter-params/5.10.3/4852f4e4af9074d9214213b199751f99efeab8b9/junit-jupiter-params-5.10.3.jar",
+      "sha256": "7c3ed8cefb12496b76c53c3da986ea8f0bf3f426781869475551ae3a506c1ad8"
+    },
+    {
+      "group": "org.junit.jupiter",
+      "artifact": "junit-jupiter-engine",
+      "version": "5.10.3",
+      "file": "junit-jupiter-engine-5.10.3.jar",
+      "source": "cache",
+      "path": "org.junit.jupiter/junit-jupiter-engine/5.10.3/48c14e866bb1a87ca35d24ff068463bb202ada24/junit-jupiter-engine-5.10.3.jar",
+      "sha256": "bbd3ce8dc11e9925071ef9691d68af1ab6e712faa6851f7c5275bc8aafc88673"
+    },
+    {
+      "group": "org.junit.jupiter",
+      "artifact": "junit-jupiter-api",
+      "version": "5.10.3",
+      "file": "junit-jupiter-api-5.10.3.jar",
+      "source": "cache",
+      "path": "org.junit.jupiter/junit-jupiter-api/5.10.3/a22aa91d1d6c69b2020a9aeb6d095ea81132bfa5/junit-jupiter-api-5.10.3.jar",
+      "sha256": "6efe6e01ca1ff79b7bf4c6f1eed0b29292e166c27eaf7b00ac981a14d4de61aa"
+    },
+    {
+      "group": "org.hdrhistogram",
+      "artifact": "HdrHistogram",
+      "version": "2.2.2",
+      "file": "HdrHistogram-2.2.2.jar",
+      "source": "cache",
+      "path": "org.hdrhistogram/HdrHistogram/2.2.2/7959933ebcc0f05b2eaa5af0a0c8689fa257b15c/HdrHistogram-2.2.2.jar",
+      "sha256": "22d1d4316c4ec13a68b559e98c8256d69071593731da96136640f864fa14fad8"
+    },
+    {
+      "group": "org.eclipse.jgit",
+      "artifact": "org.eclipse.jgit",
+      "version": "6.10.0.202406032230-r",
+      "file": "org.eclipse.jgit-6.10.0.202406032230-r.jar",
+      "source": "cache",
+      "path": "org.eclipse.jgit/org.eclipse.jgit/6.10.0.202406032230-r/e1166b8b313939890f29a5c611614b67e396b07e/org.eclipse.jgit-6.10.0.202406032230-r.jar",
+      "sha256": "43f92f3adb681a5f3006b979e8d341c12a8cfd8029f287c42bcf0a80377565ae"
+    },
+    {
+      "group": "org.bouncycastle",
+      "artifact": "bcutil-jdk18on",
+      "version": "1.84",
+      "file": "bcutil-jdk18on-1.84.jar",
+      "source": "cache",
+      "path": "org.bouncycastle/bcutil-jdk18on/1.84/79bfd1f9c6bd7431ff22e29935ec20f12f0af0d3/bcutil-jdk18on-1.84.jar",
+      "sha256": "b374e16963421fb9cfb01cc20d7ad8fd2f8b8188e3eef0ec0a8965e245f7619a"
+    },
+    {
+      "group": "org.bouncycastle",
+      "artifact": "bcprov-jdk18on",
+      "version": "1.84",
+      "file": "bcprov-jdk18on-1.84.jar",
+      "source": "cache",
+      "path": "org.bouncycastle/bcprov-jdk18on/1.84/2d5651789941d2f8ae9b8771f23356de6b61e96b/bcprov-jdk18on-1.84.jar",
+      "sha256": "64d6c5a6121fcd927152dd182cbed39afe0fda641a970d9bcc0c9cb1858b2731"
+    },
+    {
+      "group": "org.bouncycastle",
+      "artifact": "bcpkix-jdk18on",
+      "version": "1.84",
+      "file": "bcpkix-jdk18on-1.84.jar",
+      "source": "cache",
+      "path": "org.bouncycastle/bcpkix-jdk18on/1.84/dab889a3259e27caec6e6c2f3bde94af036b2fcc/bcpkix-jdk18on-1.84.jar",
+      "sha256": "c87f16ed9e5ec61bc94151e9f3646ac44e50cd448121ce84367fa4b7ec7ec1bb"
+    },
+    {
+      "group": "org.apache.kafka",
+      "artifact": "kafka-clients",
+      "version": "3.7.1",
+      "file": "kafka-clients-3.7.1.jar",
+      "source": "cache",
+      "path": "org.apache.kafka/kafka-clients/3.7.1/75a75c47eb912f3fd06df62a9e4b3b554d5b2bec/kafka-clients-3.7.1.jar",
+      "sha256": "e128cccb0efcfc52556d8dd73d804e78de7a22543e747880f61e1ba18613ddbb"
+    },
+    {
+      "group": "org.apache.httpcomponents",
+      "artifact": "httpmime",
+      "version": "4.5.14",
+      "file": "httpmime-4.5.14.jar",
+      "source": "cache",
+      "path": "org.apache.httpcomponents/httpmime/4.5.14/6662758a1f1cb1149cf916bdac28332e0902ec44/httpmime-4.5.14.jar",
+      "sha256": "d401243d5c6eae928a37121b6e819158c8c32ea0584793e7285bb489ab2a3d17"
+    },
+    {
+      "group": "org.apache.httpcomponents",
+      "artifact": "httpcore",
+      "version": "4.4.16",
+      "file": "httpcore-4.4.16.jar",
+      "source": "cache",
+      "path": "org.apache.httpcomponents/httpcore/4.4.16/51cf043c87253c9f58b539c9f7e44c8894223850/httpcore-4.4.16.jar",
+      "sha256": "6c9b3dd142a09dc468e23ad39aad6f75a0f2b85125104469f026e52a474e464f"
+    },
+    {
+      "group": "org.apache.httpcomponents",
+      "artifact": "httpclient",
+      "version": "4.5.14",
+      "file": "httpclient-4.5.14.jar",
+      "source": "cache",
+      "path": "org.apache.httpcomponents/httpclient/4.5.14/1194890e6f56ec29177673f2f12d0b8e627dec98/httpclient-4.5.14.jar",
+      "sha256": "c8bc7e1c51a6d4ce72f40d2ebbabf1c4b68bfe76e732104b04381b493478e9d6"
+    },
+    {
+      "group": "org.apache.groovy",
+      "artifact": "groovy-json",
+      "version": "4.0.22",
+      "file": "groovy-json-4.0.22.jar",
+      "source": "cache",
+      "path": "org.apache.groovy/groovy-json/4.0.22/5c8edac1ee596375a3d28fc2c0e844ee067f6b6b/groovy-json-4.0.22.jar",
+      "sha256": "aba93254d9293881282bd639b7b3db8bdcb5bf6cca4cac0df7a0bd193743f652"
+    },
+    {
+      "group": "org.apache.groovy",
+      "artifact": "groovy",
+      "version": "4.0.22",
+      "file": "groovy-4.0.22.jar",
+      "source": "cache",
+      "path": "org.apache.groovy/groovy/4.0.22/a04df669ad2778678072315bc92f10f03362e7d7/groovy-4.0.22.jar",
+      "sha256": "f9d8bd4d65852c18194e353c77f3d2c23e0013856951c5430ba56972d2f67a1e"
+    },
+    {
+      "group": "org.apache.commons",
+      "artifact": "commons-text",
+      "version": "1.11.0",
+      "file": "commons-text-1.11.0.jar",
+      "source": "cache",
+      "path": "org.apache.commons/commons-text/1.11.0/2bb044b7717ec2eccaf9ea7769c1509054b50e9a/commons-text-1.11.0.jar",
+      "sha256": "2acf30a070b19163d5a480eae411a281341e870020e3534c6d5d4c8472739e30"
+    },
+    {
+      "group": "org.apache.commons",
+      "artifact": "commons-lang3",
+      "version": "3.17.0",
+      "file": "commons-lang3-3.17.0.jar",
+      "source": "cache",
+      "path": "org.apache.commons/commons-lang3/3.17.0/b17d2136f0460dcc0d2016ceefca8723bdf4ee70/commons-lang3-3.17.0.jar",
+      "sha256": "6ee731df5c8e5a2976a1ca023b6bb320ea8d3539fbe64c8a1d5cb765127c33b4"
+    },
+    {
+      "group": "org.apache.commons",
+      "artifact": "commons-exec",
+      "version": "1.4.0",
+      "file": "commons-exec-1.4.0.jar",
+      "source": "cache",
+      "path": "org.apache.commons/commons-exec/1.4.0/e9061b21958bfaf1cb736eb22e36cbf02d8fe9f/commons-exec-1.4.0.jar",
+      "sha256": "f51cf8bee467efe2be76e46fc08078d96afa280a794283364291beda892a67ef"
+    },
+    {
+      "group": "net.bytebuddy",
+      "artifact": "byte-buddy-agent",
+      "version": "1.14.1",
+      "file": "byte-buddy-agent-1.14.1.jar",
+      "source": "cache",
+      "path": "net.bytebuddy/byte-buddy-agent/1.14.1/198d511e34875f37b027ba4758229a67a8a2e5af/byte-buddy-agent-1.14.1.jar",
+      "sha256": "f4809b9d0f00e71be98a61a25b3e14437f53f6821485694011beeb25e9231dde"
+    },
+    {
+      "group": "net.bytebuddy",
+      "artifact": "byte-buddy",
+      "version": "1.14.1",
+      "file": "byte-buddy-1.14.1.jar",
+      "source": "cache",
+      "path": "net.bytebuddy/byte-buddy/1.14.1/ecfcdb4726ccb4f51cbfd1ac2eb4118099529370/byte-buddy-1.14.1.jar",
+      "sha256": "63479f9a0a1b28f98313230d688a46b02bd80d09a700e127482d0bd635b47bad"
+    },
+    {
+      "group": "javax.validation",
+      "artifact": "validation-api",
+      "version": "1.1.0.Final",
+      "file": "validation-api-1.1.0.Final.jar",
+      "source": "cache",
+      "path": "javax.validation/validation-api/1.1.0.Final/8613ae82954779d518631e05daa73a6a954817d5/validation-api-1.1.0.Final.jar",
+      "sha256": "f39d7ba7253e35f5ac48081ec1bc28c5df9b32ac4b7db20853e5a8e76bf7b0ed"
+    },
+    {
+      "group": "io.swagger.core.v3",
+      "artifact": "swagger-annotations-jakarta",
+      "version": "2.2.38",
+      "file": "swagger-annotations-jakarta-2.2.38.jar",
+      "source": "cache",
+      "path": "io.swagger.core.v3/swagger-annotations-jakarta/2.2.38/7628340f67c58a7ba9eb965a5b3f8f1d06f9df30/swagger-annotations-jakarta-2.2.38.jar",
+      "sha256": "cf15aa4ab7e8c747d7b3d979660a49320ea56c0dc88b7021e48cc909c13b997b"
+    },
+    {
+      "group": "io.qameta.allure",
+      "artifact": "allure-test-filter",
+      "version": "2.29.0",
+      "file": "allure-test-filter-2.29.0.jar",
+      "source": "cache",
+      "path": "io.qameta.allure/allure-test-filter/2.29.0/7de6b2c0271f8f67c743cdeabf6129a5cc385f1d/allure-test-filter-2.29.0.jar",
+      "sha256": "a18abb955670fa06ccfd3f1e6cf203e4ced83bef575272164fc328876b9aa275"
+    },
+    {
+      "group": "io.qameta.allure",
+      "artifact": "allure-rest-assured",
+      "version": "2.29.0",
+      "file": "allure-rest-assured-2.29.0.jar",
+      "source": "cache",
+      "path": "io.qameta.allure/allure-rest-assured/2.29.0/75b558423ebfa8c48035dd708410fc38e8c40011/allure-rest-assured-2.29.0.jar",
+      "sha256": "c35b96eda5023425b5d0ed8c8761804fd7f3ab08bc86671c3ac7d301939ca66b"
+    },
+    {
+      "group": "io.qameta.allure",
+      "artifact": "allure-model",
+      "version": "2.29.0",
+      "file": "allure-model-2.29.0.jar",
+      "source": "cache",
+      "path": "io.qameta.allure/allure-model/2.29.0/9c3cee5f8a5b9448a647610111a61046604054b9/allure-model-2.29.0.jar",
+      "sha256": "dfe5ae08305e924cbf2966c711880888cb3200c2f6b6f21e2f7838880de2ad72"
+    },
+    {
+      "group": "io.qameta.allure",
+      "artifact": "allure-junit5",
+      "version": "2.29.0",
+      "file": "allure-junit5-2.29.0.jar",
+      "source": "cache",
+      "path": "io.qameta.allure/allure-junit5/2.29.0/68b8307150b9da7f5f61f6b80736f39e6d453574/allure-junit5-2.29.0.jar",
+      "sha256": "529ff98bbe458b03ad5d4a3ddd386d71618de8bd17931b42d24484e62f52a14a"
+    },
+    {
+      "group": "io.qameta.allure",
+      "artifact": "allure-junit-platform",
+      "version": "2.29.0",
+      "file": "allure-junit-platform-2.29.0.jar",
+      "source": "cache",
+      "path": "io.qameta.allure/allure-junit-platform/2.29.0/8e6c5904d1c078f47269ee4968825263133e265b/allure-junit-platform-2.29.0.jar",
+      "sha256": "f4d87d92c2c8e7667466b6704b07080a5923d9d2f54aed9763179dc68790b83e"
+    },
+    {
+      "group": "io.qameta.allure",
+      "artifact": "allure-java-commons",
+      "version": "2.29.0",
+      "file": "allure-java-commons-2.29.0.jar",
+      "source": "cache",
+      "path": "io.qameta.allure/allure-java-commons/2.29.0/f3ef14fd3e84e3f2c30a150bf8fd6b54372ba6d0/allure-java-commons-2.29.0.jar",
+      "sha256": "61d8a0db9f977f694a82206868d2f58e02def79aae8112b09ba68d56393ac76e"
+    },
+    {
+      "group": "io.qameta.allure",
+      "artifact": "allure-attachments",
+      "version": "2.29.0",
+      "file": "allure-attachments-2.29.0.jar",
+      "source": "cache",
+      "path": "io.qameta.allure/allure-attachments/2.29.0/71d0cb5a316e949bb44ae6c27e016538bab6a5bc/allure-attachments-2.29.0.jar",
+      "sha256": "44b229267f61b5a68dd6e996e2ffd98c97e5a50215998291956b7127b3258eb7"
+    },
+    {
+      "group": "io.github.hakky54",
+      "artifact": "ayza-for-pem",
+      "version": "10.0.5",
+      "file": "ayza-for-pem-10.0.5.jar",
+      "source": "cache",
+      "path": "io.github.hakky54/ayza-for-pem/10.0.5/f7ebba070bd9780de1bc9fc178670c343c497d98/ayza-for-pem-10.0.5.jar",
+      "sha256": "c25de0951f746116bf623ede05ea6c5e832683fed695f3bf151ccdf5d84722af"
+    },
+    {
+      "group": "io.github.hakky54",
+      "artifact": "ayza",
+      "version": "10.0.5",
+      "file": "ayza-10.0.5.jar",
+      "source": "cache",
+      "path": "io.github.hakky54/ayza/10.0.5/f27f3513f834c3cc32ff9334aa56f1e6edf61559/ayza-10.0.5.jar",
+      "sha256": "52c4575ec2a5b8670ec074f4c5d9df9a0921620f4276a5827a4bafbeb647e33c"
+    },
+    {
+      "group": "com.github.luben",
+      "artifact": "zstd-jni",
+      "version": "1.5.6-3",
+      "file": "zstd-jni-1.5.6-3.jar",
+      "source": "cache",
+      "path": "com.github.luben/zstd-jni/1.5.6-3/823b794106e4bcb80110f49408d1641231f25927/zstd-jni-1.5.6-3.jar",
+      "sha256": "f72ede1b39258faf81277dc58de30c71cbae4253732558d2ce10b53d8b5763d5"
+    },
+    {
+      "group": "com.fasterxml.jackson.core",
+      "artifact": "jackson-core",
+      "version": "2.17.2",
+      "file": "jackson-core-2.17.2.jar",
+      "source": "maven",
+      "path": "com/fasterxml/jackson/core/jackson-core/2.17.2/jackson-core-2.17.2.jar",
+      "sha256": "721a189241dab0525d9e858e5cb604d3ecc0ede081e2de77d6f34fa5779a5b46"
+    },
+    {
+      "group": "com.fasterxml.jackson.core",
+      "artifact": "jackson-databind",
+      "version": "2.17.2",
+      "file": "jackson-databind-2.17.2.jar",
+      "source": "maven",
+      "path": "com/fasterxml/jackson/core/jackson-databind/2.17.2/jackson-databind-2.17.2.jar",
+      "sha256": "c04993f33c0f845342653784f14f38373d005280e6359db5f808701cfae73c0c"
+    },
+    {
+      "group": "com.fasterxml.jackson.core",
+      "artifact": "jackson-annotations",
+      "version": "2.17.2",
+      "file": "jackson-annotations-2.17.2.jar",
+      "source": "maven",
+      "path": "com/fasterxml/jackson/core/jackson-annotations/2.17.2/jackson-annotations-2.17.2.jar",
+      "sha256": "873a606e23507969f9bbbea939d5e19274a88775ea5a169ba7e2d795aa5156e1"
+    },
+    {
+      "group": "org.freemarker",
+      "artifact": "freemarker",
+      "version": "2.3.34",
+      "file": "freemarker-2.3.34.jar",
+      "source": "cache",
+      "path": "org.freemarker/freemarker/2.3.34/c2fa47a1c3b6dcdfca90e952e51211967a4baa54/freemarker-2.3.34.jar",
+      "sha256": "9a9fb91cd64199232eb1ca9766148a5d30ef8944be5fac051018f96c70c8f6a3"
+    }
+  ]
+}

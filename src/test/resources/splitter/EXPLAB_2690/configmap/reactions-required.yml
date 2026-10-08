@@ -1,0 +1,9 @@
+# Контракт ConfigMap для автоматических REACTIONS-сценариев EXPLAB-2690.
+# Применяется один раз на управляемый прогон; исходное состояние восстанавливается.
+rules:
+  final-exp-rule:
+    rule-code: MAIN
+    proc-code: finalExpByLayerAndId
+    proc-params:
+      max-layer-priority: true
+      max-id: false

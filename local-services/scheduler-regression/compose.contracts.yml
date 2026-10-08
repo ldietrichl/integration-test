@@ -1,0 +1,45 @@
+services:
+  dependencies:
+    image: python:3.12-alpine
+    volumes:
+      - ./dependency-server.py:/app/server.py:ro
+      - ./.runtime/full-stack:/runtime
+    command: ["python", "/app/server.py"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=2)"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  scheduler:
+    depends_on:
+      dependencies:
+        condition: service_healthy
+    environment:
+      SCHEDULER_SERVICE_EXPERIMENT_HOST: http://dependencies
+      SCHEDULER_SERVICE_COMMUNICATION_HOST: http://dependencies
+      SCHEDULER_SERVICE_USER_HOST: http://dependencies
+      SCHEDULER_SERVICE_DICTIONARY_URL: http://dependencies:8080
+      SCHEDULER_SERVICE_USER_V2_URL: http://dependencies:8080
+      SCHEDULER_SERVICE_FEIGN_CONNECT_TIMEOUT: "3000"
+      SCHEDULER_SERVICE_FEIGN_READ_TIMEOUT: "5000"
+  tls-proxy:
+    image: python:3.12-alpine
+    depends_on:
+      - scheduler
+    volumes:
+      - ./tls-proxy.py:/app/proxy.py:ro
+      - ./.runtime/full-stack/tls:/tls:ro
+    ports:
+      - "127.0.0.1:18443:8443"
+      - "127.0.0.1:18444:8444"
+    command: ["python", "/app/proxy.py"]
+  tests:
+    image: gradle:8.4-jdk17
+    profiles: ["test"]
+    user: root
+    working_dir: /runner
+    volumes:
+      - ./container-runner.gradle:/runner/build.gradle:ro
+      - ./.runtime/full-stack:/runtime
+      - ../../build:/project-build:ro
+    command: ["gradle", "--offline", "--no-daemon", "--console=plain", "schedulerContainerRegression"]

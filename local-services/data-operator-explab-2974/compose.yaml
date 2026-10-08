@@ -1,0 +1,31 @@
+name: ${COMPOSE_PROJECT_NAME:?Use start.ps1 with a profile}
+services:
+  ignite:
+    image: apacheignite/ignite:${IGNITE_VERSION:?Use start.ps1 with a profile}
+    environment:
+      CONFIG_URI: /opt/ignite/config/local.xml
+      OPTION_LIBS: ignite-indexing
+      JVM_OPTS: -Xms256m -Xmx512m -XX:ActiveProcessorCount=4
+    volumes:
+      - ./ignite.xml:/opt/ignite/config/local.xml:ro
+    ports:
+      - "127.0.0.1:${IGNITE_PORT:?Use start.ps1 with a profile}:10800"
+    mem_limit: 1g
+  kafka:
+    image: apache/kafka:${KAFKA_VERSION:?Use start.ps1 with a profile}
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:${KAFKA_PORT:?Use start.ps1 with a profile}
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m -XX:ActiveProcessorCount=4
+    ports:
+      - "127.0.0.1:${KAFKA_PORT:?Use start.ps1 with a profile}:9092"
+    mem_limit: 1g

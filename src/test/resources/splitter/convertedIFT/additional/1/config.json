@@ -1,0 +1,49 @@
+{
+  "messageId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "requestId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "configVersion": "1770042731",
+  "forceConfigLoad": true,
+  "splittingPointCode": "MAPPER",
+  "splittingConfig": {
+    "experiments": [{
+      "id": 1,
+      "purpose": "DCG",
+      "layerId": null,
+      "salt": "24096d2M1e",
+      "objectSelectConditions": [{
+        "id": 1,
+        "rules":
+        [[{
+          "dataType": "INTEGER",
+          "paramCode": "cjId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "in",
+          "values": ["1"]
+        }
+        ]
+        ]
+      }
+      ],
+      "groups": [{
+        "code": "A",
+        "shares": [{
+          "shareFrom": 0,
+          "shareTo": 1
+        }
+        ],
+        "splittingResults": [{
+          "conditionId": 1,
+          "resultParams": [{
+            "paramCode": "actionType",
+            "paramValues": ["0"],
+            "dataType": "INTEGER"
+          }
+          ]
+        }
+        ]
+      }
+      ]
+    }
+    ]
+  }
+}

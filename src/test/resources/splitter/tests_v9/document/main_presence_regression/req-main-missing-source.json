@@ -1,0 +1,60 @@
+{
+        "requestId": "bd01e915-c559-427f-b5f5-7ebd02368d82",
+        "splittingId": "1838643050247144428",
+        "requestParams": null,
+        "splittingObjects": [{
+                "objectId": "032e7ed0-340d-41b3-908f-9f8183a96de9",
+                "uniqueConfigurationId": "54024",
+                "objectParams": [{
+                        "paramCode": "cjId",
+                        "paramValues": [
+                            "112758"
+                        ],
+                        "dataType": "INTEGER"
+                    }, {
+                        "paramCode": "modelId",
+                        "paramValues": [
+                            "-1000"
+                        ],
+                        "dataType": "INTEGER"
+                    }, {
+                        "paramCode": "modelTemplate",
+                        "paramValues": [
+                            "0"
+                        ],
+                        "dataType": "INTEGER"
+                    }, {
+                        "paramCode": "modelSource",
+                        "paramValues": [
+                            "SAS"
+                        ],
+                        "dataType": "STRING"
+                    }, {
+                        "paramCode": "sellingProductId",
+                        "paramValues": [
+                            "100000078"
+                        ],
+                        "dataType": "STRING"
+                    }, {
+                        "paramCode": "channel",
+                        "paramValues": [
+                            "17"
+                        ],
+                        "dataType": "INTEGER"
+                    }, {
+                        "paramCode": "templateId",
+                        "paramValues": [
+                            "-1004"
+                        ],
+                        "dataType": "STRING"
+                    }, {
+                        "paramCode": "configCommId",
+                        "paramValues": [
+                            "54024"
+                        ],
+                        "dataType": "INTEGER"
+                    }
+                ]
+            }
+        ]
+    }

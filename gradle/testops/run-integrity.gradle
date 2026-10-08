@@ -1,0 +1,42 @@
+import javax.xml.parsers.DocumentBuilderFactory
+import java.time.Instant
+
+// Read JUnit only after the worker has stopped; an executor failure is not a business assertion.
+project.ext.splitterRunAudit = { File directory ->
+    def factory = DocumentBuilderFactory.newInstance()
+    factory.setFeature('http://apache.org/xml/features/disallow-doctype-decl', true)
+    factory.setFeature('http://xml.org/sax/features/external-general-entities', false)
+    factory.setFeature('http://xml.org/sax/features/external-parameter-entities', false)
+    factory.setXIncludeAware(false)
+    factory.setExpandEntityReferences(false)
+    def suites = []
+    def executorErrors = []
+    def statuses = [passed: 0, failed: 0, skipped: 0]
+    def files = (directory.listFiles() ?: []).findAll { it.isFile() && it.name.startsWith('TEST-') && it.name.endsWith('.xml') }.sort { it.name }
+    files.each { f ->
+        def suite = factory.newDocumentBuilder().parse(f).documentElement
+        def cases = suite.getElementsByTagName('testcase')
+        if (cases.length != Integer.parseInt(suite.getAttribute('tests'))) throw new GradleException("JUnit testcase count mismatch: $f")
+        boolean executor = suite.getAttribute('name').startsWith('Gradle Test Executor') || f.name.contains('Gradle#20Test#20Executor')
+        if (executor) {
+            executorErrors.add([file: f.name, tests: cases.length, reason: 'Gradle Test Executor did not complete normally'])
+        } else {
+            def counts = [passed: 0, failed: 0, skipped: 0]
+            def classes = [:].withDefault { 0 }
+            for (int i = 0; i < cases.length; i++) {
+                def c = cases.item(i)
+                String status = c.getElementsByTagName('failure').length + c.getElementsByTagName('error').length > 0 ? 'failed' :
+                        c.getElementsByTagName('skipped').length > 0 ? 'skipped' : 'passed'
+                counts[status]++; statuses[status]++; classes[c.getAttribute('classname')]++
+            }
+            if (counts.failed != Integer.parseInt(suite.getAttribute('failures') ?: '0') + Integer.parseInt(suite.getAttribute('errors') ?: '0') ||
+                    counts.skipped != Integer.parseInt(suite.getAttribute('skipped') ?: '0')) throw new GradleException("JUnit status count mismatch: $f")
+            String timestamp = suite.getAttribute('timestamp')
+            long start = Instant.parse(timestamp.endsWith('Z') ? timestamp : timestamp + 'Z').toEpochMilli()
+            long end = start + Math.ceil(Double.parseDouble(suite.getAttribute('time')) * 1000).longValue()
+            suites.add([file: f, start: start, end: end, classes: classes, statuses: counts, total: cases.length])
+        }
+    }
+    [completed: !files.isEmpty() && !suites.isEmpty() && executorErrors.isEmpty(), total: statuses.values().sum(),
+     statuses: statuses, executorErrors: executorErrors, suites: suites, files: files]
+}

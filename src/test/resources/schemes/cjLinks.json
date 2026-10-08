@@ -1,0 +1,13 @@
+{
+  "totalPages": 0,
+  "totalElements": 0,
+  "content": [
+    {
+      "cjId": 0,
+      "expId": 0,
+      "status": "string",
+      "groupCode": "string",
+      "configCommIds": "string"
+    }
+  ]
+}

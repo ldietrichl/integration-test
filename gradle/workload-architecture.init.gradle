@@ -1,0 +1,23 @@
+// Local harness checks only; no REST/Kafka calls or cluster mutations.
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    def sources = p.extensions.getByName('sourceSets')
+    p.tasks.register('workloadArchitectureCheck', org.gradle.api.tasks.testing.Test) {
+        group = 'verification'
+        description = 'Verify shared workload lifecycle and splitter contracts without a stand'
+        dependsOn p.tasks.named('testClasses')
+        testClassesDirs = sources.test.output.classesDirs
+        classpath = sources.test.runtimeClasspath
+        useJUnitPlatform()
+        filter.setIncludePatterns('infrastructure.kubernetes.WorkloadArchitectureTest',
+                'ru.sber.qa.splitter.EXPLAB_2885.Precalc*Test',
+                'ru.sber.qa.splitter.EXLAB_2891.Precalc*HarnessTest')
+        filter.setFailOnNoMatchingTests(true)
+        maxParallelForks = 1
+        systemProperty('junit.jupiter.execution.parallel.enabled', 'false')
+        systemProperty('allure.results.directory', p.file('build/reports/workload-architecture/allure-results').absolutePath)
+        reports.junitXml.outputLocation.set(p.layout.buildDirectory.dir('test-results/workloadArchitectureCheck'))
+        reports.html.outputLocation.set(p.layout.buildDirectory.dir('reports/tests/workloadArchitectureCheck'))
+        outputs.upToDateWhen { false }
+    }
+}

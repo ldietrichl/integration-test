@@ -1,0 +1,25 @@
+// Local framework checks must never inflate a functional stand run or its TestOps payload.
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    def sources = p.extensions.getByName('sourceSets')
+    def localClasses = ['Precalc2885DiagnosticsTest', 'Precalc2885EvidenceScopeTest',
+                        'Precalc2885OracleTest', 'Precalc2885ReportingTest'].collect {
+        'ru.sber.qa.splitter.EXPLAB_2885.' + it
+    }
+    p.tasks.register('explab2885LocalChecks', org.gradle.api.tasks.testing.Test) {
+        group = 'tickets'
+        description = 'EXPLAB-2885: local infrastructure and assertion checks, isolated from functional Allure results'
+        dependsOn p.tasks.named('testClasses')
+        testClassesDirs = sources.test.output.classesDirs
+        classpath = sources.test.runtimeClasspath
+        useJUnitPlatform()
+        filter.setIncludePatterns(*localClasses)
+        maxParallelForks = 1
+        systemProperty 'allure.results.directory', p.file('build/local-checks/explab2885/allure-results').absolutePath
+        reports.junitXml.outputLocation.set(p.layout.buildDirectory.dir('local-checks/explab2885/junit'))
+        reports.html.outputLocation.set(p.layout.buildDirectory.dir('local-checks/explab2885/report'))
+    }
+    p.tasks.withType(org.gradle.api.tasks.testing.Test).configureEach { t ->
+        if (t.name != 'explab2885LocalChecks') localClasses.each { t.filter.excludeTestsMatching(it) }
+    }
+}

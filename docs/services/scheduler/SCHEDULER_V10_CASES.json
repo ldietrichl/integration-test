@@ -1,0 +1,469 @@
+{
+  "version": "v10",
+  "basis": "current v9 source and supplied DEV results",
+  "intendedAdditionalRegression": 53,
+  "intendedAdditionalDiagnostics": 1,
+  "meaning": "Prepared for corporate execution, not a passed count or code coverage measurement",
+  "cases": [
+    {
+      "id": "SCH-002",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch002",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-008",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch008",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-009",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch009",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-010",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch010",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-011",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch011",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-012",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch012",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-013",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch013",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-016",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch016",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-018",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch018",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-019",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch019",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-020",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch020",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-021",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch021",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-022",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch022",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-023",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch023",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-024",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch024",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-025",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch025",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-026",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch026",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-027",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch027",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-029",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch029",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-030",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch030",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-031",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch031",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-032",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch032",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-033",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch033",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-034",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch034",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-035",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch035",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-036",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch036",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-037",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch037",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-038",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch038",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-039",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch039",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-040",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch040",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-041",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch041",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-042",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch042",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-043",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch043",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-044",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch044",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-045",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch045",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-046",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch046",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-048",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch048",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-049",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch049",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-050",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch050",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-051",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch051",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-052",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch052",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-053",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch053",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-054",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch054",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-055",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch055",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-056",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch056",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-093",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch093",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-126",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch126",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-127",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch127",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-128",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch128",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-129",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch129",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-130",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch130",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-134",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest",
+      "method": "sch134",
+      "category": "regression",
+      "activation": "managed-owned-fixtures",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-POD-001",
+      "class": "ru.sber.qa.scheduler.regression.SchedulerWorkloadRegressionFlowTest",
+      "method": "pod001",
+      "category": "regression",
+      "activation": "managed-owned-fixtures-and-pod-delete",
+      "execution": "NOT_RUN"
+    },
+    {
+      "id": "SCH-OPS-004",
+      "class": "ru.sber.qa.scheduler.infrastructure.SchedulerWorkloadDiagnosticFlowTest",
+      "method": "ops004",
+      "category": "diagnostics",
+      "activation": "explicit-scale-permission-and-quota-preflight",
+      "execution": "NOT_RUN"
+    }
+  ],
+  "excluded": {
+    "legacyMethods": [
+      "sch001",
+      "sch003",
+      "sch004",
+      "sch005",
+      "sch006",
+      "sch007",
+      "sch057",
+      "sch095",
+      "sch105",
+      "sch106",
+      "sch107",
+      "sch108",
+      "sch109",
+      "sch110",
+      "sch131",
+      "sch132"
+    ],
+    "preparedManual": 65,
+    "mtls": 3
+  },
+  "previouslyAvailable": [
+    "SCH-135",
+    "SCH-RO-001..007",
+    "DB preflight",
+    "existing infrastructure diagnostics"
+  ]
+}

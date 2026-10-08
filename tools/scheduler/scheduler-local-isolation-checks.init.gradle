@@ -1,0 +1,41 @@
+// Local in-memory guard checks. Never discovers or runs the corporate JUnit source set.
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.testing.Test
+
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    def compileName = 'schedulerCompileIsolationChecks'
+    def runName = 'schedulerLocalIsolationChecks'
+    if (!gradle.startParameter.offline) {
+        throw new GradleException('Local contract checks require --offline; no repositories or stand are contacted.')
+    }
+    if (gradle.startParameter.taskNames.any { it != runName && it != ':' + runName }) {
+        throw new GradleException('Run only schedulerLocalIsolationChecks with this init script.')
+    }
+    def main = p.sourceSets.getByName('main')
+    def output = p.layout.buildDirectory.dir('classes/scheduler-local-isolation-checks')
+    def compile = p.tasks.register(compileName, JavaCompile) {
+        source = p.fileTree('tools/scheduler/local-isolation-checks/java') { include '**/*.java' }
+        classpath = main.output + main.compileClasspath
+        destinationDirectory.set(output)
+        options.encoding = 'UTF-8'
+        options.release.set(17)
+        dependsOn p.tasks.named('classes')
+    }
+    p.tasks.register(runName, JavaExec) {
+        group = 'verification'
+        description = 'In-memory run-lease and fixture ownership checks; no stand'
+        dependsOn compile
+        // Only the guard's compile dependencies are needed, not JDBC/Kafka/cluster runtime providers.
+        classpath = p.files(output) + main.output + main.compileClasspath
+        mainClass.set('scheduler.localchecks.SchedulerIsolationChecks')
+        jvmArgs '-Dfile.encoding=UTF-8'
+    }
+    gradle.taskGraph.whenReady { graph ->
+        def allowed = ['compileJava', 'processResources', 'classes', compileName, runName] as Set
+        if (graph.allTasks.any { it.project != p || !allowed.contains(it.name) || it instanceof Test }) {
+            throw new GradleException('Local guard task graph contains an unexpected task; execution refused.')
+        }
+    }
+}

@@ -1,0 +1,90 @@
+// Gradle UI catalog. Grouping never changes task dependencies or execution guards.
+def diagnostics = [
+    propertyLayoutTest: 'Проверка структуры конфигурации и изоляции секретов без подключения к стенду',
+    schedulerPreflight: 'Scheduler: предварительная проверка схемы и справочников без изменения данных',
+    schedulerInfrastructureDiagnostics: 'Scheduler: диагностика инфраструктуры в согласованное окно',
+    splitterRestDebug: 'Splitter: диагностика загрузки конфигурации через REST',
+    splitterKafkaDebug: 'Splitter: диагностика загрузки конфигурации через Kafka',
+    ignitePreflight: 'Ignite: проверка соединения без изменения данных'
+]
+def regressions = extensions.extraProperties.get('serviceRegressionDescriptions') + [
+    splitterExtensionRegression: 'Splitter: расширенная регрессия, отдельно от заявки 2690'
+]
+def tickets = [
+    explab2690MapperCoverage: 'EXPLAB-2690: MAPPER-покрытие с управляемым состоянием стенда',
+    explab2690ReactionsCoverage: 'EXPLAB-2690: REACTIONS, общий жизненный цикл стенда',
+    explab2690Coverage: 'EXPLAB-2690: основной контракт MAPPER + REACTIONS, без extension',
+    explab2972Test: 'EXPLAB-2972: план обычной смены статусов',
+    explab2972ManagedTest: 'EXPLAB-2972: план с управляемыми данными',
+    explab2972LaunchPlanTest: 'EXPLAB-2972: план запусков'
+]
+def service = [
+    compileWithoutTests: 'Компиляция проекта без запуска сценариев',
+    bypassTests: 'Подготовка регистрационных результатов без выполнения сценариев',
+    prepareBypassTestOpsResults: 'Подготовка регистрационных результатов для TestOps',
+    bypassTestOpsUpload: 'Загрузка регистрационных результатов в TestOps, не регресс',
+    prepareSchedulerTestOpsResults: 'Подготовка сохранённого прогона Scheduler для TestOps',
+    schedulerTestOpsUpload: 'Загрузка сохранённого прогона Scheduler в TestOps',
+    prepareRegressionTestOpsResults: 'Подготовка сохранённых регрессов для TestOps',
+    regressionTestOpsUpload: 'Загрузка сохранённых регрессов в TestOps',
+    prepareTestOpsResults: 'Подготовка выбранных функциональных результатов для TestOps',
+    testOpsUpload: 'Загрузка выбранных функциональных результатов в TestOps',
+    allureReport: 'Формирование локального отчёта Allure',
+    prepareIgniteHelpers: 'Компиляция выбранного Ignite-helper без подключения к стенду',
+    prepareIgniteProbe: 'Компиляция выбранного Ignite-probe без подключения к стенду',
+    prepareCorporateIgniteClient: 'Сборка корпоративного Ignite-runtime из Nexus, без подключения к стенду',
+    prepareExplab2974CorporateClient: 'Сборка корпоративного data-operator runtime из Nexus, без подключения к стенду'
+]
+// Standard lifecycle tasks retain their conventional Gradle groups.
+// Internal reporting tasks are visible separately, not additional regression entry points.
+def supportingGroups = [
+    'build': [
+        'assemble', 'build', 'buildDependents', 'buildNeeded', 'clean', 'jar',
+        'classes', 'testClasses', 'bypassTestsClasses', 'bypassToolClasses',
+        'compileJava', 'compileTestJava', 'compileBypassTestsJava', 'compileBypassToolJava',
+        'processResources', 'processTestResources', 'processBypassTestsResources', 'processBypassToolResources'
+    ],
+    'build setup': ['init', 'wrapper'],
+    'help': [
+        'buildEnvironment', 'components', 'dependencies', 'dependencyInsight',
+        'dependentComponents', 'help', 'javaToolchains', 'kotlinDslAccessorsReport',
+        'model', 'outgoingVariants', 'projects', 'properties', 'resolvableConfigurations', 'tasks'
+    ],
+    'documentation': ['javadoc'],
+    'verification': ['check', 'test'],
+    'reporting support': [
+        'auditReportingTags', 'copyAllureCategories', 'copyCategories', 'downloadAllure',
+        'generateBypassTests', 'generateReportEligibility', 'validateTestOpsUploadConfig'
+    ],
+    'maintenance': ['cleanRegressionResults', 'cleanTestOpsResults'],
+    'ide': ['prepareKotlinBuildScriptModel'],
+    'service': ['allureServe']
+]
+def supportingTaskGroups = [:]
+supportingGroups.each { groupName, names ->
+    names.each { taskName -> supportingTaskGroups[taskName] = groupName }
+}
+tasks.configureEach { task ->
+    def entry = [[name: 'diagnostics', values: diagnostics], [name: 'regression', values: regressions],
+                 [name: 'tickets', values: tickets], [name: 'service', values: service]]
+            .find { it.values.containsKey(task.name) }
+    if (entry != null) {
+        task.group = entry.name
+        task.description = entry.values[task.name]
+    } else if (supportingTaskGroups.containsKey(task.name)) {
+        task.group = supportingTaskGroups[task.name]
+    } else if (task.name.endsWith('Eligibility')) {
+        task.group = 'reporting support'
+    } else if (task.group == null || task.group.trim().isEmpty() || task.group.equalsIgnoreCase('other')) {
+        // Future unclassified helpers remain visible without polluting regression/diagnostics.
+        task.group = 'internal'
+    }
+}
+
+apply from: 'gradle/tickets/EXPLAB_2885-recovery.gradle'
+apply from: 'gradle/tickets/splitter-reliability.gradle'
+apply from: 'gradle/tickets/EXPLAB_2885-local-checks.gradle'
+apply from: 'gradle/tickets/EXPLAB_2984.gradle'
+apply from: 'gradle/tickets/EXPLAB_3056.gradle'
+
+apply from: 'gradle/tickets/EXLAB_2891.gradle'

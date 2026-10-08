@@ -1,0 +1,380 @@
+package ru.sber.qa.splitter.EXPLAB_2399;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dto.splitter.config.LoadConfigRequestDto;
+import io.qameta.allure.Allure;
+import io.perfeccionista.framework.Environment;
+import ru.sber.qa.services.kafka.KafkaService;
+import util.KafkaAllureLog;
+import util.SplitterKafkaConsumerGroupOverride;
+import util.SplitterKafkaProperties;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+import static util.TestAssertions.fail;
+
+final class SplitterConfigKafkaLoad2399Flow {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private static final String DEFAULT_INPUT_TOPIC = "splitting-config-created";
+    private static final String DEFAULT_STATUS_TOPIC = "splitting-config-requested-and-received";
+    private static final String DEFAULT_MONITORING_TOPIC = "omon_explab_splitter_log";
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(45);
+
+    String kafkaEnv() {
+        return SplitterKafkaProperties.kafkaEnv("splitter.config.kafka.env");
+    }
+
+    String inputTopic() {
+        return SplitterKafkaProperties.string("splitter.config.kafka.input.topic", DEFAULT_INPUT_TOPIC);
+    }
+
+    String statusTopic() {
+        return SplitterKafkaProperties.string("splitter.config.kafka.status.topic", DEFAULT_STATUS_TOPIC);
+    }
+
+    String monitoringTopic() {
+        return SplitterKafkaProperties.string("splitter.config.kafka.monitoring.topic", DEFAULT_MONITORING_TOPIC);
+    }
+
+    Duration timeout() {
+        return SplitterKafkaProperties.durationSeconds("splitter.config.kafka.timeout.seconds", DEFAULT_TIMEOUT);
+    }
+
+    boolean isStatusRequired() {
+        return SplitterKafkaProperties.bool("splitter.config.kafka.status.required", false);
+    }
+
+    void sendConfig(LoadConfigRequestDto request) {
+        sendConfig(kafkaService(), request);
+    }
+
+    void sendConfig(KafkaService kafkaService, LoadConfigRequestDto request) {
+        sendJson(kafkaService, request.getMessageId(), toJson(request));
+    }
+
+    void sendRaw(String messageKey, String payload) {
+        sendRaw(kafkaService(), messageKey, payload);
+    }
+
+    void sendRaw(KafkaService kafkaService, String messageKey, String payload) {
+        sendJson(kafkaService, messageKey, payload);
+    }
+
+    private KafkaService kafkaService() {
+        return Environment.getForCurrentThread().getService(KafkaService.class);
+    }
+
+    JsonNode findStatusByConfigMessageId(KafkaService kafkaService,
+                                          String configMessageId,
+                                          long sinceEpochMillis) {
+        return findJsonNode(kafkaService,
+                statusTopic(),
+                sinceEpochMillis,
+                node -> configMessageId.equals(text(node, "configMessageId"))
+                        && "STATUS".equals(normalizedText(node, "messageType")),
+                "status by configMessageId=" + configMessageId,
+                configMessageId);
+    }
+
+    JsonNode findStatusOrMonitoringByConfigMessageId(KafkaService kafkaService,
+                                                     String configMessageId,
+                                                     String expectedStatus,
+                                                     long sinceEpochMillis,
+                                                     String... expectedMonitoringResults) {
+        if (isStatusRequired()) {
+            return findStatusByConfigMessageId(kafkaService, configMessageId, sinceEpochMillis);
+        }
+
+        List<String> monitoringResults = monitoringResultsFor(expectedStatus, expectedMonitoringResults);
+        Allure.parameter("splitter.config.kafka.status.required", "false");
+        Allure.step("Status topic check отключен: подтверждаем Kafka config load через monitoring topic "
+                + monitoringTopic());
+        return findJsonNode(kafkaService,
+                monitoringTopic(),
+                sinceEpochMillis,
+                node -> "SPLITTING_CONFIG_LOAD".equals(normalizedText(node, "function"))
+                        && monitoringResults.contains(normalizedText(node, "result"))
+                        && messageIdMatches(node, configMessageId),
+                "monitoring fallback for status=" + expectedStatus
+                        + ", results=" + monitoringResults
+                        + ", messageId/requestIdIn=" + configMessageId,
+                configMessageId);
+    }
+
+    JsonNode findMonitoringByMessageIdAndResult(KafkaService kafkaService,
+                                                String messageId,
+                                                String result,
+                                                long sinceEpochMillis) {
+        return findJsonNode(kafkaService,
+                monitoringTopic(),
+                sinceEpochMillis,
+                node -> "SPLITTING_CONFIG_LOAD".equals(normalizedText(node, "function"))
+                        && result.equals(normalizedText(node, "result"))
+                        && messageIdMatches(node, messageId),
+                "monitoring result=" + result + ", messageId/requestIdIn=" + messageId,
+                messageId);
+    }
+
+    JsonNode findMonitoringByResult(KafkaService kafkaService,
+                                    String result,
+                                    long sinceEpochMillis) {
+        return findJsonNode(kafkaService,
+                monitoringTopic(),
+                sinceEpochMillis,
+                node -> "SPLITTING_CONFIG_LOAD".equals(normalizedText(node, "function"))
+                        && result.equals(normalizedText(node, "result")),
+                "monitoring result=" + result,
+                result + "-" + sinceEpochMillis);
+    }
+
+    private void sendJson(KafkaService kafkaService, String key, String payload) {
+        String env = kafkaEnv();
+        String topic = inputTopic();
+
+        Allure.parameter("splitter.config.kafka.env", env);
+        Allure.parameter("splitter.config.kafka.inputTopic", topic);
+        Allure.addAttachment("Kafka input payload / " + topic, "application/json", payload, ".json");
+        KafkaAllureLog.sendToTopic(env, topic, key, "splitter config load");
+
+        try {
+            kafkaService.<String, String>producerClient(env)
+                    .sendRecord(topic, key, payload);
+        } catch (Exception exception) {
+            throw new AssertionError("Не удалось отправить сообщение в Kafka topic=" + topic
+                    + ", env=" + env
+                    + ". Проверь kafka_producer." + env + ".bootstrap.servers или переопредели через -Dkafka_producer."
+                    + env + ".bootstrap.servers", exception);
+        }
+    }
+
+    private JsonNode findJsonNode(KafkaService kafkaService,
+                                  String topic,
+                                  long sinceEpochMillis,
+                                  Predicate<JsonNode> predicate,
+                                  String assertionContext,
+                                  String consumerGroupKey) {
+        String env = kafkaEnv();
+        Duration timeout = timeout();
+        Allure.parameter("splitter.config.kafka.consumerEnv", env);
+        Allure.parameter("splitter.config.kafka.topic", topic);
+        Allure.parameter("splitter.config.kafka.since", String.valueOf(sinceEpochMillis));
+        Allure.parameter("splitter.config.kafka.timeout", timeout.toString());
+
+        List<String> observedPayloads = new ArrayList<>();
+        try (SplitterKafkaConsumerGroupOverride ignoredGroup =
+                     SplitterKafkaConsumerGroupOverride.apply(env, consumerGroupKey)) {
+            var consumer = kafkaService.consumerClient(env, timeout);
+            try (KafkaAllureLog.Scope ignored = KafkaAllureLog.waitingForTopic(env, topic, timeout, assertionContext)) {
+                consumer.subscribe(topic);
+                consumer.poll(Duration.ofMillis(300));
+
+                long deadline = System.currentTimeMillis() + timeout.toMillis();
+                while (System.currentTimeMillis() < deadline) {
+                    consumer.poll(Duration.ofMillis(300));
+                    List<JsonNode> matched = new ArrayList<>();
+                    consumer.records().forEach(recordWrapper -> {
+                        var record = recordWrapper.toConsumerRecord();
+                        Object raw = record.value();
+                        if (raw == null) {
+                            return;
+                        }
+                        long recordTimestamp = record.timestamp();
+                        if (recordTimestamp > 0 && recordTimestamp < sinceEpochMillis) {
+                            return;
+                        }
+
+                        String payload = unescapeUnicode(String.valueOf(raw));
+                        observedPayloads.add(payload);
+                        extractObjectNodes(payload).stream()
+                                .filter(predicate)
+                                .forEach(matched::add);
+                    });
+
+                    if (!matched.isEmpty()) {
+                        JsonNode node = matched.get(0);
+                        Allure.addAttachment("Kafka matched payload / " + assertionContext,
+                                "application/json",
+                                pretty(node),
+                                ".json");
+                        return node;
+                    }
+                }
+            } finally {
+                try {
+                    consumer.unsubscribe();
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+
+        String sample = observedPayloads.stream()
+                .limit(10)
+                .collect(Collectors.joining("\n---\n"));
+        Allure.addAttachment("Kafka observed sample / " + assertionContext,
+                "text/plain",
+                sample.isBlank() ? "No messages after since=" + sinceEpochMillis : sample,
+                ".txt");
+        fail("Не найдено Kafka-сообщение: " + assertionContext
+                + "\nTopic=" + topic
+                + "\nEnv=" + env
+                + "\nSince=" + sinceEpochMillis
+                + "\nObserved sample:\n" + sample);
+        return null;
+    }
+
+    private static String toJson(Object object) {
+        try {
+            return OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(object);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Не удалось сериализовать Kafka DTO в JSON", exception);
+        }
+    }
+
+    private static List<String> monitoringResultsFor(String expectedStatus, String... explicitResults) {
+        List<String> results = new ArrayList<>();
+        if (explicitResults != null) {
+            for (String explicitResult : explicitResults) {
+                if (explicitResult != null && !explicitResult.isBlank()) {
+                    results.add(explicitResult);
+                }
+            }
+        }
+        if (!results.isEmpty()) {
+            return results;
+        }
+        if ("CONFIG_LOADED".equals(expectedStatus)) {
+            results.add("LOADED");
+            results.add("LOADED_WITH_PRECALC");
+            return results;
+        }
+        results.add("NOT_LOADED_OLD_VERSION");
+        results.add("REQUEST_PARAMS_WITH_PRECALC_ENABLED");
+        results.add("VALIDATION_FAILED");
+        return results;
+    }
+
+    private static List<JsonNode> extractObjectNodes(String payload) {
+        List<JsonNode> result = new ArrayList<>();
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(payload);
+            collectCandidateJsonRoots(root).forEach(candidate -> collectObjectNodes(candidate, result));
+        } catch (JsonProcessingException ignored) {
+            // Не JSON или битый JSON в топике не должен ронять поиск по остальным сообщениям.
+        }
+        return result;
+    }
+
+    private static List<JsonNode> collectCandidateJsonRoots(JsonNode root) {
+        List<JsonNode> roots = new ArrayList<>();
+        roots.add(root);
+        if (root != null && root.isTextual()) {
+            parseJson(root.asText()).ifPresent(roots::add);
+        }
+        if (root != null && root.isObject()) {
+            JsonNode message = root.path("message");
+            if (message.isTextual()) {
+                parseJson(message.asText()).ifPresent(roots::add);
+            } else if (message.isObject()) {
+                roots.add(message);
+            }
+        }
+        return roots;
+    }
+
+    private static java.util.Optional<JsonNode> parseJson(String raw) {
+        try {
+            return java.util.Optional.of(OBJECT_MAPPER.readTree(raw));
+        } catch (JsonProcessingException exception) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    private static void collectObjectNodes(JsonNode node, List<JsonNode> result) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+        if (node.isObject()) {
+            result.add(node);
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                collectObjectNodes(fields.next().getValue(), result);
+            }
+        } else if (node.isArray()) {
+            node.forEach(child -> collectObjectNodes(child, result));
+        }
+    }
+
+    static String text(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+        return value.asText();
+    }
+
+    static String normalizedText(JsonNode node, String field) {
+        String raw = text(node, field);
+        if (raw == null) {
+            return null;
+        }
+        return raw.trim().replaceFirst("^'+", "");
+    }
+
+    static String textAny(JsonNode node, String... fields) {
+        for (String field : fields) {
+            String value = text(node, field);
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private static boolean messageIdMatches(JsonNode node, String messageId) {
+        return Objects.equals(messageId, text(node, "messageId"))
+                || Objects.equals(messageId, text(node, "requestIdIn"))
+                || Objects.equals(messageId, text(node, "configMessageId"));
+    }
+
+    private static String pretty(JsonNode node) {
+        try {
+            return OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(node);
+        } catch (JsonProcessingException exception) {
+            return String.valueOf(node);
+        }
+    }
+
+    private static String unescapeUnicode(String s) {
+        StringBuilder out = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); ) {
+            char c = s.charAt(i);
+            if (c == '\\' && i + 5 < s.length() && s.charAt(i + 1) == 'u') {
+                String hex = s.substring(i + 2, i + 6);
+                try {
+                    int code = Integer.parseInt(hex, 16);
+                    out.append((char) code);
+                    i += 6;
+                    continue;
+                } catch (NumberFormatException ignored) {
+                    // fallback ниже
+                }
+            }
+            out.append(c);
+            i++;
+        }
+        return out.toString();
+    }
+}
+
+

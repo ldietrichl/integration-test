@@ -1,0 +1,31 @@
+{
+  "requestId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "splittingId": "700",
+  "requestParams": [],
+  "splittingObjects": [{
+    "objectId": "1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2",
+    "objectParams": [{
+      "paramCode": "commId",
+      "paramValues": ["251234"],
+      "dataType": "INTEGER"
+    }
+    ]
+  }, {
+    "objectId": "46871f54-7d8c-40bb-8ca7-35c667e21789",
+    "objectParams": [{
+      "paramCode": "productId",
+      "paramValues": ["1-TOYOTA"],
+      "dataType": "STRING"
+    }
+    ]
+  }, {
+    "objectId": "f45e3522-ae0c-426e-948b-11a4ec96c04e",
+    "objectParams": [{
+      "paramCode": "productId",
+      "paramValues": ["2-NISSAN"],
+      "dataType": "STRING"
+    }
+    ]
+  }
+  ]
+}

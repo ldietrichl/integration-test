@@ -1,0 +1,58 @@
+{
+  "splittingPointCode": "MAPPER",
+  "expTemplateCode": "PILOT",
+  "creator": "EXPLAB-2972 regression",
+  "hypothesisDesc": "Dedicated test fixture; review dictionary values before a managed start",
+  "hashAlgorithm": "MURMURHASH",
+  "quantum": 10000,
+  "metrics": [],
+  "objectSelectConditions": [
+    {
+      "number": 1,
+      "userCondition": "cjId in (42001)",
+      "formCode": "MAPPER_OBJECT_SELECT",
+      "rules": [
+        [
+          {
+            "dataType": "INTEGER",
+            "parameterCode": "cjId",
+            "operatorCode": "in",
+            "values": [
+              "42001"
+            ]
+          }
+        ]
+      ]
+    }
+  ],
+  "experimentGroups": [
+    {
+      "name": "EXPLAB-2972 test group",
+      "symbolName": "A",
+      "shares": [
+        {
+          "shareFrom": 0,
+          "shareTo": 5000
+        }
+      ],
+      "size": 5000,
+      "baseline": true,
+      "splittingResults": [
+        {
+          "conditionNumber": 1,
+          "userResult": "actionType: 0",
+          "resultParams": [
+            {
+              "paramCode": "actionType",
+              "paramValue": [
+                "0"
+              ],
+              "dataType": "INTEGER"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "updateMetrics": false
+}

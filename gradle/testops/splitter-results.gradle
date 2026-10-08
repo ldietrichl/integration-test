@@ -1,0 +1,205 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.nio.file.Files
+import java.security.MessageDigest
+
+if (!project.ext.has('splitterRunAudit')) apply from: 'gradle/testops/run-integrity.gradle'
+
+// Mirror each completed splitter stage after the test JVM has closed Allure containers.
+// Keep run archives authoritative; never upload from a finalizer.
+def context = project.ext.platformBuildContext
+def environment = context.regressionEnvironment.toString()
+def buildRoot = layout.buildDirectory.get().asFile
+// Regression results remain separate from ordinary ticket results.
+def destination = layout.buildDirectory.dir('allure-results-splitter-rest-kafka').get().asFile
+def uploadSource = project.ext.testOpsSourceResultsDir as File
+def json = { File f -> new JsonSlurper().parse(f, 'UTF-8') }
+def hash = { File f -> MessageDigest.getInstance('SHA-256').digest(f.bytes).encodeHex().toString() }
+def checked = { File f ->
+    File current = f.absoluteFile
+    while (current != null) {
+        if (Files.isSymbolicLink(current.toPath()) || (current.exists() && current.canonicalFile != current.absoluteFile))
+            throw new GradleException("Redirected Allure path: $current")
+        current = current.parentFile
+    }
+    f
+}
+def flat = { Object value ->
+    if (!(value instanceof String) || !(value ==~ /[A-Za-z0-9][A-Za-z0-9_.-]*/) || value in ['.', '..'])
+        throw new GradleException("Invalid Allure file name: $value")
+    value
+}
+def collectStage = { String stage ->
+    File pending = checked(new File(buildRoot, "splitter-allure-mirror/${stage}.pending"))
+    pending.parentFile.mkdirs()
+    pending.setText(JsonOutput.toJson([destination: destination.canonicalPath, stage: stage, status: 'collecting']), 'UTF-8')
+    File stageRoot = checked(new File(buildRoot, "regression-results/$environment/$stage"))
+    File pointer = checked(new File(stageRoot, 'latest.txt'))
+    if (!pointer.isFile()) throw new GradleException("No splitter run: $pointer")
+    String relative = pointer.getText('UTF-8').trim().replace('\\', '/')
+    if (!(relative ==~ /runs\/[A-Za-z0-9][A-Za-z0-9_-]*/)) throw new GradleException('Invalid splitter run pointer')
+    File run = checked(new File(stageRoot, relative))
+    File summaryFile = checked(new File(run, 'summary.json'))
+    if (!summaryFile.isFile()) throw new GradleException("Incomplete splitter run: $run")
+    def summary = json(summaryFile)
+    def audit = project.ext.splitterRunAudit(checked(new File(run, 'test-results')))
+    summary.executionCompleted = audit.completed
+    summary.executorErrors = audit.executorErrors
+    summary.junitTotal = audit.total
+    summary.collectionComplete = false
+    if (!audit.completed) summary.completed = false
+    def summaryStage = checked(new File(run, 'summary-update-' + UUID.randomUUID() + '.json'))
+    summaryStage.setText(JsonOutput.prettyPrint(JsonOutput.toJson(summary)), 'UTF-8')
+    Files.move(summaryStage.toPath(), summaryFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    if (!audit.completed) throw new GradleException("Test execution incomplete: executorErrors=${audit.executorErrors.size()}; businessTests=${audit.total}; pending retained")
+    if (summary.completed != true || summary.environment != environment || summary.stage != stage || !(summary.total > 0)
+            || summary.passed + summary.failed + summary.skipped != summary.total)
+        throw new GradleException("Incomplete or inconsistent splitter summary: $summaryFile")
+    File raw = checked(new File(run, 'allure-results'))
+    def source = (raw.listFiles() ?: []).collectEntries { File f ->
+        checked(f)
+        if (!f.isFile()) throw new GradleException("Expected flat Allure results: $f")
+        [(flat(f.name)): f]
+    }
+    def results = source.findAll { name, f -> name.endsWith('-result.json') }
+    if (results.size() != summary.total) throw new GradleException('JUnit/Allure count mismatch; common results unchanged')
+    if (audit.total != summary.total || audit.statuses.passed != summary.passed || audit.statuses.failed != summary.failed || audit.statuses.skipped != summary.skipped)
+        throw new GradleException('Summary/JUnit status mismatch; common results unchanged')
+    def ids = [] as Set
+    def containerIds = [] as Set
+    Closure attachments
+    attachments = { node ->
+        if (node instanceof Map) {
+            if (node.containsKey('attachments')) {
+                if (!(node.attachments instanceof List)) throw new GradleException('Invalid Allure attachments')
+                node.attachments.each { a ->
+                    if (!(a instanceof Map) || !source.containsKey(flat(a.source)))
+                        throw new GradleException('Missing Allure attachment; common results unchanged')
+                }
+            }
+            node.values().each { attachments(it) }
+        } else if (node instanceof List) node.each { attachments(it) }
+    }
+    results.each { name, f ->
+        def result = json(f)
+        if (!result.uuid || !ids.add(result.uuid) || !(result.status in ['passed', 'failed', 'broken', 'skipped', 'unknown']))
+            throw new GradleException("Invalid or duplicate Allure result: $name")
+        attachments(result)
+    }
+    source.findAll { name, f -> name.endsWith('-container.json') }.each { name, f ->
+        def container = json(f)
+        if (!container.uuid || ids.contains(container.uuid) || !containerIds.add(container.uuid)
+                || !(container.children instanceof List) || !container.children.every { ids.contains(it) })
+            throw new GradleException("Invalid Allure container: $name")
+        attachments(container)
+    }
+    // Environment and category files belong to the common reporting setup.
+    def copies = source.findAll { name, f -> !(name in ['environment.properties', 'categories.json', 'executor.json']) }
+    def hashes = copies.collectEntries { name, f -> [(name): hash(f)] }
+    checked(destination)
+    destination.mkdirs()
+    File indexRoot = checked(new File(buildRoot, 'splitter-allure-mirror'))
+    indexRoot.mkdirs()
+    File index = checked(new File(indexRoot, "${stage}.json"))
+    File lockFile = checked(new File(indexRoot, 'publish.lock'))
+    new RandomAccessFile(lockFile, 'rw').withCloseable { handle ->
+        handle.channel.lock().withCloseable { lock ->
+            def otherOwned = [] as Set
+            (indexRoot.listFiles() ?: []).findAll { it.name.endsWith('.json') && it != index }.each { other ->
+                def record = json(checked(other))
+                if (record.environment != environment && record.files.keySet().any { new File(destination, flat(it)).exists() })
+                    throw new GradleException('Common Allure results contain another environment; clean results explicitly before switching environments')
+                otherOwned.addAll(record.files.keySet().collect { flat(it) })
+            }
+            def previous = index.isFile() ? json(index) : [files: [:]]
+            if (previous.destination && previous.destination != destination.canonicalPath)
+                throw new GradleException('Legacy regression publication points to another directory; preserve build, then start the new layout with clean. Existing results were not removed.')
+            previous.files.each { name, expected ->
+                File target = checked(new File(destination, flat(name)))
+                if (target.exists() && (!target.isFile() || hash(target) != expected))
+                    throw new GradleException("Published Allure file was modified: $target")
+            }
+            copies.each { name, f ->
+                File target = checked(new File(destination, name))
+                if (target.exists() && (!target.isFile() || hash(target) != hashes[name]))
+                    throw new GradleException("Allure file collision: $target")
+            }
+            // Stage all incoming files before touching the common directory.
+            File staging = checked(new File(indexRoot, 'incoming-' + UUID.randomUUID()))
+            staging.mkdirs()
+            try {
+                copies.each { name, f ->
+                    File staged = new File(staging, name)
+                    Files.copy(f.toPath(), staged.toPath())
+                    if (hash(staged) != hashes[name]) throw new GradleException('Allure source changed while copying')
+                }
+                if (pointer.getText('UTF-8').trim().replace('\\', '/') != relative)
+                    throw new GradleException('A new splitter run started during collection')
+                copies.each { name, f ->
+                    File target = new File(destination, name)
+                    if (!target.exists()) Files.move(new File(staging, name).toPath(), target.toPath())
+                }
+                // Remove only unchanged files previously published by this stage.
+                previous.files.each { name, expected ->
+                    if (!hashes.containsKey(name) && !otherOwned.contains(name)) Files.deleteIfExists(new File(destination, name).toPath())
+                }
+                File nextIndex = new File(staging, 'index.json')
+                nextIndex.setText(JsonOutput.prettyPrint(JsonOutput.toJson([
+                    environment: environment, stage: stage, run: relative,
+                    destination: destination.canonicalPath, resultCount: results.size(), files: hashes
+                ])), 'UTF-8')
+                Files.move(nextIndex.toPath(), index.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            } finally { project.delete(staging) }
+        }
+    }
+    logger.lifecycle("Allure common results: $stage / $relative / ${results.size()} tests -> $destination")
+    summary.collectionComplete = true
+    summaryFile.setText(JsonOutput.prettyPrint(JsonOutput.toJson(summary)), 'UTF-8')
+    Files.delete(pending.toPath())
+}
+
+def collectors = []
+['splitterRestRegression': 'splitter-rest', 'splitterKafkaRegression': 'splitter-kafka'].each { testName, stage ->
+    def collector = tasks.register("${testName}AllureResults") {
+        group = 'verification'
+        description = "Validate and copy the latest $stage results to the separate REST/Kafka regression Allure directory"
+        outputs.upToDateWhen { false }
+        mustRunAfter(testName, 'copyAllureCategories')
+        doLast { collectStage(stage) }
+    }
+    collectors.add(collector)
+    tasks.named(testName) {
+        finalizedBy(collector)
+        doFirst {
+            File pending = checked(new File(buildRoot, "splitter-allure-mirror/${stage}.pending"))
+            pending.parentFile.mkdirs()
+            pending.setText(JsonOutput.toJson([destination: destination.canonicalPath, stage: stage, status: 'running']), 'UTF-8')
+        }
+    }
+}
+// Does not rerun tests. Also permits importing the latest archived runs with the collector tasks.
+tasks.named('prepareTestOpsResults') {
+    mustRunAfter(collectors)
+    doFirst {
+        File root = checked(new File(buildRoot, 'splitter-allure-mirror'))
+        if ((root.listFiles() ?: []).findAll { it.name.endsWith('.pending') }.any { marker ->
+            // Legacy/non-JSON markers have no reliable scope: preserve the conservative guard.
+            try {
+                def state = json(checked(marker))
+                return !(state instanceof Map) || !state.destination ||
+                        new File(state.destination.toString()).canonicalFile == uploadSource.canonicalFile
+            } catch (Exception ignored) { return true }
+        })
+            throw new GradleException('Splitter Allure collection is incomplete; rerun the matching AllureResults task before TestOps upload')
+    }
+}
+tasks.matching { it.name == 'cleanTestOpsResults' }.configureEach {
+    doLast {
+        // Cleaning ticket results must not erase a pending regression or its publication index.
+        if (uploadSource.canonicalFile != destination.canonicalFile) return
+        // The selected regression raw results have been explicitly removed.
+        ['splitter-rest.json', 'splitter-kafka.json', 'splitter-rest.pending', 'splitter-kafka.pending'].each { name ->
+            Files.deleteIfExists(checked(new File(buildRoot, "splitter-allure-mirror/$name")).toPath())
+        }
+    }
+}

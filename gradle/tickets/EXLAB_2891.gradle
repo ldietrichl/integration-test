@@ -1,0 +1,77 @@
+// Optional ticket tasks, without replacing corporate build scripts.
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    def sourceSets = p.extensions.getByName('sourceSets')
+    def original = p.tasks.named('test', org.gradle.api.tasks.testing.Test).get()
+    def register = { String name, String pattern, String mode, boolean sdk, boolean fresh ->
+        p.tasks.register(name, org.gradle.api.tasks.testing.Test) { t ->
+            group = 'tickets'
+            description = 'EXLAB-2891 MAPPER: ' + name
+            dependsOn p.tasks.named('testClasses')
+            testClassesDirs = sourceSets.test.output.classesDirs
+            classpath = sourceSets.test.runtimeClasspath
+            useJUnitPlatform()
+            filter.setIncludePatterns(pattern)
+            filter.setFailOnNoMatchingTests(true)
+            maxParallelForks = 1
+            forkEvery = 0
+            systemProperties.putAll(original.systemProperties)
+            jvmArgs(original.jvmArgs)
+            System.properties.each { k, v ->
+                if (k == 'env' || k == 'file.env' || k.startsWith('stand.') || k.startsWith('splitter.') ||
+                        k.startsWith('exlab2891.') || k.startsWith('kubernetes.')) systemProperty(k, v)
+            }
+            systemProperty('file.encoding', 'UTF-8')
+            systemProperty('junit.jupiter.execution.parallel.enabled', 'false')
+            systemProperty('splitter.config.load.mode', mode)
+            systemProperty('splitter.local.splitting-point', 'MAPPER')
+            def resultsPath = name.endsWith('OfflineChecks') ? 'build/reports/exlab2891-offline/allure-results' : 'build/allure-results'
+            systemProperty('allure.results.directory', p.file(resultsPath).absolutePath)
+            systemProperty('exlab2891.sdk.enabled', sdk.toString())
+            systemProperty('exlab2891.fresh.enabled', fresh.toString())
+            if (!sdk && !fresh && !name.endsWith('OfflineChecks')) filter.excludeTestsMatching('*Fresh2891FlowTest')
+            if (sdk) {
+                def sdkPath = p.findProperty('sdk2891Classpath') ?: System.getProperty('sdk2891Classpath')
+                if (sdkPath) {
+                    def entries = sdkPath.toString().split(java.util.regex.Pattern.quote(File.pathSeparator))
+                    classpath += p.files(entries.collectMany { entry ->
+                        def file = p.file(entry)
+                        file.isDirectory() ? p.fileTree(file) { include '**/*.jar' }.files.toList() : [file]
+                    })
+                }
+                doFirst {
+                    if (!sdkPath) throw new GradleException('Provide -Psdk2891Classpath=<SDK jar and runtime dependencies directory> from the MAPPER build under test')
+                    def sdkJars = classpath.files.findAll { file ->
+                        if (!file.name.endsWith('.jar') || !file.isFile()) return false
+                        def jar = new java.util.jar.JarFile(file)
+                        try { return jar.getEntry('explab/splitter/service/SplittingService.class') != null }
+                        finally { jar.close() }
+                    }
+                    if (sdkJars.size() != 1) throw new GradleException('Expected exactly one splitter SDK, found ' + sdkJars.size())
+                    logger.lifecycle('EXLAB-2891 SDK under test: ' + sdkJars[0].name)
+                }
+            }
+            reports.junitXml.outputLocation.set(p.layout.buildDirectory.dir('test-results/' + name))
+            reports.html.outputLocation.set(p.layout.buildDirectory.dir('reports/tests/' + name))
+            outputs.upToDateWhen { false }
+        }
+    }
+    register('exlab2891MapperRest', 'ru.sber.qa.splitter.EXLAB_2891.*FlowTest', 'rest', false, false)
+    register('exlab2891MapperKafka', 'ru.sber.qa.splitter.EXLAB_2891.*FlowTest', 'kafka', false, false)
+    register('exlab2891MapperFresh', 'ru.sber.qa.splitter.EXLAB_2891.*Fresh2891FlowTest', 'rest', false, true)
+    register('exlab2891SdkChecks', 'ru.sber.qa.splitter.EXLAB_2891.*SdkTest', 'rest', true, false)
+    register('exlab2891OfflineChecks', 'ru.sber.qa.splitter.EXLAB_2891.*HarnessTest', 'rest', false, false)
+    p.tasks.named('exlab2891MapperKafka') { mustRunAfter 'exlab2891MapperRest' }
+    p.tasks.named('exlab2891MapperFresh') { mustRunAfter 'exlab2891MapperKafka', 'exlab2891MapperRest' }
+}
+
+// Local framework checks must stay outside functional raw results.
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    p.tasks.withType(org.gradle.api.tasks.testing.Test).configureEach { t ->
+        if (t.name != 'exlab2891OfflineChecks' && t.name != 'workloadArchitectureCheck')
+            t.filter.excludeTestsMatching('ru.sber.qa.splitter.EXLAB_2891.*HarnessTest')
+        if (t.name != 'workloadArchitectureCheck')
+            t.filter.excludeTestsMatching('infrastructure.kubernetes.WorkloadArchitectureTest')
+    }
+}

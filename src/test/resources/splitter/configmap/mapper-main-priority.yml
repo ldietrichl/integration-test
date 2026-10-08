@@ -1,0 +1,17 @@
+# Variant for MAIN priority tests.
+# It must be applied to the stand before running tests that validate full priority order including filtered actionType=2/4.
+# Based on mapper-current.yml. The important part is final-exp-rule.values-map.
+
+include: mapper-current.yml
+required:
+  final-exp-rule.rule-code: MAIN
+  final-exp-rule.proc-code: mapperFinalExp
+  final-exp-rule.proc-params.param-code: actionType
+  final-exp-rule.proc-params.values-map:
+    "0": 0
+    "1": 10
+    "2": 60
+    "3": 40
+    "4": 50
+    "5": 20
+    "6": 30

@@ -1,0 +1,79 @@
+{
+    "requestId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+    "splittingId": "700",
+    "requestParams": [],
+    "splittingObjects": [{
+            "objectId": "6cdf9748-a618-4e2d-aec1-c5a526eb18e6",
+            "objectParams": [{
+                    "paramCode": "commId",
+                    "paramValues": ["250524"],
+                    "dataType": "INTEGER"
+                }, {
+                    "paramCode": "modelId",
+                    "paramValues": ["8"],
+                    "dataType": "INTEGER"
+                }
+            ]
+        }, {
+            "objectId": "baa6ba3b-dd96-4029-98c7-a9f15e86b793",
+            "objectParams": [{
+                    "paramCode": "channelId",
+                    "paramValues": ["20"],
+                    "dataType": "INTEGER"
+                }, {
+                    "paramCode": "productId",
+                    "paramValues": ["2-NISSAN"],
+                    "dataType": "STRING"
+                }
+            ]
+        }, {
+            "objectId": "9360fd69-668a-46de-b7b0-ad95b5f277b6",
+            "objectParams": [{
+                    "paramCode": "cjName",
+                    "paramValues": ["КампанияТестовая"],
+                    "dataType": "STRING"
+                }, {
+                    "paramCode": "cjId",
+                    "paramValues": ["101897"],
+                    "dataType": "INTEGER"
+                }
+            ]
+        }, {
+            "objectId": "12a3397b-5c14-4a40-b55b-9a02ba5bec14",
+            "objectParams": [{
+                    "paramCode": "needId",
+                    "paramValues": ["3"],
+                    "dataType": "INTEGER"
+                }, {
+                    "paramCode": "templateId",
+                    "paramValues": ["987"],
+                    "dataType": "INTEGER"
+                }
+            ]
+        }, {
+            "objectId": "a753b85c-5359-4d52-ab38-1f52fe96f386",
+            "objectParams": [{
+                    "paramCode": "needId",
+                    "paramValues": ["3"],
+                    "dataType": "INTEGER"
+                }, {
+                    "paramCode": "templateId",
+                    "paramValues": ["987"],
+                    "dataType": "INTEGER"
+                }
+            ]
+        }, {
+            "objectId": "0c74f592-9aef-4720-ba24-3a0656ca40ac",
+            "objectParams": [{
+                    "paramCode": "segmentName",
+                    "paramValues": ["СегментТестовый"],
+                    "dataType": "STRING"
+                }, {
+                    "paramCode": "splitId",
+                    "paramValues": ["4509"],
+                    "dataType": "INTEGER"
+                }
+            ]
+        }
+    ]
+}

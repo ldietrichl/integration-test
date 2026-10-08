@@ -1,0 +1,52 @@
+// Explicit recovery only: no test task depends on releasing a cluster lock.
+// Applied by the corporate Gradle task catalog. Visible under Tasks > tickets.
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    def sources = p.extensions.getByName('sourceSets')
+    def checks = sources.create('workloadRecoveryChecks') {
+        java.srcDir 'src/workloadChecks/java'
+        java.include 'infrastructure/kubernetes/WorkloadLeaseRecoveryTest.java'
+        compileClasspath = sources.main.output + p.configurations.testCompileClasspath
+        runtimeClasspath = output + compileClasspath + p.configurations.testRuntimeClasspath
+    }
+    p.tasks.register('workloadLeaseRecoveryCheck', org.gradle.api.tasks.testing.Test) {
+        group = 'tickets'
+        description = 'Local lease recovery guard tests; no cluster connection'
+        testClassesDirs = checks.output.classesDirs
+        classpath = checks.runtimeClasspath
+        useJUnitPlatform()
+        systemProperty 'allure.results.directory', p.file('build/reports/workload-recovery/allure-results').absolutePath
+    }
+    ['explab2885InspectLease': 'inspect', 'explab2885ReleaseLease': 'release'].each { taskName, mode ->
+        p.tasks.register(taskName, JavaExec) {
+            group = 'tickets'
+            description = mode == 'inspect' ? 'EXPLAB-2885: inspect Fabric8 leases and save a read-only recovery plan' :
+                    'EXPLAB-2885: release reviewed orphan leases; requires recoveryConfirmStopped=true'
+            dependsOn p.tasks.named('classes')
+            classpath = sources.main.runtimeClasspath + p.files('src/test/resources')
+            mainClass = 'infrastructure.kubernetes.WorkloadLeaseRecoveryMain'
+            workingDir p.projectDir
+            systemProperty 'file.encoding', 'UTF-8'
+            doFirst {
+                if (mode == 'release' && p.findProperty('recoveryConfirmStopped') != 'true')
+                    throw new GradleException('Confirm all old runs stopped: -PrecoveryConfirmStopped=true; inspect the saved plan first')
+                args = [mode,
+                        p.findProperty('recoveryDeployment') ?: 'splitter-reactions-service',
+                        p.findProperty('recoveryConfigMaps') ?: 'splitter-reactions-service,splitter-reactions-service-lib',
+                        p.file(p.findProperty('recoveryPlan') ?: '.workload-recovery/EXPLAB_2885.json').absolutePath,
+                        p.findProperty('recoveryConfirmStopped') ?: 'false']
+                // Same explicitly selected stand overrides as tests; credentials stay in their configured sources.
+                System.properties.each { key, value ->
+                    if (key.toString().startsWith('stand.') || key == 'scheduler.infrastructure.enabled')
+                        systemProperty key.toString(), value.toString()
+                }
+            }
+        }
+    }
+    p.gradle.taskGraph.whenReady { graph ->
+        if (graph.hasTask(p.tasks.named('explab2885ReleaseLease').get()) &&
+                (graph.hasTask(p.tasks.named('explab2885InspectLease').get()) ||
+                 graph.allTasks.any { it instanceof org.gradle.api.tasks.testing.Test }))
+            throw new GradleException('Release must run separately, after reviewing the saved inspection plan and stopping old tests')
+    }
+}

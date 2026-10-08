@@ -1,7 +1,96 @@
 [
   {
+    "name": "Environment: Kubernetes Java trust / CA configuration",
+    "matchedStatuses": [
+      "broken",
+      "failed"
+    ],
+    "messageRegex": "(?s).*(JAVA_TRUST_ANCHORS_EMPTY|PKI_CHAIN_UNTRUSTED|JAVA_PKIX_PATH_BUILDING_FAILED|KUBECONFIG_CA_[A-Z_]+|TLS_HANDSHAKE|JAVA_TLS_FAILURE).*"
+  },
+  {
+    "name": "Environment: Kubernetes authentication / RBAC",
+    "matchedStatuses": [
+      "broken",
+      "failed"
+    ],
+    "messageRegex": "(?s).*(classification=(AUTH_REQUIRED|RBAC_FORBIDDEN)|causeCode=(AUTH_REQUIRED|RBAC_FORBIDDEN)).*"
+  },
+  {
+    "name": "Service contract: scheduler V2 ordering",
+    "matchedStatuses": [
+      "failed"
+    ],
+    "messageRegex": "(?s).*(ASC page is not monotonic|DESC page is not monotonic).*"
+  },
+  {
+    "name": "Service contract: scheduler V2 taskNumber persistence",
+    "matchedStatuses": [
+      "failed"
+    ],
+    "messageRegex": "(?s).*API/DB taskNumber mismatch COUNT must be zero.*"
+  },
+  {
+    "name": "Test configuration: ConfigMap probe",
+    "matchedStatuses": [
+      "broken"
+    ],
+    "messageRegex": "(?s).*CONFIGMAP_PROBE_(TOO_LARGE|NO_CHANGE_OR_TOO_LARGE).*"
+  },
+  {
+    "name": "Service defect: EXPLAB-2929 complete-action deserialization",
+    "matchedStatuses": [
+      "failed",
+      "broken"
+    ],
+    "traceRegex": "(?s).*CompleteAction2929FlowTest.*CompleteActionRequestDto.*|(?s).*CompleteAction2929FlowTest.*Expected status code: 200.*Actual status code: 400.*"
+  },
+  {
+    "name": "Service defect: EXPLAB-2928 status_change_element schema",
+    "matchedStatuses": [
+      "failed",
+      "broken"
+    ],
+    "traceRegex": "(?s).*StatusChangeElementSchema2928FlowTest.*"
+  },
+  {
+    "name": "Service defect: EXPLAB-2696 running ids filter",
+    "matchedStatuses": [
+      "failed",
+      "broken"
+    ],
+    "traceRegex": "(?s).*RunningSplitsV1Cache2696FlowTest.*"
+  },
+  {
+    "name": "Service defect: V2 HTTP contract expects 422",
+    "matchedStatuses": [
+      "failed",
+      "broken"
+    ],
+    "messageRegex": "(?s).*Status code validation failed.*",
+    "traceRegex": "(?s).*(ChangeExperimentV2NegativeTest|CreateExperimentV2NegativeTest|DeleteExperimentV2NegativeTest|GetExperimentV2ByIdNegativeTest).*Expected status code: 422.*Actual status code: 400.*"
+  },
+  {
+    "name": "Stand/config: MAPPER scope unavailable",
+    "matchedStatuses": [
+      "failed",
+      "broken"
+    ],
+    "traceRegex": "(?s).*CreateChangeGetDeleteExperimentV2Test.*AccessDeniedException.*|(?s).*CreateChangeGetDeleteExperimentV2Test.*Expected status code: 200.*Actual status code: 400.*"
+  },
+  {
+    "name": "Test defect: legacy V1 error message expectation",
+    "matchedStatuses": [
+      "failed",
+      "broken"
+    ],
+    "messageRegex": "(?s).*Некорректные данные.*Некорректный запрос.*"
+  },
+  {
     "name": "Ошибки поиска элементов на странице",
-    "matchedStatuses": ["broken", "failed"],
+    "matchedStatuses": [
+      "broken",
+      "failed"
+    ],
     "messageRegex": "Element not found.*"
   }
 ]

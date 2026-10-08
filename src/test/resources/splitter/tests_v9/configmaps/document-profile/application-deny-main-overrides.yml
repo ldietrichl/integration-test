@@ -1,0 +1,8 @@
+# Профиль приложения для отдельного запуска DENY-сценариев пустого MAIN.
+# Нужен для тестов с тегом requires-document-profile, когда проверяется запрет пустого MAIN.
+splitter:
+  config:
+    return-suppressed: true
+    all-rule-code-exp-enabled: true
+    empty-objects-response-enabled: true
+    allow-result-without-main: false

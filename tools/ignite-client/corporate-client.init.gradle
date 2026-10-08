@@ -1,0 +1,6 @@
+// Compatibility entry point. Both clients share one build implementation.
+gradle.beforeProject { project ->
+    if (project == project.rootProject) {
+        project.apply from: project.file('gradle/architecture/corporate-ignite.gradle')
+    }
+}

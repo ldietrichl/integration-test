@@ -1,0 +1,124 @@
+{
+  "messageId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "requestId": "58bcd4e1-a610-4121-bb9f-49316a0a434d",
+  "configVersion": "1765452688",
+  "forceConfigLoad": true,
+  "splittingPointCode": "MAPPER",
+  "splittingConfig": {
+    "experiments": [{
+      "id": 1,
+      "purpose": "DCG",
+      "layerId": null,
+      "salt": "24096d2M1e",
+      "objectSelectConditions": [{
+        "id": 1,
+        "rules":
+        [[{
+          "dataType": "INTEGER",
+          "paramCode": "commId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "not_equal",
+          "values": ["250524"]
+        }, {
+          "dataType": "INTEGER",
+          "paramCode": "modelId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "not_equal",
+          "values": ["8"]
+        }
+        ], [{
+          "dataType": "INTEGER",
+          "paramCode": "channelId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "not_equal",
+          "values": ["20"]
+        }, {
+          "dataType": "STRING",
+          "paramCode": "productId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "not_equal",
+          "values": ["2-NISSAN"]
+        }
+        ], [{
+          "dataType": "STRING",
+          "paramCode": "cjName",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "not_equal",
+          "values": ["КампанияТестовая"]
+        }, {
+          "dataType": "INTEGER",
+          "paramCode": "cjId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "not_equal",
+          "values": ["101897"]
+        }
+        ], [{
+          "dataType": "INTEGER",
+          "paramCode": "needId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "not_equal",
+          "values": ["3"]
+        }, {
+          "dataType": "INTEGER",
+          "paramCode": "templateId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "not_equal",
+          "values": ["987"]
+        }
+        ], [{
+          "dataType": "STRING",
+          "paramCode": "segmentName",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "not_equal",
+          "values": ["СегментТестовый"]
+        }, {
+          "dataType": "INTEGER",
+          "paramCode": "splitId",
+          "paramSource": "SPLITTING_OBJECTS",
+          "operatorCode": "not_equal",
+          "values": ["4509"]
+        }
+        ]
+        ]
+      }
+      ],
+      "groups": [{
+        "code": "A",
+        "shares": [{
+          "shareFrom": 0,
+          "shareTo": 5000
+        }
+        ],
+        "splittingResults": [{
+          "conditionId": 1,
+          "resultParams": [{
+            "paramCode": "actionType",
+            "paramValues": ["0"],
+            "dataType": "INTEGER"
+          }
+          ]
+        }
+        ]
+      }, {
+        "code": "B",
+        "shares": [{
+          "shareFrom": 5000,
+          "shareTo": 10000
+        }
+        ],
+        "splittingResults": [{
+          "conditionId": 1,
+          "resultParams": [{
+            "paramCode": "actionType",
+            "paramValues": ["0"],
+            "dataType": "INTEGER"
+          }
+          ]
+        }
+        ]
+      }
+      ]
+    }
+    ]
+  }
+}

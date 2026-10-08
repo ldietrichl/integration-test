@@ -1,0 +1,35 @@
+# Reference only: this file is NOT loaded automatically.
+# 1. Set env=ift (or another supported environment) in src/test/resources/test.properties.
+# 2. Copy the selected connection profile below into src/test/resources/ignite.properties.
+# 3. Put values for referenced SECURE_* names ONLY into root secure.local.override.properties.
+# Use forward slashes in paths. Replace placeholders with approved stand configuration.
+
+# ---- src/test/resources/ignite.properties (Git tracked) ----
+# ignite.ift.addresses=<IFT_HOST_1:10800,IFT_HOST_2:10800>
+# ignite.ift.username=${SECURE_IGNITE_IFT_USERNAME}
+# ignite.ift.password=${SECURE_IGNITE_IFT_PASSWORD}
+# ignite.ift.ssl.enabled=true
+# ignite.ift.ssl.key-store.path=<IFT_CLIENT_STORE_PATH>
+# ignite.ift.ssl.key-store.type=PKCS12
+# ignite.ift.ssl.key-store.password=${SECURE_IGNITE_IFT_KEYSTORE_PASSWORD}
+# ignite.ift.ssl.trust-store.path=<IFT_SERVER_TRUST_STORE_PATH>
+# ignite.ift.ssl.trust-store.type=<ACTUAL_STORE_TYPE>
+# ignite.ift.ssl.trust-store.password=${SECURE_IGNITE_IFT_TRUSTSTORE_PASSWORD}
+# ignite.ift.runtime.directory=runtime/corporate-ignite-runtimes/ignite-client/<VERIFIED_RUNTIME_SHA256>
+# ignite.ift.output.directory=build/ignite/ift
+# ignite.ift.operation-timeout-seconds=60
+
+# ---- secure.local.override.properties (NOT committed) ----
+# SECURE_IGNITE_IFT_USERNAME=<SET_ME_IFT_USERNAME>
+# SECURE_IGNITE_IFT_PASSWORD=<SET_ME_IFT_PASSWORD>
+# SECURE_IGNITE_IFT_KEYSTORE_PASSWORD=<SET_ME_IFT_KEYSTORE_PASSWORD>
+# SECURE_IGNITE_IFT_TRUSTSTORE_PASSWORD=<SET_ME_IFT_TRUSTSTORE_PASSWORD>
+
+# ---- src/test/resources/test.properties (Git tracked) ----
+# env=ift
+# data-operator.fixture.ift.enabled=false
+# data-operator.fixture.ift.output.directory=build/explab-2974-fixtures/ift
+# For data-operator fixtures select the prepared data-operator bundle in ignite.properties:
+# ignite.ift.runtime.directory=runtime/corporate-ignite-runtimes/data-operator-explab-2974/<VERIFIED_RUNTIME_SHA256>
+# Other environments use their own complete profile and SECURE_<ENV> references.
+# No JVM/Gradle/env-variable overrides of env or connection properties are supported.

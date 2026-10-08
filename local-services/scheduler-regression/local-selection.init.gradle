@@ -1,0 +1,11 @@
+// Explicit local subset. Upstream dictionary/user services and managed faults are not prepared.
+gradle.projectsEvaluated {
+    rootProject.tasks.named('schedulerLocalSmokeTest').configure {
+        filter.setIncludePatterns(*([1,2,3,4,5,6,7,93,105,106,107,108,109,110,135].collect {
+            'ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest.sch' + String.format('%03d', it)
+        } as String[]))
+        systemProperty 'allure.results.directory', rootProject.file('local-services/scheduler-regression/.runtime/api-subset/allure-results').absolutePath
+        reports.junitXml.outputLocation.set(rootProject.file('local-services/scheduler-regression/.runtime/api-subset/junit'))
+        reports.html.outputLocation.set(rootProject.file('local-services/scheduler-regression/.runtime/api-subset/test-report'))
+    }
+}
