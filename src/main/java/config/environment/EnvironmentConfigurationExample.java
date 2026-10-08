@@ -34,6 +34,7 @@ public class EnvironmentConfigurationExample extends DefaultEnvironmentConfigura
     @Override
     public @NotNull ServiceConfigurationManager getServiceConfigurations() {
         return super.getServiceConfigurations()
+                .put(ConfiguredServiceHolder.of(infrastructure.kubernetes.KubernetesWorkloadService.class))
                 .put(ConfiguredServiceHolder.of(
                         ConfigurationService.class,
                         SecureAwareConfigurationService.class,

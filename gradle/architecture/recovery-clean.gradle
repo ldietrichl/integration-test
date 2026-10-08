@@ -1,0 +1,69 @@
+import groovy.json.JsonSlurper
+import java.nio.file.Files
+
+// Cleanup is fail-closed. Never infer recovery completion from a test exit code.
+tasks.named('clean') {
+    doFirst {
+        def root = layout.buildDirectory.get().asFile
+        def buildPath = root.canonicalFile.toPath()
+        def runtimePath = project.file('runtime').canonicalFile.toPath()
+        if (runtimePath.startsWith(buildPath) || buildPath.startsWith(runtimePath)) {
+            throw new GradleException('RUNTIME_STORAGE_PROTECTED: build directory must not overlap persistent runtime storage')
+        }
+        if (!root.exists()) return
+        def blocked = []
+        def parse = { File f ->
+            try {
+                def value = new JsonSlurper().parse(f, 'UTF-8')
+                if (!(value instanceof Map)) throw new IllegalStateException('Object expected')
+                value
+            } catch (Exception ignored) {
+                blocked.add(f.toString() + ' [invalid recovery JSON]')
+                [:]
+            }
+        }
+        fileTree(root).matching {
+            include '**/scheduler-fixture-journal/**/*.json'
+            include '**/scheduler-fixture-journal/**/*.tmp'
+            include '**/fixture-manifest.json'
+            include '**/fixture-manifest.pending'
+            include '**/ownership.json'
+        }.files.each { f ->
+            if (Files.isSymbolicLink(f.toPath()) || f.name.endsWith('.pending') || f.name.endsWith('.tmp')) {
+                blocked.add(f.toString() + ' [unfinished or redirected recovery record]')
+            } else if (f.name == 'ownership.json') {
+                if (!new File(f.parentFile, 'fixture-manifest.json').isFile()) {
+                    blocked.add(f.toString() + ' [ownership without manifest]')
+                }
+            } else {
+                def state = parse(f)
+                boolean complete
+                if (f.name == 'fixture-manifest.json') {
+                    complete = state.status in ['cleaned', 'not-acquired']
+                    if (state.status == 'not-acquired' && new File(f.parentFile, 'ownership.json').exists()) {
+                        complete = false
+                    }
+                } else {
+                    complete = state.state == 'CLEANED'
+                            && state.details instanceof Map
+                            && state.details.remainingKnownParents == 0
+                            && state.details.remainingCandidateParents == 0
+                            && state.details.blockingTaskIds instanceof List
+                            && state.details.blockingTaskIds.isEmpty()
+                }
+                if (!complete) blocked.add(f.toString() + ' [recovery not confirmed]')
+            }
+        }
+        if (!blocked.isEmpty()) throw new GradleException(
+                'RECOVERY_PENDING: clean would erase recovery evidence. Finish recovery and retain a backup.\n'
+                + blocked.take(20).join('\n'))
+    }
+}
+gradle.taskGraph.whenReady { graph ->
+    if (graph.hasTask(tasks.named('clean').get()) &&
+            graph.allTasks.any { it instanceof Test || it.name in [
+                'prepareIgniteHelpers', 'prepareIgniteProbe',
+                'prepareCorporateIgniteClient', 'prepareExplab2974CorporateClient'] }) {
+        throw new GradleException('Run clean separately; never combine it with test execution or Ignite preparation.')
+    }
+}

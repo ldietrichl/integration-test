@@ -1,0 +1,109 @@
+Разбор прогона 06.10.2026 после патча v4
+
+Среда DEV, runtime metadata splitter 0.12.3. Конкретный commit/ветка по номеру
+runtime не устанавливается. Исследованы raw Allure, JUnit XML, вложения сценариев,
+архивы регрессов, summary, индексы коллектора и подготовленный manifest TestOps.
+
+Сводка уникальных выполнений (копии регрессов не учитываются повторно):
+Набор                         Всего  Passed  Failed  Broken/Skipped
+EXPLAB-2690 Coverage              49      38      11       0/0
+EXPLAB-2885 REST                  56      46      10       0/0
+EXPLAB-2885 Kafka                 56      46      10       0/0
+EXLAB-2891 MAPPER REST            26      25       1       0/0
+EXLAB-2891 MAPPER Kafka           26      25       1       0/0
+EXLAB-2891 FRESH T15/T18            1       0       1       0/0
+ИТОГО                           214     180      34       0/0
+
+Все 213 выполнений прежнего полного прогона 05.10.2026 сохранили fullName,
+имя параметризованного сценария, режим и статус. Добавился один failed FRESH.
+Это дополнительное покрытие, а не изменение статуса ранее пройденного теста.
+JUnit/raw совпадают по классам и статусам, ошибок Test Executor не обнаружено.
+
+1. Исправление T07 EXPLAB-2690 подтверждено на стенде
+
+Allure UUID c6f46ba2-fbe1-4b17-b6a2-393f4994ed4c, passed.
+Runtime metadata: REACTIONS; ConfigMap splitter-reactions-service и
+splitter-reactions-service-lib; лог pod splitter-reactions-service, COLLECTED.
+SPLITTER_ALLOW_RESULT_WITHOUT_MAIN=true, API_CONFIG_LOAD=true. config/split
+проверяют REACTIONS. MAIN содержит 269072, ALL — 269071/269072/269073/269074.
+Прежнего расхождения «запрос REACTIONS / диагностика MAPPER» в T07 больше нет.
+Доказательства: metadata 351056f8-de9a-4c2c-a944-08a44cce5e4f-attachment.txt;
+ConfigMap fcc09431-38f7-4f05-bcf5-0fa2571fada5-attachment.txt;
+pod-log 44914dbc-c238-4aad-8921-2b8b8989bd72-attachment.txt.
+
+Остальные 11 падений 2690 — прежний технический MAIN.resultExps=[] при allow=true.
+Запрет этого блока всё ещё требует решения АК: v16 стр.91 и модель v10 противоречат
+алгоритму v16 стр.96 и описанию свойства на стр.425. Это один спорный симптом,
+а не 11 независимых подтверждённых продуктовых дефектов.
+
+2. FRESH 2891: подтверждено отсутствие актуализации сохранённых объектов
+
+Сценарий EXLAB-2891-T15/T18, метод duplicateBeforeBusinessConfig.
+Allure UUID 2f3b74fa-33f2-4ae6-b28c-359f660ad46a.
+Прогон 15:58:26–16:01:22 МСК, включая подготовку/перезапуск.
+До конфигурации переданы дубликат объекта FRESH и контрольный объект CONTROL:
+objectsAdded=2, totalObjects=2, totalExps=0. Дубликат принят без ошибки.
+Затем config вернул LOADED, версия 179129168013901. Динамический объект DYNAMIC
+с подходящими параметрами вернул MAIN=101, то есть новая конфигурация работает.
+Для ранее сохранённых CONTROL и FRESH с runtime-параметрами, отличающимися от
+сохранённых, objectResults пуст вместо MAIN=101. Обе проверки достигнуты через
+assertAll и обе упали. Отсутствие актуализации касается и объекта без дубликата;
+по этому наблюдению нельзя считать дубликат установленной корневой причиной.
+В ConfigMap предрасчёт включён, REST-загрузка включена, allow-without-main=false.
+Это соответствует ранее принятому уточнению АК: таблица предрасчёта должна
+пересчитываться при поступлении новой конфигурации сплиттования.
+Доказательства: счётчики 8f06fd6f-331e-48a6-933a-f18f28d5bfdc-attachment.html;
+LOADED 5ccf80d3-c561-4bb0-b1a4-a9ce4e1ba4b5-attachment.html;
+динамический контроль 42285c97-5fd1-4ce1-857c-897ebac9167d-attachment.html;
+ответы CONTROL/FRESH 649c12c9-ecb9-4628-b1ee-0037b715111f-attachment.html и
+eda67b83-5f03-4d0c-a065-e32f70302044-attachment.html.
+
+В обычных REST/Kafka 2891 сохраняется отказ T05 objectParams=[]: HTTP 200 вместо
+ожидаемого 400. Во всех трёх сценариях дубликатов обычного набора ошибок нет.
+2885: прежние T21 (два параметра), T23, T25 (два параметра), T27/T28/T29, T34/T35
+падают в обоих режимах. Нового изменения результатов этих сценариев не выявлено.
+
+3. Каталоги и полнота доказательств
+
+build/allure-results: 102 результата (88 passed / 14 failed), без подпапок задач:
+2690 49 + 2891 REST 26 + 2891 Kafka 26 + FRESH 1.
+build/allure-results-splitter-rest-kafka: 112 (92 passed / 20 failed), только 2885.
+Эти 112 UUID/результатов полностью совпадают с двумя архивами regression-results.
+Пересечений UUID между каталогом заявок и регрессами нет. Два архива имеют
+completed=true, executionCompleted=true, collectionComplete=true; pending нет.
+
+У всех 214 выполнений есть runtime metadata, ConfigMap и текстовый pod-log.
+Все логи COLLECTED; по заголовкам mayBeTruncated=false, containerRestarted=false,
+unparsedTimestampLines=0. Потерянных вложений/детей контейнеров не обнаружено.
+Каталог заявок около 6,56 MiB; объединённый raw регрессов около 7,71 MiB.
+Архивы регрессов около 28,27 MiB включают дополнительные отчёты и логи; это не
+равно размеру payload, который будет отправлен в TestOps.
+
+4. Подготовленный пакет TestOps старше части прогонов
+
+Предоставленный testops-results/dev/manifest.json создан 06.10.2026 в 11:24:48 МСК.
+Он содержит 49 результатов 2690 (38 passed / 11 failed), а более поздние 53
+выполнения 2891 ещё не включены. UUID/статусы пакета точно совпадают с 2690 в raw,
+хеши записанных sourceFiles совпадают. Это корректный старый снимок, не потеря
+результатов при переносе каталогов. Реальная отправка по этим файлам не доказана.
+
+Для обновления и отправки всех 102 результатов заявок:
+.\gradlew.bat prepareTestOpsResults
+.\gradlew.bat testOpsUpload -PallureDryRun=true
+.\gradlew.bat testOpsUpload
+
+Обычный testOpsUpload сам зависит от prepareTestOpsResults и повторно готовит
+пакет; первую команду можно использовать для отдельного просмотра manifest.
+Регрессы 112 выгружаются отдельно:
+.\gradlew.bat prepareRegressionTestOpsResults
+.\gradlew.bat regressionTestOpsUpload -PallureDryRun=true
+.\gradlew.bat regressionTestOpsUpload
+
+Перед реальной отправкой сверить manifest. Clean и повторный запуск тестов для
+выгрузки текущих результатов не требуются. Данные исходного build при анализе
+не изменялись; новых стендовых операций и отправки в TestOps не выполнялось.
+
+Дополнительно: на локальной копии выполнен настоящий prepareTestOpsResults
+из перенесённых модулей v4. Подготовлены все 102 результата заявок: 88 passed,
+14 failed. Отправка не запускалась, предоставленный пакет из 49 файлов результатов
+не перезаписывался.

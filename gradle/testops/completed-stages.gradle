@@ -1,0 +1,167 @@
+import groovy.json.JsonSlurper
+import groovy.json.JsonOutput
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
+
+// Explicitly selected COMPLETE stages. Never remove pending markers or modify raw evidence.
+def p = project
+def ctx = p.ext.platformBuildContext
+def env = ctx.regressionEnvironment.toString()
+def build = p.layout.buildDirectory.get().asFile
+def specs = [
+    'splitter-rest': [task: 'splitterRestRegression', mode: 'rest', archive: 'splitter-rest'],
+    'splitter-kafka': [task: 'splitterKafkaRegression', mode: 'kafka', archive: 'splitter-kafka'],
+    'mapper-rest': [task: 'exlab2891MapperRest', mode: 'rest', raw: 'allure-results', ticket: 'EXLAB_2891'],
+    'mapper-kafka': [task: 'exlab2891MapperKafka', mode: 'kafka', raw: 'allure-results', ticket: 'EXLAB_2891'],
+    '2690-core': [task: 'explab2690Coverage', mode: 'rest', raw: 'allure-results', legacyRaw: 'allure-results/explab2690Coverage', ticket: 'EXPLAB_2690']
+]
+def hash = { File f -> MessageDigest.getInstance('SHA-256').digest(f.bytes).encodeHex().toString() }
+def check = { File f -> ctx.artifactUnredirected.invoke(f) }
+def json = { File f -> new JsonSlurper().parse(check(f), 'UTF-8') }
+def flat = { String name ->
+    if (!(name ==~ /[A-Za-z0-9][A-Za-z0-9_.-]*/)) throw new GradleException('Invalid Allure filename')
+    name
+}
+def output = new File(build, "completed-testops/$env")
+def prepare = tasks.register('prepareCompletedTestOpsResults') {
+    group = 'tickets'
+    description = 'Validate explicit -PtestOpsCompletedStages and prepare only completed runs; keep incomplete runs intact'
+    outputs.upToDateWhen { false }
+    doLast {
+        def requested = (p.findProperty('testOpsCompletedStages') ?: '').toString().split(',').findAll { it }
+        if (!requested || requested.toSet().size() != requested.size() || !specs.keySet().containsAll(requested))
+            throw new GradleException('Select completed stages explicitly: -PtestOpsCompletedStages=splitter-rest,mapper-rest,mapper-kafka (also splitter-kafka,2690-core)')
+        check(output)
+        output.parentFile.mkdirs()
+        new RandomAccessFile(new File(output.parentFile, ".${env}.lock"), 'rw').withCloseable { handle ->
+            def lock = handle.channel.tryLock()
+            if (lock == null) throw new GradleException('Another completed TestOps preparation is active')
+            lock.withCloseable {
+                def copies = [:]
+                def sourceHashes = [:]
+                def included = []
+                def excluded = []
+                specs.each { key, spec ->
+                    if (!requested.contains(key)) {
+                        excluded.add([stage: key, reason: 'not selected', pending: new File(build, "splitter-allure-mirror/${key}.pending").isFile()])
+                        return
+                    }
+                    File raw, xml
+                    String runId
+                    def guardFiles = []
+                    if (spec.archive) {
+                        def root = new File(build, "regression-results/$env/${spec.archive}")
+                        def pointer = check(new File(root, 'latest.txt'))
+                        String relative = pointer.getText('UTF-8').trim()
+                        if (!(relative ==~ /runs\/[A-Za-z0-9][A-Za-z0-9_-]*/)) throw new GradleException('Invalid run pointer')
+                        def run = check(new File(root, relative))
+                        def summaryFile = new File(run, 'summary.json')
+                        def summary = json(summaryFile)
+                        if (summary.completed != true || summary.environment != env || summary.stage != key)
+                            throw new GradleException("Incomplete selected stage: $key")
+                        raw = check(new File(run, 'allure-results')); xml = check(new File(run, 'test-results'))
+                        runId = relative
+                        guardFiles.addAll([pointer, summaryFile])
+                    } else {
+                        raw = check(new File(build, spec.raw)); xml = check(new File(build, "test-results/${spec.task}"))
+                        runId = 'junit-sha256:'
+                    }
+                    def audit = p.ext.splitterRunAudit(xml)
+                    if (!audit.completed) throw new GradleException("Incomplete selected stage $key: executor errors=${audit.executorErrors.size()}, XML suites=${audit.suites.size()}")
+                    guardFiles.addAll(audit.files)
+                    if (!spec.archive) runId += MessageDigest.getInstance('SHA-256').digest(audit.files.collect { hash(it) }.join().getBytes('UTF-8')).encodeHex().toString()
+                    guardFiles.each { sourceHashes[it] = hash(it) }
+                    // Accept the old ticket folder during migration, but never choose one source silently.
+                    def sources = [raw]
+                    if (spec.legacyRaw) {
+                        def legacy = check(new File(build, spec.legacyRaw))
+                        if (legacy.isDirectory()) sources.add(legacy)
+                    }
+                    def all = [:]
+                    sources.each { dir ->
+                        (dir.listFiles() ?: []).findAll { it.isFile() }.each { f ->
+                            check(f)
+                            if (all.containsKey(f.name)) throw new GradleException("Duplicate Allure filename across current/legacy sources: ${f.name}")
+                            all[f.name] = f
+                        }
+                    }
+                    def results = [:]
+                    all.findAll { name, f -> name.endsWith('-result.json') }.each { name, f ->
+                        def j = json(f)
+                        def labels = j.labels ?: []
+                        def mode = (j.parameters ?: []).find { it.name == 'splitter.config.load.mode' }?.value ?: labels.find { it.name == 'splitterConfigLoadMode' }?.value
+                        def clazz = labels.find { it.name == 'testClass' }?.value
+                        boolean inWindow = audit.suites.any { s -> s.classes.containsKey(clazz) && j.start >= s.start - 1000 && j.stop <= s.end + 1000 }
+                        if (mode == spec.mode && (spec.archive || (j.fullName?.contains(spec.ticket) && inWindow))) results[name] = j
+                    }
+                    def actual = [passed: 0, failed: 0, skipped: 0]
+                    results.values().each { j -> actual[j.status in ['failed','broken'] ? 'failed' : j.status] = (actual[j.status in ['failed','broken'] ? 'failed' : j.status] ?: 0) + 1 }
+                    if (results.size() != audit.total || actual != audit.statuses) throw new GradleException("Selected stage $key JUnit/Allure mismatch: ${audit.total}/${results.size()}; no upload")
+                    def actualClasses = results.values().countBy { j -> j.labels.find { it.name == 'testClass' }?.value }
+                    def expectedClasses = [:].withDefault { 0 }; audit.suites.each { s -> s.classes.each { c, n -> expectedClasses[c] += n } }
+                    if (actualClasses != expectedClasses) throw new GradleException("Selected stage $key test class mismatch")
+                    def ids = results.values().collect { it.uuid }.toSet()
+                    if (ids.size() != results.size()) throw new GradleException("Duplicate test UUIDs in $key")
+                    def selected = new LinkedHashSet(results.keySet())
+                    Closure attachments
+                    attachments = { node ->
+                        if (node instanceof Map) {
+                            (node.attachments ?: []).each { a -> selected.add(flat(a.source.toString())) }
+                            node.values().each { attachments(it) }
+                        } else if (node instanceof List) node.each { attachments(it) }
+                    }
+                    results.values().each { attachments(it) }
+                    all.findAll { name, f -> name.endsWith('-container.json') }.each { name, f ->
+                        def c = json(f)
+                        if ((c.children ?: []).any { ids.contains(it) }) {
+                            if (!c.children.every { ids.contains(it) }) throw new GradleException("Container crosses selected runs: $name")
+                            selected.add(name); attachments(c)
+                        }
+                    }
+                    selected.each { name ->
+                        if (!all[name]) throw new GradleException("Missing selected attachment: $name")
+                        def digest = hash(all[name])
+                        if (copies[name] && hash(copies[name]) != digest) throw new GradleException("File collision: $name")
+                        copies[name] = all[name]; sourceHashes[all[name]] = digest
+                    }
+                    included.add([stage: key, task: spec.task, runId: runId, total: results.size(), statuses: actual, resultUuids: ids.sort()])
+                }
+                // Independent build directory prevents the shared validator from replacing a previous normal bundle.
+                def scratch = new File(build, 'completed-testops-staging/' + UUID.randomUUID())
+                check(scratch); def raw = new File(scratch, 'raw'); raw.mkdirs()
+                try {
+                    copies.each { name, f -> Files.copy(f.toPath(), new File(raw, name).toPath()) }
+                    copies.each { name, f -> if (hash(new File(raw, name)) != sourceHashes[f]) throw new GradleException('Copied source checksum mismatch') }
+                    sourceHashes.each { f, digest -> if (!f.isFile() || hash(f) != digest) throw new GradleException('Source changed during selection') }
+                    // Shared strict validator, same checks as prepareTestOpsResults. The project build directory is never reassigned.
+                    def validationRoot = new File(scratch, 'validated')
+                    def actions = ctx.selectedArtifactActionsAt.invoke(env, raw, validationRoot)
+                    actions.first.invoke()
+                    def validated = new File(validationRoot, env)
+                    def staged = new File(scratch, 'bundle'); staged.mkdirs()
+                    p.copy { from new File(validated, 'allure-results'); into new File(staged, 'allure-results') }
+                    new File(validated, 'allure-results').listFiles().each { f ->
+                        if (!f.isFile() || hash(f) != hash(new File(staged, 'allure-results/' + f.name))) throw new GradleException('Validated bundle checksum mismatch')
+                    }
+                    def manifest = [environment: env, selectionOnly: true, included: included, excluded: excluded,
+                        total: included.sum { it.total }, sourceFiles: sourceHashes.collect { f, h -> [path: f.absolutePath, sha256: h] }]
+                    new File(staged, 'manifest.json').setText(JsonOutput.prettyPrint(JsonOutput.toJson(manifest)), 'UTF-8')
+                    sourceHashes.each { f, digest -> if (!f.isFile() || hash(f) != digest) throw new GradleException('Source changed before publication') }
+                    def backup = new File(scratch, 'previous')
+                    if (output.exists()) Files.move(output.toPath(), backup.toPath())
+                    try { Files.move(staged.toPath(), output.toPath()) }
+                    catch (Exception error) { if (backup.exists()) Files.move(backup.toPath(), output.toPath()); throw error }
+                    logger.lifecycle("Prepared ${manifest.total} tests from ${requested.join(', ')}; omitted stages are listed in ${new File(output,'manifest.json')}; pending markers preserved")
+                } finally { p.delete(scratch) }
+            }
+        }
+    }
+}
+ctx.registerTestOpsUploadTask.invoke('completedTestOpsUpload', 'tickets', 'prepareCompletedTestOpsResults',
+        ({ new File(output, 'allure-results') } as kotlin.jvm.functions.Function0), 'SELECTED COMPLETED STAGES', false)
+gradle.taskGraph.whenReady { graph ->
+    if (graph.hasTask(prepare.get()) && graph.allTasks.any { it instanceof org.gradle.api.tasks.testing.Test ||
+            it.name in ['clean','cleanTestOpsResults','prepareTestOpsResults','testOpsUpload'] })
+        throw new GradleException('Completed-stage export must run separately from tests, cleanup and normal upload')
+}

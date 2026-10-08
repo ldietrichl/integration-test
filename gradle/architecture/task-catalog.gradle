@@ -1,0 +1,5 @@
+// Shared lifecycle and ticket entry points.
+apply from: 'gradle/tickets/EXPLAB_2885-recovery.gradle'
+apply from: 'gradle/tickets/splitter-reliability.gradle'
+apply from: 'gradle/tickets/EXPLAB_2885-local-checks.gradle'
+apply from: 'gradle/tickets/EXLAB_2891.gradle'

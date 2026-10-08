@@ -1,0 +1,5 @@
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    if (!p.tasks.findByName('exlab2891MapperRest'))
+        throw new GradleException('EXLAB-2891 tasks must be registered by gradle/architecture/task-catalog.gradle')
+}

@@ -7,12 +7,14 @@ import util.support.SplitterRuntimeMetadata;
 
 public abstract class AbstractNewSplitterFlowTest extends Flows {
 
+    protected String runtimeSplittingPoint() { return SplitterRuntimeMetadata.splittingPoint(); }
+
     @BeforeEach
     void writeSplitterRuntimeMetadataToAllure() {
         Allure.addAttachment(
                 "Splitter runtime metadata",
                 "text/plain",
-                SplitterRuntimeMetadata.summary(),
+                SplitterRuntimeMetadata.summary(runtimeSplittingPoint()),
                 ".txt");
     }
 }

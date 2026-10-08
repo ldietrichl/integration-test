@@ -79,3 +79,6 @@ secure.*.override.properties
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Private workload recovery state and diagnostics
+.workload-recovery/

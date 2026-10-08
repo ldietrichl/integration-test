@@ -2,15 +2,14 @@ package util.support;
 
 import config.services.core.RestEndpointResolver;
 import config.services.core.RestServiceEndpoint;
+import config.services.rest.RestMtlsConfiguration;
 import io.restassured.RestAssured;
 import io.restassured.config.RestAssuredConfig;
-import io.restassured.config.SSLConfig;
 import io.restassured.response.Response;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 import static constants.Endpoints.Splitter.SPLITTER_CONFIG;
 import static constants.Endpoints.Splitter.SPLITTER_PRECALCULATE;
 import static constants.Endpoints.Splitter.SPLITTER_REACTIONS_CONFIG;
@@ -56,37 +55,45 @@ public final class SplitterRuntimeMetadata {
     }
 
     public static String summary() {
+        return summary(splittingPoint());
+    }
+
+    public static String summary(String point) {
+        return summary(point, url -> CACHED_VERSIONS.computeIfAbsent(url, SplitterRuntimeMetadata::requestVersion));
+    }
+
+    static String summary(String point, java.util.function.Function<String, String> versions) {
+        boolean reactions = switch (point) {
+            case "MAPPER" -> false;
+            case "REACTIONS" -> true;
+            default -> throw new IllegalArgumentException("Unknown splitting point: " + point);
+        };
+        String base = RestEndpointResolver.baseUri(reactions
+                ? RestServiceEndpoint.SPLITTER_REACTIONS : RestServiceEndpoint.SPLITTER_MAPPER);
+        String versionUrl = base + (reactions ? SPLITTER_REACTIONS_VERSION : SPLITTER_VERSION);
         return "splitter.environment=" + environment() + System.lineSeparator()
-                + "splitter.splittingPoint=" + splittingPoint() + System.lineSeparator()
-                + "splitter.url=" + splitterBaseUri() + System.lineSeparator()
-                + "splitter.version=" + version() + System.lineSeparator()
-                + "splitter.versionUrl=" + versionUrl() + System.lineSeparator()
-                + "splitter.configUrl=" + configUrl() + System.lineSeparator()
-                + "splitter.splitUrl=" + splitUrl() + System.lineSeparator()
-                + "splitter.precalculateUrl=" + precalculateUrl();
+                + "splitter.splittingPoint=" + point + System.lineSeparator()
+                + "splitter.url=" + base + System.lineSeparator()
+                + "splitter.version=" + versions.apply(versionUrl) + System.lineSeparator()
+                + "splitter.versionUrl=" + versionUrl + System.lineSeparator()
+                + "splitter.configUrl=" + base + (reactions ? SPLITTER_REACTIONS_CONFIG : SPLITTER_CONFIG) + System.lineSeparator()
+                + "splitter.splitUrl=" + base + (reactions ? SPLITTER_REACTIONS_SPLIT : SPLITTER_SPLIT) + System.lineSeparator()
+                + "splitter.precalculateUrl=" + base + (reactions ? SPLITTER_REACTIONS_PRECALCULATE : SPLITTER_PRECALCULATE);
     }
 
     public static String version() {
-        return CACHED_VERSIONS.computeIfAbsent(versionUrl(), ignored -> requestVersion());
+        return CACHED_VERSIONS.computeIfAbsent(versionUrl(), SplitterRuntimeMetadata::requestVersion);
     }
 
-    private static String requestVersion() {
+    private static String requestVersion(String url) {
         try {
-            RestAssuredConfig restAssuredConfig = new RestAssuredConfig();
-            if (!"local".equals(environment())) {
-                restAssuredConfig = restAssuredConfig.sslConfig(
-                        new SSLConfig()
-                                .keyStore("src/test/resources/keystore.p12", TEST_CONFIG.keystorePass())
-                                .keystoreType("PKCS12")
-                                .relaxedHTTPSValidation());
-            }
+            RestAssuredConfig restAssuredConfig = RestMtlsConfiguration.apply(new RestAssuredConfig());
 
             Response response = RestAssured.given()
                     .config(restAssuredConfig)
-                    .baseUri(splitterBaseUri())
                     .accept("*/*")
                     .when()
-                    .get(versionPath());
+                    .get(url);
 
             if (response.statusCode() != 200) {
                 return "unavailable(status=" + response.statusCode() + ")";

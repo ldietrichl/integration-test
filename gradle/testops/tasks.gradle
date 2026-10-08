@@ -1,0 +1,8 @@
+// Reporting tasks share one preparation/validation/uploader implementation.
+apply from: 'gradle/testops/upload.gradle.kts'
+apply from: 'gradle/testops/scheduler.gradle.kts'
+apply from: 'gradle/testops/results.gradle.kts'
+apply from: 'gradle/testops/run-integrity.gradle'
+apply from: 'gradle/testops/splitter-results.gradle'
+apply from: 'gradle/testops/completed-stages.gradle'
+apply from: 'gradle/testops/layout-check.gradle'
