@@ -20,13 +20,39 @@ public interface DbCustomFlow {
     }
 
     default <R> R dbExpLabManuallyStartClient(Function<DatabaseClient, R> dbRequest) {
-        Environment env = Environment.createForCurrentThread(new EnvironmentSpecialConfigWithDb()).init();
-        env.beforeTest();
-        DatabaseClient dbClient = env.getService(DatabaseService.class).dataBaseClient("explab");
-        R dbResponse = dbRequest.apply(dbClient);
-        env.afterTest();
-        env.shutdown();
-
-        return dbResponse;
+        Environment env = Environment.createForCurrentThread(new EnvironmentSpecialConfigWithDb());
+        boolean beforeTestCompleted = false;
+        Throwable primary = null;
+        try {
+            env.init();
+            env.beforeTest();
+            beforeTestCompleted = true;
+            return dbRequest.apply(env.getService(DatabaseService.class).dataBaseClient("explab"));
+        } catch (RuntimeException | Error failure) {
+            primary = failure;
+            throw failure;
+        } finally {
+            Throwable cleanup = null;
+            try {
+                if (beforeTestCompleted) env.afterTest();
+            } catch (RuntimeException | Error failure) {
+                cleanup = failure;
+            }
+            try {
+                env.shutdown();
+            } catch (RuntimeException | Error failure) {
+                if (cleanup == null) cleanup = failure;
+                else if (failure != cleanup) cleanup.addSuppressed(failure);
+            }
+            if (cleanup != null) {
+                if (primary != null) {
+                    if (primary != cleanup) primary.addSuppressed(cleanup);
+                } else if (cleanup instanceof RuntimeException failure) {
+                    throw failure;
+                } else {
+                    throw (Error) cleanup;
+                }
+            }
+        }
     }
 }

@@ -27,10 +27,10 @@
 
 ## Артефакты
 
-- [Результат итогового прогона](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-20260907-194301-671/analysis.json).
-- [Манифест окружения и сборки](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-20260907-194301-671/run-manifest.json).
-- [Все HTTP-ответы и вердикты](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-20260907-194301-671/results-with-http.json).
-- [22 существующие unit-проверки](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/framework-checks-45361a08/tests.log).
+- [Результат итогового прогона](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-20260907-194301-671/analysis.json).
+- [Манифест окружения и сборки](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-20260907-194301-671/run-manifest.json).
+- [Все HTTP-ответы и вердикты](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-20260907-194301-671/results-with-http.json).
+- [22 существующие unit-проверки](<workspace>/BACK/06_temp_work/explab-2974-compatible/framework-checks-45361a08/tests.log).
 - [Allure](http://127.0.0.1:18086/).
 - [Актуальные команды и устройство стенда](../../../../local-services/data-operator-explab-2974/README.md).
 

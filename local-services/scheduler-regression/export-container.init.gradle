@@ -1,0 +1,19 @@
+// Export the real project's resolved runtime, not substitute framework dependencies.
+allprojects { p ->
+    afterEvaluate {
+        if (p.plugins.hasPlugin('java')) {
+            p.tasks.register('schedulerExportContainerRuntime') {
+                dependsOn p.tasks.named('testClasses')
+                doLast {
+                    def out = p.file('local-services/scheduler-regression/.runtime/full-stack/jars')
+                    out.mkdirs()
+                    p.configurations.testRuntimeClasspath.files.findAll { it.isFile() }.eachWithIndex { file, index ->
+                        p.copy { from file; into out; rename { String.format('%04d-', index) + file.name } }
+                    }
+                    p.file('local-services/scheduler-regression/.runtime/full-stack/runtime-origin.txt').text =
+                        'Gradle ' + gradle.gradleVersion + '\n' + p.configurations.testRuntimeClasspath.files.join('\n')
+                }
+            }
+        }
+    }
+}

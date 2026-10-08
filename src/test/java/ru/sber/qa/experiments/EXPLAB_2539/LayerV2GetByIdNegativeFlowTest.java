@@ -38,7 +38,7 @@ public class LayerV2GetByIdNegativeFlowTest extends Flows {
                                         JsonMatchers.haveNotBlankJsonValue("id"),
                                         JsonMatchers.haveJsonValue("message",
                                                 TextConditions.equalToText("Слой с id=" + missingLayerId + " не найден")),
-                                        JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                        JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                                 ))
                 .run();
     }
@@ -57,7 +57,7 @@ public class LayerV2GetByIdNegativeFlowTest extends Flows {
                                         JsonMatchers.haveNotBlankJsonValue("id"),
                                         JsonMatchers.haveJsonValue("message",
                                                 TextConditions.equalToText("Некорректный запрос")),
-                                        JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                        JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                                 ))
                 .run();
     }

@@ -82,3 +82,19 @@ desktop.ini
 
 # Private workload recovery state and diagnostics
 .workload-recovery/
+
+# Local work, dependency caches and generated artifacts
+/.local-work/
+/.gradle-*/
+/tmp/
+/artifacts/
+/patch-backups/
+**/__pycache__/
+*.pyc
+/AGENTS*.md
+/.agents/
+/.codex/
+/gradle/offline-maven/
+
+# Public certificate fixture for the isolated loopback API checks.
+!src/test/resources/kubernetes/contract-ca.pem

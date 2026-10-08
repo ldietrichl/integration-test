@@ -1,6 +1,29 @@
 package constants;
 
 public class Endpoints {
+    public static class Scheduler {
+        public static final String V1_TASK = "/api/v1/schedule/task";
+        public static final String V1_HISTORY = "/api/v1/schedule/tasks-history";
+        public static final String V1_OBJECTS = V1_TASK + "/objects";
+        public static final String V1_DELETE = V1_TASK + "/delete";
+        public static final String V2_TASK = "/api/v2/schedule/task";
+        public static final String V2_TASKS = "/api/v2/schedule/tasks";
+        public static final String V2_DELETE = V2_TASK + "/object/delete-planned";
+    }
+    public static class User {
+        private static final String BASE = "/api/v2/users";
+
+        public static final String USERS = BASE;
+        public static final String USER_BY_ID = BASE + "/{id}";
+        public static final String AUDIT = BASE + "/audit";
+        public static final String AUDIT_BY_SUB = AUDIT + "/{sub}";
+        public static final String PERMISSIONS = BASE + "/permissions";
+        public static final String PERMISSIONS_FRONT = BASE + "/permissions/front";
+        public static final String BY_SUBS = BASE + "/subs";
+        public static final String BY_ROLE = BASE + "/by-role";
+        public static final String BY_EMPLOYEE_IDS = BASE + "/by-employee-ids";
+    }
+
     public static class ExperimentsV1 {
         public static final String V1_EXPERIMENTS = "/api/v1/experiments";
         public static final String V1_EXPERIMENTS_ID = "/api/v1/experiments/%s";

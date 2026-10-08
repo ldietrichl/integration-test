@@ -1,10 +1,9 @@
 package config.services.db;
 
-import org.aeonbits.owner.ConfigFactory;
+import config.services.core.TestConfigurationFiles;
 import config.services.core.TestEnvironment;
 import ru.sber.qa.services.configuration.scope.ConfigScope;
 
-import java.util.Map;
 import java.util.Properties;
 
 public class CustomDatabaseConfigScope implements ConfigScope {
@@ -17,27 +16,16 @@ public class CustomDatabaseConfigScope implements ConfigScope {
 
     @Override
     public Properties getProperties() {
-        Properties properties = new Properties();
-        CustomDatabaseConfig config = ConfigFactory.create(
-                CustomDatabaseConfig.class
-                , Map.of(
-                        "name", databaseName,
-                        "selectedTestEnvironment", dbEnv(TestEnvironment.current())));
-        properties.put("url", valueOrEmpty(config.url()));
-        properties.put("login", valueOrEmpty(config.login()));
-        properties.put("password", valueOrEmpty(config.password()));
-        properties.put("timeout.in.seconds", valueOrEmpty(config.timeoutInSeconds()));
-        return properties;
+        return selectedProperties(TestConfigurationFiles.load("database.properties"), TestEnvironment.current(), databaseName);
     }
 
-    private String dbEnv(String env) {
-        if ("ift-dm".equals(env) || "eift-dm".equals(env) || "eift".equals(env)) {
-            return "ift";
+    static Properties selectedProperties(Properties source, String environment, String databaseName) {
+        String prefix = "db." + TestEnvironment.normalize(environment) + "." + databaseName + ".";
+        Properties selected = new Properties();
+        for (String key : new String[]{"url", "login", "password", "timeout.in.seconds", "connection.pool.size"}) {
+            String value = source.getProperty(prefix + key);
+            if (value != null) selected.setProperty(key, value);
         }
-        return env;
-    }
-
-    private String valueOrEmpty(String value) {
-        return value == null ? "" : value;
+        return selected;
     }
 }

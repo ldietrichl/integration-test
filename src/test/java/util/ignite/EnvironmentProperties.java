@@ -2,40 +2,42 @@ package util.ignite;
 
 import config.services.core.SecurePropertyResolver;
 import config.services.core.TestConfigurationFiles;
+import io.perfeccionista.framework.Environment;
+import ru.sber.qa.services.configuration.ConfigurationService;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.function.Function;
-import static config.services.core.SecureLocalConfigScope.SECURE_LOCAL_CONFIG;
 
-/** Reads one fully qualified key. A present blank value masks lower-priority sources. */
+/** Reads non-secret settings from the named project file; placeholders resolve through the secure overlay. */
 public final class EnvironmentProperties {
-    private final Function<String, String> system;
-    private final Function<String, String> environment;
-    private final Function<String, String> secure;
     private final Properties resource;
     private final Function<String, String> resolver;
+    private final boolean allowFixtureSwitches;
 
     public EnvironmentProperties() {
-        this(System::getProperty, System::getenv, SECURE_LOCAL_CONFIG::getProperty,
-                loadResource(), SecurePropertyResolver::resolve);
+        this("test.properties");
     }
 
-    EnvironmentProperties(Function<String, String> system, Function<String, String> environment,
-                          Function<String, String> secure, Properties resource,
-                          Function<String, String> resolver) {
-        this.system = system;
-        this.environment = environment;
-        this.secure = secure;
+    public EnvironmentProperties(String resource) {
+        this(TestConfigurationFiles.load(resource), EnvironmentProperties::resolveSelectedValue, resource.equals("test.properties"));
+    }
+
+    EnvironmentProperties(Properties resource, Function<String, String> resolver) {
+        this(resource, resolver, false);
+    }
+
+    EnvironmentProperties(Properties resource, Function<String, String> resolver, boolean allowFixtureSwitches) {
         this.resource = resource;
         this.resolver = resolver;
+        this.allowFixtureSwitches = allowFixtureSwitches;
     }
 
     public String raw(String key) {
-        String value = system.apply(key);
-        if (value == null) value = environment.apply(environmentName(key));
-        if (value == null) value = secure.apply(key);
-        if (value == null) value = resource.getProperty(key);
-        return value;
+        if (allowFixtureSwitches && key.matches("(?:data-operator\\.fixture|links\\.fixture)\\.(?:dev|ift|ift-dm|lt|local)\\.(?:enabled|output\\.directory|run-id)")) {
+            String generated = System.getProperty(key);
+            if (generated != null) return generated;
+        }
+        return resource.getProperty(key);
     }
 
     public String optional(String key) {
@@ -53,7 +55,11 @@ public final class EnvironmentProperties {
         return key.replaceAll("[^A-Za-z0-9]", "_").toUpperCase(Locale.ROOT);
     }
 
-    private static Properties loadResource() {
-        return TestConfigurationFiles.load("test.properties");
+    private static String resolveSelectedValue(String value) {
+        if (!Environment.existForCurrentThread()) return SecurePropertyResolver.resolve(value);
+        Properties selected = new Properties();
+        selected.setProperty("value", value);
+        return Environment.getForCurrentThread().getService(ConfigurationService.class)
+                .getProperties(() -> selected).getProperty("value");
     }
 }

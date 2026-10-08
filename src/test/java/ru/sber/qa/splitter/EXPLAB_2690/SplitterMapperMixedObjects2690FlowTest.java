@@ -1,8 +1,9 @@
 package ru.sber.qa.splitter.EXPLAB_2690;
+import steps.flow.splitter.workedgroup.MapperMixedObjectsSteps;
 
 import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
-import dto.splitter.config.ExperimentDto;
+
 import dto.splitter.config.LoadConfigRequestDto;
 import dto.splitter.split.SplitRequestDto;
 import io.perfeccionista.framework.SetEnvironmentConfiguration;
@@ -18,18 +19,14 @@ import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import ru.sber.qa.splitter.support.SplitterTestProfileOnly;
 import util.support.SplitterVersionProvider;
 
-import java.util.List;
-
 @ExtendWith(PerfeccionistaExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("EXPLAB-2690. MAPPER: независимая обработка смешанного набора объектов")
 @AnyConfigLoadMode
-public class SplitterMapperMixedObjects2690FlowTest extends AbstractExplab2690FlowTest {
-
-    private static final String NO_MAIN_OBJECT_ID = "26900000-0000-0000-0000-000000000005";
-    private static final String UNLINKED_OBJECT_ID = "26900000-0000-0000-0000-000000000006";
+@org.junit.jupiter.api.Order(10)
+public class SplitterMapperMixedObjects2690FlowTest extends MapperMixedObjectsSteps {
 
     @CriticalRegression
     @Test
@@ -49,22 +46,21 @@ public class SplitterMapperMixedObjects2690FlowTest extends AbstractExplab2690Fl
                         flow -> loadConfig(flow, EndpointMode.MAPPER, config))
                 .step("Проверяем независимый REST-результат без target-contract альтернативы", flow -> {
                     ValidatableResponseWrapper response = split(flow, EndpointMode.MAPPER, request);
-                    assertBasicResponseContract(response, request, version);
-                    assertSplittingResultsHaveUniqueObjectIds(response);
-
+                    org.junit.jupiter.api.Assertions.assertAll("Independent object contracts",
+                    () -> assertBasicResponseContract(response, request, version),
+                    () -> {
                     assertResultExp(response, LEFT_OBJECT_ID, "MAIN", 269011L, 1,
                             "A", "A", "1", "101");
                     assertResultExp(response, LEFT_OBJECT_ID, "ALL", 269011L, 1,
                             "A", "A", "1", "101");
                     assertMainHasNoExpFlags(response, LEFT_OBJECT_ID);
-
-                    assertObjectHasStrictlyEmptyResult(response, NO_MAIN_OBJECT_ID);
-                    assertRuleAbsent(response, NO_MAIN_OBJECT_ID, "MAIN");
-                    assertRuleAbsent(response, NO_MAIN_OBJECT_ID, "ALL");
-
+                    }, () -> {
+                    assertObjectWithoutMain(response, NO_MAIN_OBJECT_ID, java.util.Map.of(269012L, "A"));
+                    }, () -> {
                     assertObjectHasStrictlyEmptyResult(response, UNLINKED_OBJECT_ID);
                     assertRuleAbsent(response, UNLINKED_OBJECT_ID, "MAIN");
                     assertRuleAbsent(response, UNLINKED_OBJECT_ID, "ALL");
+                    });
                 })
                 .run();
     }
@@ -89,47 +85,27 @@ public class SplitterMapperMixedObjects2690FlowTest extends AbstractExplab2690Fl
                         flow -> loadConfig(flow, EndpointMode.MAPPER, config))
                 .step("Проверяем независимый REST-результат четырёх объектов", flow -> {
                     ValidatableResponseWrapper response = split(flow, EndpointMode.MAPPER, request);
-                    assertBasicResponseContract(response, request, version);
-                    assertSplittingResultsHaveUniqueObjectIds(response);
-
+                    org.junit.jupiter.api.Assertions.assertAll("Independent object contracts",
+                    () -> assertBasicResponseContract(response, request, version),
+                    () -> {
                     assertResultExp(response, LEFT_OBJECT_ID, "MAIN", 269011L, 1,
                             "A", "A", "1", "101");
                     assertResultExp(response, LEFT_OBJECT_ID, "ALL", 269011L, 1,
                             "A", "A", "1", "101");
                     assertMainHasNoExpFlags(response, LEFT_OBJECT_ID);
-
+                    }, () -> {
                     assertResultExp(response, RIGHT_OBJECT_ID, "MAIN", 269011L, 2,
                             "B", "A", "3", "202");
                     assertMainHasNoExpFlags(response, RIGHT_OBJECT_ID);
                     assertRuleAbsent(response, RIGHT_OBJECT_ID, "ALL");
-
-                    assertObjectHasStrictlyEmptyResult(response, NO_MAIN_OBJECT_ID);
-                    assertRuleAbsent(response, NO_MAIN_OBJECT_ID, "MAIN");
-                    assertRuleAbsent(response, NO_MAIN_OBJECT_ID, "ALL");
-
+                    }, () -> {
+                    assertObjectWithoutMain(response, NO_MAIN_OBJECT_ID, java.util.Map.of(269012L, "A"));
+                    }, () -> {
                     assertObjectHasStrictlyEmptyResult(response, UNLINKED_OBJECT_ID);
                     assertRuleAbsent(response, UNLINKED_OBJECT_ID, "MAIN");
                     assertRuleAbsent(response, UNLINKED_OBJECT_ID, "ALL");
+                    });
                 })
                 .run();
-    }
-
-    private ExperimentDto alternativeExperiment() {
-        return experiment(269011,
-                SALT_2690,
-                List.of(
-                        objectParamEqualsCondition(1, "left", "1", "INTEGER"),
-                        objectParamEqualsCondition(2, "right", "1", "INTEGER")),
-                List.of(
-                        groupWithDocResult("A", shares(0, 5000), 1, "1", "101"),
-                        groupWithDocResult("B", shares(5000, 10000), 2, "3", "202")));
-    }
-
-    private ExperimentDto noMainExperiment() {
-        return experiment(269012,
-                SALT_2690 + "-NO-MAIN",
-                List.of(objectParamEqualsCondition(1, "noMain", "1", "INTEGER")),
-                List.of(group("A", shares(0, 10000), List.of(
-                        resultWithParams(1, param("result", "999", "INTEGER"))))));
     }
 }

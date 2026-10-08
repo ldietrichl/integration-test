@@ -32,7 +32,7 @@ public class GetLayerRegistryTest extends Flows {
                                 ).toValidatableJson()
                                 .should(
                                         JsonMatchers.haveNotBlankJsonValue("totalPages"),
-                                        JsonMatchers.evaluateJsonPathExpression("content!=null")
+                                        JsonMatchers.evaluateGroovyPathExpression("content!=null")
                                 ))
                 .run();
     }

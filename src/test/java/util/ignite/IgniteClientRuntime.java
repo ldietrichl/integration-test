@@ -39,29 +39,61 @@ public final class IgniteClientRuntime {
 
     public IgniteClientRuntime(IgniteConfiguration configuration, List<Path> sources,
             String mainClass, Path outputDirectory, String resultPrefix) throws Exception {
-        this.configuration = configuration;
-        if (mainClass == null || !mainClass.matches("[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*")) {
-            throw new IllegalArgumentException("Invalid Ignite helper main class");
-        }
         if (resultPrefix == null || !resultPrefix.matches("[A-Z][A-Z0-9_]*=")) {
             throw new IllegalArgumentException("Invalid Ignite helper result prefix");
+        }
+        this.configuration = configuration;
+        this.mainClass = mainClass;
+        this.resultPrefix = resultPrefix;
+        PreparedHelper prepared = prepareRuntime(configuration.runtimeDirectory(), sources, mainClass, false);
+        this.runtimeSha256 = prepared.runtimeSha256();
+        this.classpath = prepared.classpath();
+        Files.createDirectories(outputDirectory);
+    }
+
+    static void prepare(Path runtimeDirectory, List<Path> sources, String mainClass) throws Exception {
+        prepareRuntime(runtimeDirectory, sources, mainClass, true);
+    }
+
+    private static PreparedHelper prepareRuntime(Path runtimeDirectory, List<Path> sources,
+            String mainClass, boolean preparation) throws Exception {
+        if (mainClass == null || !mainClass.matches("[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*")) {
+            throw new IllegalArgumentException("Invalid Ignite helper main class");
         }
         if (sources == null || sources.isEmpty()) {
             throw new IllegalArgumentException("Ignite helper sources are required");
         }
-        this.mainClass = mainClass;
-        this.resultPrefix = resultPrefix;
 
-        Path bundle = configuration.runtimeDirectory().toAbsolutePath().normalize();
+        Path bundle = runtimeDirectory.toAbsolutePath().normalize();
         Path lockFile = bundle.resolve("client-libraries.lock.json");
         if (!Files.isRegularFile(lockFile)) {
             throw new IllegalStateException("Install the configured Ignite client bundle: " + lockFile);
         }
         JsonNode libraryLock = JSON.readTree(lockFile.toFile());
         JsonNode lockedLibraries = libraryLock.path("libraries");
-        if (libraryLock.path("schemaVersion").asInt() != 1
+        int schema = libraryLock.path("schemaVersion").asInt();
+        if ((schema != 1 && schema != 2)
                 || !lockedLibraries.isArray() || lockedLibraries.isEmpty()) {
             throw new IllegalStateException("Invalid Ignite client library lock");
+        }
+        Path libraryDirectory = bundle.resolve("lib");
+        if (schema == 2) {
+            String location = libraryLock.path("libraryDirectory").asText();
+            if (location.isBlank() || Path.of(location).isAbsolute()) {
+                throw new IllegalStateException("Relative shared library directory required");
+            }
+            libraryDirectory = bundle.resolve(location).normalize();
+            Path storage = Path.of("runtime").toAbsolutePath().normalize();
+            // Legacy schema-2 bundles remain usable only when explicitly configured.
+            // New bundles and migrated bundles always use persistent runtime storage.
+            Path legacyBundles = Path.of("build/corporate-ignite-runtimes").toAbsolutePath().normalize();
+            if (bundle.startsWith(legacyBundles) && bundle.toRealPath().startsWith(legacyBundles.toRealPath())) {
+                storage = Path.of("build").toAbsolutePath().normalize();
+            }
+            Path allowed = storage.resolve("corporate-ignite-libraries");
+            if (!libraryDirectory.startsWith(allowed) || !libraryDirectory.toRealPath().startsWith(allowed.toRealPath())) {
+                throw new IllegalStateException("Shared Ignite libraries must remain under the selected project runtime storage");
+            }
         }
         List<String> libraries = new ArrayList<>();
         Set<String> names = new HashSet<>();
@@ -72,7 +104,7 @@ public final class IgniteClientRuntime {
                     || !expected.matches("[0-9a-fA-F]{64}")) {
                 throw new IllegalStateException("Invalid Ignite client library entry");
             }
-            Path file = bundle.resolve("lib").resolve(name);
+            Path file = libraryDirectory.resolve(name);
             if (!Files.isRegularFile(file) || !expected.equalsIgnoreCase(hash(file))) {
                 throw new IllegalStateException("Missing or changed Ignite client library: " + file);
             }
@@ -91,13 +123,13 @@ public final class IgniteClientRuntime {
             sourceFiles.add(file);
             digest.update(Files.readAllBytes(file));
         }
-        runtimeSha256 = HexFormat.of().formatHex(digest.digest());
-        Path compileDirectory = outputDirectory.toAbsolutePath().normalize()
-                .resolve("runtime-" + runtimeSha256.substring(0, 24));
+        String runtimeSha256 = HexFormat.of().formatHex(digest.digest());
+        Path compileDirectory = Path.of("build/ignite-helper-classes").toAbsolutePath().normalize()
+                .resolve(runtimeSha256);
         List<String> classpathEntries = new ArrayList<>();
         classpathEntries.add(compileDirectory.toString());
         classpathEntries.addAll(libraries);
-        classpath = String.join(File.pathSeparator, classpathEntries);
+        String classpath = String.join(File.pathSeparator, classpathEntries);
 
         // File locks coordinate JVMs; the monitor also coordinates callers in this JVM.
         synchronized (COMPILE_LOCKS.computeIfAbsent(compileDirectory, ignored -> new Object())) {
@@ -111,6 +143,10 @@ public final class IgniteClientRuntime {
                         throw new IllegalStateException("Ignite helper compilation marker differs: " + complete);
                     }
                 } else {
+                    if (!preparation) {
+                        throw new IllegalStateException("Ignite helper is not prepared. Run prepareIgniteHelpers "
+                                + "or prepareIgniteProbe in Gradle; no test-time compilation is permitted.");
+                    }
                     var compiler = ToolProvider.getSystemJavaCompiler();
                     if (compiler == null) {
                         throw new IllegalStateException("JDK 17 is required to compile the Ignite helper");
@@ -127,9 +163,15 @@ public final class IgniteClientRuntime {
                     }
                     Files.writeString(complete, runtimeSha256, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
                 }
+                if (!Files.isRegularFile(compileDirectory.resolve(mainClass.replace('.', '/') + ".class"))) {
+                    throw new IllegalStateException("Prepared Ignite helper classes are missing; restore or rebuild the helper cache");
+                }
             }
         }
+        return new PreparedHelper(runtimeSha256, classpath);
     }
+
+    private record PreparedHelper(String runtimeSha256, String classpath) { }
 
     public JsonNode call(String mode, Path manifest) throws Exception {
         return call(mode, manifest, Map.of());

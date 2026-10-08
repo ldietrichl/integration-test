@@ -5,8 +5,6 @@ import config.services.core.RestServiceEndpoint;
 
 import io.perfeccionista.framework.SetEnvironmentConfiguration;
 import io.perfeccionista.framework.extension.PerfeccionistaExtension;
-import io.restassured.config.RestAssuredConfig;
-import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.*;
@@ -19,7 +17,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 import static io.qameta.allure.Allure.step;
 import static ru.sber.qa.experiments.manual_qa.TestDataHelper.experimentId;
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
@@ -29,14 +26,7 @@ import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 public class newOneSSL {
     private static final String experimentsBaseUri = RestEndpointResolver.baseUri(RestServiceEndpoint.EXPERIMENTS);
-    RestAssuredConfig P12_CONFIG = RestAssuredConfig.config().sslConfig(
-            new SSLConfig()
-                    // пароли можно и нужно шифровать, вариант с шифрованием приведен в конфиге выше
-                   .keyStore("src/test/resources/keystore.p12", TEST_CONFIG.keystorePass())
-                    .keystoreType("PKCS12")
-                    // при необходимости отключить валидацию сертификата
-                    .relaxedHTTPSValidation()
-    );
+    // TLS is owned by the stand-level REST service configuration.
 
 
     @Test
@@ -67,7 +57,6 @@ public class newOneSSL {
                     .post(spec ->
                                     spec
 
-                                            .config(P12_CONFIG)
                                             .contentType(ContentType.JSON)
                                             .header("Content-Type", "application/json")
                                             .accept( "*/*")
@@ -101,7 +90,6 @@ public class newOneSSL {
                     .get(spec ->
                                     spec
 
-                                            .config(P12_CONFIG)
                                             .contentType(ContentType.JSON)
                                             .header("Content-Type", "application/json")
                                             .accept( "*/*"),
@@ -124,7 +112,6 @@ public class newOneSSL {
                     .delete(spec ->
                                     spec
 
-                                            .config(P12_CONFIG)
                                             .contentType(ContentType.JSON)
                                             .header("Content-Type", "application/json")
                                             .accept( "*/*"),

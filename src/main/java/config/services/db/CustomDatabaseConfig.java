@@ -4,7 +4,6 @@ import org.aeonbits.owner.Config;
 import org.aeonbits.owner.Config.LoadPolicy;
 import org.aeonbits.owner.Config.Sources;
 import org.aeonbits.owner.Reloadable;
-import ru.sber.qa.services.configuration.converters.SecretPropertyConverter;
 
 /**
  * Информация об используемой БД из заданного массива в конфигурационном файле указанном в аннотации {@link Sources}
@@ -28,10 +27,6 @@ import ru.sber.qa.services.configuration.converters.SecretPropertyConverter;
  */
 @LoadPolicy(Config.LoadType.MERGE)
 @Sources({
-        "system:env",
-        "system:properties",
-        "file:secure.local.override.properties",
-        "file:secure.local.properties",
         "file:src/test/resources/database.properties",
         "classpath:database.properties",
         "classpath:config/database.properties"
@@ -47,11 +42,9 @@ public interface CustomDatabaseConfig extends Reloadable {
     String url();
 
     @Key("db.${selectedTestEnvironment}.${name}.login")
-    @ConverterClass(SecretPropertyConverter.class)
     String login();
 
     @Key("db.${selectedTestEnvironment}.${name}.password")
-    @ConverterClass(SecretPropertyConverter.class)
     String password();
 
     @DefaultValue("60")

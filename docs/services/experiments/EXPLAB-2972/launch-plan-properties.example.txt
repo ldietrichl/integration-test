@@ -1,0 +1,48 @@
+# Merge only the selected keys into the existing test.properties. Preserve stand credentials and TLS settings.
+# Keep the existing env selector; replace the .dev. prefix below with that environment.
+# Do not add a second env key or copy this example over test.properties.
+explab2972.dev.launch-plan.cases=1,4,5,11,19
+explab2972.dev.launch-plan.case.01.prepared=true
+explab2972.dev.launch-plan.case.04.prepared=true
+explab2972.dev.launch-plan.case.05.prepared=true
+explab2972.dev.launch-plan.case.11.prepared=true
+explab2972.dev.launch-plan.case.19.prepared=true
+explab2972.dev.launch-plan.users.mode=api
+explab2972.dev.launch-plan.users.base-uri=https://<INTERNAL_USER_SERVICE>
+# Existing framework primary token; every SECURE value resolves ONLY from
+# ignored secure.local.override.properties. Keep values out of this example.
+# secure.local.properties is the tracked template; env/JVM/gradle.local are not secret sources.
+rest.explab-gateway.token=${SECURE_2972_PRIMARY_TOKEN}
+rest.configuration-service.token=${SECURE_2972_CONFIGURATION_TOKEN}
+explab2972.dev.auth.primary.sub=<IAM_SUB_UUID>
+explab2972.dev.auth.primary.login=${SECURE_2972_PRIMARY_LOGIN}
+explab2972.dev.auth.primary.employee-id=<DEDICATED_EMPLOYEE_ID>
+explab2972.dev.auth.primary.email=<DEDICATED_EMAIL>
+explab2972.dev.auth.approver.sub=<DIFFERENT_IAM_SUB_UUID>
+explab2972.dev.auth.approver.login=${SECURE_2972_APPROVER_LOGIN}
+explab2972.dev.auth.approver.employee-id=<DEDICATED_EMPLOYEE_ID>
+explab2972.dev.auth.approver.email=<DEDICATED_EMAIL>
+explab2972.dev.auth.approver.token=${SECURE_2972_APPROVER_TOKEN}
+explab2972.dev.auth.admin.sub=<DIFFERENT_IAM_SUB_UUID>
+explab2972.dev.auth.admin.login=${SECURE_2972_ADMIN_LOGIN}
+explab2972.dev.auth.admin.employee-id=<DEDICATED_EMPLOYEE_ID>
+explab2972.dev.auth.admin.email=<DEDICATED_EMAIL>
+explab2972.dev.auth.admin.token=${SECURE_2972_ADMIN_TOKEN}
+explab2972.dev.auth.operator.sub=<DIFFERENT_IAM_SUB_UUID>
+explab2972.dev.auth.operator.login=${SECURE_2972_OPERATOR_LOGIN}
+explab2972.dev.auth.operator.employee-id=<DEDICATED_EMPLOYEE_ID>
+explab2972.dev.auth.operator.email=<DEDICATED_EMAIL>
+explab2972.dev.auth.operator.token=${SECURE_2972_OPERATOR_TOKEN}
+# Optional expected IDs; API mode obtains IDs from user-service permissions when omitted.
+# explab2972.dev.auth.primary.user-id=<ID>
+# explab2972.dev.auth.approver.user-id=<ID>
+# explab2972.dev.auth.admin.user-id=<ID>
+# explab2972.dev.auth.operator.user-id=<ID>
+# Copy analogous case.NN.prepared and fixture-id keys only for prepared managed cases.
+# explab2972.dev.launch-plan.case.02.fixture-id=<OWNED_DRAFT_VERSION_NOT_5>
+# explab2972.dev.launch-plan.mapper-disabled=true
+# explab2972.dev.launch-plan.fault=configuration-unavailable
+# Controller / Kafka / database keys remain as documented in test-properties.example.txt and CONTROL-API.md.
+
+# Set SECURE_2972_<ROLE>_LOGIN in secure.local.override.properties.
+# API provisioning accepts only dedicated logins starting with EXPLAB-2972-.

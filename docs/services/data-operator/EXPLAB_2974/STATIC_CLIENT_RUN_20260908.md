@@ -18,8 +18,8 @@
 
 Проверены 173 Allure result-файла, 186 container-файлов и 173 HTTP evidence-файла, отсутствующих children нет. Полная корпоративная Gradle-сборка и аутентификация на dev с ВАРМ в этой сессии не выполнялись. Локальный профиль использует Apache Ignite 2.18.0 и Kafka 3.9.1; совместимость клиента с корпоративной поставкой Ignite проверяется диагностическим тестом на ВАРМ.
 
-- [Результаты прогона](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-functional-20260908-101326-481/results-with-http.json).
-- [Сравнение и инфраструктура](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-functional-20260908-101326-481/analysis.json).
-- [Проверка cleanup и отчёта](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-functional-20260908-101326-481/static-client-verification.json).
-- [Эксперименты жизненного цикла](A:/Codex/Functional/BACK/06_temp_work/explab-2974-static-experiments/experiment-results.json).
+- [Результаты прогона](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-functional-20260908-101326-481/results-with-http.json).
+- [Сравнение и инфраструктура](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-functional-20260908-101326-481/analysis.json).
+- [Проверка cleanup и отчёта](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-functional-20260908-101326-481/static-client-verification.json).
+- [Эксперименты жизненного цикла](<workspace>/BACK/06_temp_work/explab-2974-static-experiments/experiment-results.json).
 - [Инструкция нового клиента](CORPORATE_STATIC_CLIENT.md).

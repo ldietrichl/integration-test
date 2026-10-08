@@ -33,7 +33,7 @@ public class DeleteLayerNegativeTest extends Flows {
                                         JsonMatchers.haveNotBlankJsonValue("id"),
                                         JsonMatchers.haveJsonValue("message",
                                                 TextConditions.equalToText("Слой с id=100000000 не найден")),
-                                        JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                        JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                                 ))
                 .run();
     }

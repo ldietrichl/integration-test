@@ -18,7 +18,7 @@ REST, Kafka и Ignite используют настройки выбранной
 
 При запуске через **Run Tests** в IDEA сохраните файл и используйте Working directory = `$PROJECT_DIR$`. Читается редактируемый `src/test/resources/test.properties`, а не устаревшая копия из `build/resources/test`. Если исходного файла нет (упакованные тесты), используется classpath. Значения `-Denv`, `-Penv` и `ENV` больше не выбирают другую среду. Отдельные адреса/пароли соответствующих профилей продолжают настраиваться штатно.
 
-Файл `src/test/resources/regression-profiles.properties` содержит несекретные Kafka-профили и топики DEV/IFT. Старые непрофилированные `splitter_dev` в `test.properties` не перенаправляют ИФТ на DEV. БД выбирается по той же среде; прежнее соответствие `ift-dm → ift` для БД сохранено. Для других сред Kafka нужно заполнить отдельный профиль.
+Файл `src/test/resources/regression-profiles.properties` содержит несекретные Kafka-профили и топики DEV/IFT. Старые непрофилированные `splitter_dev` в `test.properties` не перенаправляют ИФТ на DEV. БД выбирается по точной среде `env`: для `ift-dm` требуется собственный профиль `db.ift-dm.<name>.*` в `database.properties`, подмена на `ift` отсутствует. Для других сред Kafka нужно заполнить отдельный профиль.
 
 ## Задачи в окне Gradle
 
@@ -32,13 +32,13 @@ REST, Kafka и Ignite используют настройки выбранной
 | `dataOperatorRegression` | Общие REST-проверки data-operator, EXPLAB-2411, EXPLAB-2729 и полный EXPLAB-2974, включая 173 сценария links |
 | `prepareRegressionTestOpsResults` | Проверить и объединить последние завершённые прогоны четырёх этапов выбранной среды |
 | `regressionTestOpsUpload` | Подготовить объединённые результаты регрессов и загрузить их в TestOps с действующими настройками проекта |
-| `cleanRegressionResults` | Удалить все результаты выбранной среды из `regression-results/<env>` |
+| `cleanRegressionResults` | Удалить все результаты выбранной среды из `build/regression-results/<env>` |
 
 В **Tasks → testops** находятся задачи для произвольно выбранных тестов, запущенных из IDEA или через обычный `test --tests`:
 
 | Задача | Действие |
 | --- | --- |
-| `prepareTestOpsResults` | Проверить текущие raw Allure results и подготовить набор в `testops-results/<env>` |
+| `prepareTestOpsResults` | Проверить текущие raw Allure results и подготовить набор в `build/testops-results/<env>` |
 | `testOpsUpload` | Подготовить и загрузить этот набор выбранных тестов |
 | `cleanTestOpsResults` | Удалить подготовленный набор текущей среды и распознанные Allure-файлы из разрешённого raw-каталога, сохранив неизвестные файлы |
 
@@ -82,22 +82,22 @@ $OutputEncoding = $enc
 При успешной компиляции запускайте нужные регрессы отдельно:
 
 ```powershell
-.\gradlew.bat clean experimentServiceRegression --offline --console=plain
+.\gradlew.bat experimentServiceRegression --offline --console=plain
 ```
 
 ```powershell
-.\gradlew.bat clean splitterRestRegression --offline --console=plain
+.\gradlew.bat splitterRestRegression --offline --console=plain
 ```
 
 ```powershell
-.\gradlew.bat clean splitterKafkaRegression --offline --console=plain
+.\gradlew.bat splitterKafkaRegression --offline --console=plain
 ```
 
 ```powershell
-.\gradlew.bat clean dataOperatorRegression --offline --console=plain
+.\gradlew.bat dataOperatorRegression --offline --console=plain
 ```
 
-Параметры `-I`, `-Penv`, имена тестовых классов и флаг включения фикстур задавать не требуется. Каждый запуск получает новый каталог результатов. Обычный `clean` очищает `build`; результаты прошлых регрессов и манифесты фикстур находятся отдельно и сохраняются.
+Параметры `-I`, `-Penv`, имена тестовых классов и флаг включения фикстур задавать не требуется. Каждый запуск получает новый каталог результатов внутри `build`. Обычный `clean` удаляет весь `build`, включая результаты прошлых регрессов, подготовленные наборы TestOps и сгенерированные манифесты фикстур. Поэтому между этапами одного цикла регресса `clean` не запускайте. Выполняйте его перед новым независимым циклом только после сохранения нужных результатов и завершения очистки данных стенда.
 
 `--offline` использует уже подготовленные корпоративные Gradle dependencies. Если нужной зависимости нет в кеше, сначала загрузите её через разрешённый корпоративный репозиторий.
 
@@ -145,10 +145,10 @@ REST и Kafka требуют разных настроек стенда, поэ�
 
 ## Результаты
 
-Каталог результатов находится в корне проекта и разделён по средам:
+Каталог результатов находится внутри `build` и разделён по средам:
 
 ```text
-regression-results/
+build/regression-results/
   dev/
     experiment/
       latest.txt
@@ -177,10 +177,10 @@ regression-results/
 Рабочие данные и манифесты владения фикстурами data-operator сохраняются отдельно:
 
 ```text
-regression-fixtures/<env>/<run-id>/
+build/regression-fixtures/<env>/<run-id>/
 ```
 
-Этот каталог сохраняется после `clean` и `cleanRegressionResults`. Он нужен для проверки очистки тестовых данных и восстановления после прерванного прогона.
+Этот каталог сохраняется после `cleanRegressionResults`, но удаляется обычным `clean`. Он нужен для проверки очистки тестовых данных и восстановления после прерванного прогона. Перед `clean` завершите адресную очистку данных стенда либо сохраните необходимые манифесты за пределами `build`. Исходные JSON/SQL-фикстуры в `src/test/resources` являются входными данными и не переносятся в каталог сгенерированных результатов.
 
 ## Подготовка и загрузка TestOps
 
@@ -210,7 +210,7 @@ regression-fixtures/<env>/<run-id>/
 .\gradlew.bat regressionTestOpsUpload --offline --console=plain '-PallureDryRun=true'
 ```
 
-После завершённого прогона с упавшими проверками загрузку выполняйте отдельной командой: сохранённые failed/broken результаты нужны для отчёта. Между прогоном и подготовкой не запускайте `cleanRegressionResults`. Для произвольного `test --tests` или **Run Tests** в IDEA используется `testOpsUpload` из группы **testops**, согласно отдельной инструкции.
+После завершённого прогона с упавшими проверками загрузку выполняйте отдельной командой: сохранённые failed/broken результаты нужны для отчёта. Между прогоном и подготовкой не запускайте `clean` или `cleanRegressionResults`. Для произвольного `test --tests` или **Run Tests** в IDEA используется `testOpsUpload` из группы **testops**, согласно отдельной инструкции.
 
 ## Очистка после завершения работы
 
@@ -220,4 +220,4 @@ regression-fixtures/<env>/<run-id>/
 .\gradlew.bat cleanRegressionResults --offline --console=plain
 ```
 
-При `env=dev` удаляется `regression-results/dev`; при `env=ift` — `regression-results/ift`. Каталог `regression-fixtures` сохраняется. Очистку выполняйте после сохранения или отправки нужных отчётов.
+При `env=dev` удаляется `build/regression-results/dev`; при `env=ift` — `build/regression-results/ift`. Каталог `build/regression-fixtures` сохраняется этой задачей. Обычный `clean` удаляет все сгенерированные результаты и манифесты внутри `build` для всех сред. Очистку выполняйте после сохранения или отправки нужных отчётов и восстановления данных стенда.

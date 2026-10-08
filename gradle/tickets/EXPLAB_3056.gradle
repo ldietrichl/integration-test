@@ -1,0 +1,65 @@
+// MAPPER markup uses the common workload profile, lease gates and reporting pipeline.
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    def sources = p.extensions.getByName('sourceSets')
+    def original = p.tasks.named('test', org.gradle.api.tasks.testing.Test).get()
+    ['Mapper', 'Reactions'].each { point ->
+    ['rest', 'kafka'].each { mode ->
+        String taskName = "explab3056${point}${mode.capitalize()}"
+        p.tasks.register(taskName, org.gradle.api.tasks.testing.Test) {
+            group = 'tickets'
+            description = "EXPLAB-3056: $point alternative markup regression; $mode config load; REST split + KAP"
+            dependsOn p.tasks.named('testClasses')
+            testClassesDirs = sources.test.output.classesDirs
+            classpath = sources.test.runtimeClasspath
+            useJUnitPlatform()
+            filter.setIncludePatterns("ru.sber.qa.splitter.EXPLAB_3056.Splitter${point}*FlowTest")
+            filter.setFailOnNoMatchingTests(true)
+            systemProperties.putAll(original.systemProperties)
+            jvmArgs(original.jvmArgs)
+            ['explab3056.stand.config.enabled', 'explab3056.stand.application-flags.enabled'].each { systemProperty it, 'true' }
+            def forward = { k, v ->
+                String key = k.toString()
+                if (['stand.', 'splitter.', 'explab3056.', 'explab2690.', 'explab2885.', 'exlab2891.', 'kubernetes.'].any { key.startsWith(it) })
+                    systemProperty key, v.toString()
+            }
+            p.properties.each(forward)
+            System.properties.each(forward)
+            systemProperty 'splitter.config.load.mode', mode
+            systemProperty 'splitter.local.splitting-point', point.toUpperCase()
+            systemProperty 'file.encoding', 'UTF-8'
+            systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'
+            systemProperty 'allure.results.directory', p.file('build/allure-results').absolutePath
+            maxParallelForks = 1
+            forkEvery = 0
+            reports.junitXml.outputLocation.set(p.layout.buildDirectory.dir('test-results/' + taskName))
+            reports.html.outputLocation.set(p.layout.buildDirectory.dir('reports/tests/' + taskName))
+            outputs.upToDateWhen { false }
+        }
+    }
+    }
+    p.tasks.named('explab3056ReactionsRest') { mustRunAfter 'explab3056MapperRest' }
+    p.tasks.named('explab3056ReactionsKafka') { mustRunAfter 'explab3056MapperKafka' }
+    p.tasks.named('explab3056MapperKafka') { mustRunAfter 'explab3056MapperRest' }
+    p.tasks.register('explab3056Coverage') {
+        group = 'tickets'
+        description = 'EXPLAB-3056: primary MAPPER coverage, REST config load and correlated KAP'
+        dependsOn 'explab3056MapperRest', 'explab3056ReactionsRest'
+    }
+    def checks = sources.create('explab3056Checks') {
+        java.srcDirs 'src/workloadChecks/java', 'src/test/java'
+        java.include 'util/splittercheck/MapperAlternativeMarkupChecks.java', 'support/splitter/cases/MapperAlternativeMarkupCases.java'
+        compileClasspath = sources.main.output + p.configurations.testCompileClasspath
+        runtimeClasspath = output + compileClasspath + p.configurations.testRuntimeClasspath
+    }
+    p.tasks.register('explab3056LocalChecks', org.gradle.api.tasks.testing.Test) {
+        group = 'tickets'
+        description = 'EXPLAB-3056: isolated fixture and strict flag checks; no stand access'
+        testClassesDirs = checks.output.classesDirs
+        classpath = checks.runtimeClasspath
+        useJUnitPlatform()
+        systemProperty 'allure.results.directory', p.file('build/local-checks/explab3056/allure-results').absolutePath
+        reports.junitXml.outputLocation.set(p.layout.buildDirectory.dir('local-checks/explab3056/junit'))
+        reports.html.outputLocation.set(p.layout.buildDirectory.dir('local-checks/explab3056/report'))
+    }
+}

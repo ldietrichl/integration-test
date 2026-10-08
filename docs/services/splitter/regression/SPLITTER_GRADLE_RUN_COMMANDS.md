@@ -4,17 +4,17 @@
 
 ## Gradle wrapper
 
-По умолчанию не задавайте `GRADLE_USER_HOME`: wrapper использует корпоративный Gradle cache пользователя.
-
-Если wrapper не может скачать `gradle-7.3.3-bin.zip` и вы отдельно вручную скопировали distribution cache в проектную `.gradle`, только тогда укажите `GRADLE_USER_HOME` на проект:
+Используйте общий пользовательский кеш вне проекта. Дистрибутив 8.4 скачивается
+из корпоративного Nexus; ручное копирование Gradle в проект не требуется.
 
 ```powershell
 Set-Location "C:\Work\IdeaProjects\integration-test"
-$env:GRADLE_USER_HOME = "C:\Work\IdeaProjects\integration-test\.gradle"
+$env:GRADLE_USER_HOME = Join-Path $env:USERPROFILE '.gradle'
 .\gradlew.bat --version
 ```
 
-Wrapper должен показать `Gradle 7.3.3` без попытки скачать `gradle-7.3.3-bin.zip` из Nexus.
+Wrapper должен показать Gradle 8.4. Для первой загрузки нужен доступ к Nexus.
+Постоянная настройка кеша: [Gradle и Nexus](../../../project/GRADLE_NEXUS.md).
 
 ## Перед REST-прогоном
 

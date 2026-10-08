@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -32,43 +33,50 @@ class IgniteConfigurationTest {
                 "IGNITE_CLIENT_SSL_ENABLED", "false"), configuration.helperEnvironment());
     }
 
-    @ParameterizedTest
-    @CsvSource({"0, jvm-synthetic", "1, environment-synthetic", "2, secure-synthetic", "3, resource-synthetic"})
-    void prioritizesJvmThenEnvironmentThenSecureThenResource(int firstSource, String expected) {
+    @Test
+    @ResourceLock("SYSTEM_PROPERTIES")
+    void connectionSettingsRemainInTheResourceDespiteAnOldJvmOverride() {
         Map<String, String> resource = canonical("dev");
         resource.put("ignite.dev.password", "resource-synthetic");
-        EnvironmentProperties properties = properties(
-                firstSource == 0 ? Map.of("ignite.dev.password", "jvm-synthetic") : Map.of(),
-                firstSource <= 1 ? Map.of("IGNITE_DEV_PASSWORD", "environment-synthetic") : Map.of(),
-                firstSource <= 2 ? Map.of("ignite.dev.password", "secure-synthetic") : Map.of(), resource);
-
-        IgniteConfiguration configuration = new IgniteConfiguration("dev", properties);
-
-        assertEquals(expected, configuration.helperEnvironment().get("IGNITE_CLIENT_PASSWORD"));
+        String previous = System.getProperty("ignite.dev.password");
+        try {
+            System.setProperty("ignite.dev.password", "stale-jvm-synthetic");
+            assertEquals("resource-synthetic", configuration("dev", resource).helperEnvironment().get("IGNITE_CLIENT_PASSWORD"));
+        } finally {
+            if (previous == null) System.clearProperty("ignite.dev.password");
+            else System.setProperty("ignite.dev.password", previous);
+        }
     }
 
-    @ParameterizedTest
-    @CsvSource({"0", "1", "2", "3"})
-    void anExplicitBlankMasksEveryLowerPrioritySource(int firstSource) {
-        Map<String, String> resource = Map.of("ignite.dev.password",
-                firstSource == 3 ? "   " : "resource-synthetic");
-        Map<String, String> secure = firstSource > 2 ? Map.of()
-                : Map.of("ignite.dev.password", firstSource == 2 ? "   " : "secure-synthetic");
-        Map<String, String> environment = firstSource > 1 ? Map.of()
-                : Map.of("IGNITE_DEV_PASSWORD", firstSource == 1 ? "   " : "environment-synthetic");
-        Map<String, String> system = firstSource == 0 ? Map.of("ignite.dev.password", "   ") : Map.of();
+    @Test
+    void aBlankFileValueIsAbsent() {
+        assertNull(properties(Map.of("ignite.dev.password", "   ")).optional("ignite.dev.password"));
+    }
 
-        assertNull(properties(system, environment, secure, resource).optional("ignite.dev.password"));
+    @Test
+    void onlyTheSelectedEnvironmentsSecretIsResolved() {
+        Properties source = new Properties();
+        source.putAll(canonical("dev"));
+        source.putAll(canonical("ift"));
+        source.setProperty("ignite.dev.password", "${SECURE_DEV_SYNTHETIC}");
+        source.setProperty("ignite.ift.password", "${SECURE_IFT_NOT_CONFIGURED}");
+        var resolved = new java.util.ArrayList<String>();
+        var properties = new EnvironmentProperties(source, value -> {
+            resolved.add(value);
+            if (value.equals("${SECURE_IFT_NOT_CONFIGURED}")) throw new AssertionError("Unused stand secret was resolved");
+            return value.equals("${SECURE_DEV_SYNTHETIC}") ? "resolved-synthetic" : value;
+        });
+        assertEquals("resolved-synthetic", new IgniteConfiguration("dev", properties).helperEnvironment().get("IGNITE_CLIENT_PASSWORD"));
+        assertFalse(resolved.contains("${SECURE_IFT_NOT_CONFIGURED}"));
     }
 
     @Test
     void explicitlyClearingBothCredentialsDoesNotReintroduceThemFromAnotherSource() {
         Map<String, String> resource = canonical("dev");
         resource.putAll(legacy("dev"));
-        EnvironmentProperties properties = properties(
-                Map.of("ignite.dev.username", "", "ignite.dev.password", ""),
-                Map.of("IGNITE_DEV_USERNAME", "environment-test-user", "IGNITE_DEV_PASSWORD", "environment-synthetic"),
-                Map.of(), resource);
+        resource.put("ignite.dev.username", "");
+        resource.put("ignite.dev.password", "");
+        EnvironmentProperties properties = properties(resource);
 
         IgniteConfiguration configuration = new IgniteConfiguration("dev", properties);
 
@@ -79,10 +87,10 @@ class IgniteConfigurationTest {
     void aBlankCanonicalAddressFailsInsteadOfAdoptingLegacyOrLowerPriorityAddress() {
         Map<String, String> resource = canonical("dev");
         resource.putAll(legacy("dev"));
+        resource.put("ignite.dev.addresses", " ");
 
         IllegalStateException failure = assertThrows(IllegalStateException.class,
-                () -> new IgniteConfiguration("dev", properties(
-                        Map.of("ignite.dev.addresses", " "), Map.of(), Map.of(), resource)));
+                () -> new IgniteConfiguration("dev", properties(resource)));
 
         assertTrue(failure.getMessage().contains("ignite.dev.addresses"));
     }
@@ -175,8 +183,7 @@ class IgniteConfigurationTest {
         settings.putAll(canonical("ift"));
         addCanonicalStores(settings, "dev");
         addCanonicalStores(settings, "ift");
-        EnvironmentProperties properties = properties(Map.of(),
-                Map.of("IGNITE_IFT_SSL_KEY_STORE_PATH", "synthetic/ift-from-env.p12"), Map.of(), settings);
+        EnvironmentProperties properties = properties(settings);
 
         IgniteConfiguration configuration = new IgniteConfiguration("eift-ds", properties);
 
@@ -184,7 +191,7 @@ class IgniteConfigurationTest {
                 "IGNITE_CLIENT_USERNAME", "ift-test-user",
                 "IGNITE_CLIENT_PASSWORD", "ift-synthetic-password",
                 "IGNITE_CLIENT_SSL_ENABLED", "true",
-                "IGNITE_CLIENT_SSL_KEY_STORE_PATH", "synthetic/ift-from-env.p12",
+                "IGNITE_CLIENT_SSL_KEY_STORE_PATH", "synthetic/ift-client.p12",
                 "IGNITE_CLIENT_SSL_KEY_STORE_TYPE", "PKCS12",
                 "IGNITE_CLIENT_SSL_KEY_STORE_PASSWORD", "ift-synthetic-key-password",
                 "IGNITE_CLIENT_SSL_TRUST_STORE_PATH", "synthetic/ift-trust.jks",
@@ -217,15 +224,25 @@ class IgniteConfigurationTest {
         assertTrue(failure.getMessage().contains("links.fixture.ift.ignite.addresses"));
     }
 
-    private static IgniteConfiguration configuration(String environment, Map<String, String> resource) {
-        return new IgniteConfiguration(environment, properties(Map.of(), Map.of(), Map.of(), resource));
+    @Test
+    void generatedOutputMustRemainInsideBuild() {
+        Map<String,String> settings = canonical("dev");
+        settings.put("ignite.dev.output.directory", "build/ignite/selected-run");
+        assertEquals(absolute("build/ignite/selected-run"), configuration("dev", settings).outputDirectory());
+        settings.put("ignite.dev.output.directory", "src/test/resources/generated-output");
+        assertThrows(IllegalArgumentException.class, () -> configuration("dev", settings).outputDirectory());
+        settings.put("ignite.dev.output.directory", "build/../outside-generated-output");
+        assertThrows(IllegalArgumentException.class, () -> configuration("dev", settings).outputDirectory());
     }
 
-    private static EnvironmentProperties properties(Map<String, String> system, Map<String, String> environment,
-            Map<String, String> secure, Map<String, String> resource) {
+    private static IgniteConfiguration configuration(String environment, Map<String, String> resource) {
+        return new IgniteConfiguration(environment, properties(resource));
+    }
+
+    private static EnvironmentProperties properties(Map<String, String> resource) {
         Properties values = new Properties();
         values.putAll(resource);
-        return new EnvironmentProperties(system::get, environment::get, secure::get, values, Function.identity());
+        return new EnvironmentProperties(values, Function.identity());
     }
 
     private static Map<String, String> canonical(String environment) {

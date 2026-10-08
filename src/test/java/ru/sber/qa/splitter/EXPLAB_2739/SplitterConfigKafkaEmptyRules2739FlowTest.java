@@ -17,20 +17,19 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import ru.sber.qa.allure.CriticalRegression;
 import ru.sber.qa.services.kafka.KafkaService;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
-import ru.sber.qa.splitter.support.KafkaConfigLoadModeOnly;
 import ru.sber.qa.splitter.tests_v9.common.AbstractSplitterV9FlowTest;
 import util.support.SplitterVersionProvider;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @CriticalRegression
 @ExtendWith(PerfeccionistaExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
-@KafkaConfigLoadModeOnly
 @DisplayName("EXPLAB-2739. Kafka config load: empty rules")
 public class SplitterConfigKafkaEmptyRules2739FlowTest extends AbstractSplitterV9FlowTest {
 
@@ -56,32 +55,34 @@ public class SplitterConfigKafkaEmptyRules2739FlowTest extends AbstractSplitterV
         getFlowWithRest()
                 .step("Отправляем config с пустым rules[] в Kafka topic splitting-config-created", flow -> {
                     kafkaSince[0] = System.currentTimeMillis();
-                    kafkaFlow.sendConfig(config);
+                    kafkaFlow.sendConfig(kafkaService, config);
                 })
-                .step("Проверяем Kafka load signal по status topic или monitoring", flow -> {
+                .step("Проверяем CONFIG_LOADED через status или monitoring", flow -> {
+                    JsonNode signal = kafkaFlow.findStatusOrMonitoringByConfigMessageId(kafkaService,
+                            config.getMessageId(),
+                            "CONFIG_LOADED",
+                            kafkaSince[0]);
                     if (kafkaFlow.isStatusRequired()) {
-                        JsonNode status = kafkaFlow.findStatusByConfigMessageId(kafkaService,
-                                config.getMessageId(),
-                                kafkaSince[0]);
-                        assertEquals("STATUS", SplitterConfigKafkaLoad2739Flow.normalizedText(status, "messageType"),
-                                status.toPrettyString());
-                        assertEquals("CONFIG_LOADED", SplitterConfigKafkaLoad2739Flow.normalizedText(status, "status"),
-                                status.toPrettyString());
-                        assertEquals(config.getMessageId(), SplitterConfigKafkaLoad2739Flow.text(status, "configMessageId"),
-                                status.toPrettyString());
-                        assertEquals(String.valueOf(config.getConfigVersion()),
-                                SplitterConfigKafkaLoad2739Flow.text(status, "newConfigVersion"),
-                                status.toPrettyString());
+                        assertEquals("STATUS", SplitterConfigKafkaLoad2739Flow.normalizedText(signal, "messageType"),
+                                signal.toPrettyString());
+                        assertEquals("CONFIG_LOADED", SplitterConfigKafkaLoad2739Flow.normalizedText(signal, "status"),
+                                signal.toPrettyString());
+                        assertEquals(config.getMessageId(), SplitterConfigKafkaLoad2739Flow.text(signal, "configMessageId"),
+                                signal.toPrettyString());
                     } else {
-                        JsonNode monitoring = kafkaFlow.findMonitoringByMessageIdAndResult(kafkaService,
-                                config.getMessageId(),
-                                "LOADED_WITH_PRECALC",
-                                kafkaSince[0]);
-                        assertEquals("SPLITTING_CONFIG_LOAD", SplitterConfigKafkaLoad2739Flow.normalizedText(monitoring, "function"),
-                                monitoring.toPrettyString());
-                        assertEquals("LOADED_WITH_PRECALC", SplitterConfigKafkaLoad2739Flow.normalizedText(monitoring, "result"),
-                                monitoring.toPrettyString());
+                        String result = SplitterConfigKafkaLoad2739Flow.normalizedText(signal, "result");
+                        assertEquals("SPLITTING_CONFIG_LOAD",
+                                SplitterConfigKafkaLoad2739Flow.normalizedText(signal, "function"),
+                                signal.toPrettyString());
+                        assertTrue(List.of("LOADED", "LOADED_WITH_PRECALC").contains(result),
+                                signal.toPrettyString());
+                        assertEquals(config.getMessageId(),
+                                SplitterConfigKafkaLoad2739Flow.textAny(signal, "messageId", "requestIdIn", "configMessageId"),
+                                signal.toPrettyString());
                     }
+                    assertEquals(String.valueOf(config.getConfigVersion()),
+                            SplitterConfigKafkaLoad2739Flow.textAny(signal, "newConfigVersion", "configVersion"),
+                            signal.toPrettyString());
                 })
                 .step("Проверяем, что Kafka-loaded config стал активным для split", flow -> {
                     ValidatableResponseWrapper response = split(flow, EndpointMode.MAPPER, request);

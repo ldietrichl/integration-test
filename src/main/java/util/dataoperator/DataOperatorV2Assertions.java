@@ -73,7 +73,8 @@ public final class DataOperatorV2Assertions {
             long objectsFound = dto.getResultStatistics().getObjectsFound();
             long expectedSize = Math.min(objectsFound, DataOperatorV2TestDataFactory.OBJECT_IDS_LIMIT);
 
-            TestAssertions.assertEquals(expectedSize, ids.size(),
+            // TestAssertions compares boxed values: both operands must be Long, not Long/Integer.
+            TestAssertions.assertEquals(expectedSize, (long) ids.size(),
                     "Количество objectIds должно соответствовать objectsFound с учетом лимита 20000");
             TestAssertions.assertTrue(ids.stream().allMatch(id -> id != null && !id.isBlank()),
                     "objectIds не должен содержать null/пустые значения: " + ids);

@@ -15,7 +15,8 @@ public interface CustomTestConfigScope {
                         return TestEnvironment.current();
                     }
                     try {
-                        return method.invoke(delegate, arguments);
+                        Object value = method.invoke(delegate, arguments);
+                        return value instanceof String ? SecurePropertyResolver.resolve((String) value) : value;
                     } catch (InvocationTargetException error) {
                         throw error.getCause();
                     }

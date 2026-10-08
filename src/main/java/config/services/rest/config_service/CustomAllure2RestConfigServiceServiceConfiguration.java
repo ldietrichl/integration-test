@@ -2,10 +2,10 @@ package config.services.rest.config_service;
 
 import config.services.core.RestEndpointResolver;
 import config.services.core.RestServiceEndpoint;
+import config.services.rest.RestMtlsConfiguration;
 
 import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.config.RestAssuredConfig;
-import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import org.jetbrains.annotations.NotNull;
@@ -22,15 +22,12 @@ public class CustomAllure2RestConfigServiceServiceConfiguration extends DefaultR
 
     @Override
     public @NotNull RequestSpecification requestSpecification() {
-        RestAssuredConfig restAssuredConfig = new RestAssuredConfig()
-                .sslConfig(
-                        new SSLConfig()
-                                .keyStore("src/test/resources/keystore.p12", TEST_CONFIG.keystorePass())
-                                .keystoreType("PKCS12")
-                                .relaxedHTTPSValidation());
+        RestAssuredConfig restAssuredConfig = RestMtlsConfiguration.apply(new RestAssuredConfig(),
+                RestEndpointResolver.baseUri(RestServiceEndpoint.CONFIGURATION_SERVICE));
 
         return super.requestSpecification()
                 .config(restAssuredConfig)
+                .filter(RestMtlsConfiguration.requestGuard())
                 .baseUri(RestEndpointResolver.baseUri(RestServiceEndpoint.CONFIGURATION_SERVICE))
                 .contentType(ContentType.JSON)
                 .accept("*/*")

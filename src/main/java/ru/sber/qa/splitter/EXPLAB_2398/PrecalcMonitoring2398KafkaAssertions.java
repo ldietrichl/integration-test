@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.Allure;
 import ru.sber.qa.services.kafka.KafkaService;
+import util.KafkaAllureLog;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -21,7 +22,6 @@ import static util.TestAssertions.assertEquals;
 import static util.TestAssertions.assertFalse;
 import static util.TestAssertions.assertTrue;
 import static util.TestAssertions.fail;
-import static util.KafkaAllureLog.waitForTopic;
 
 /**
  * Kafka assertions для EXPLAB-2398.
@@ -66,8 +66,7 @@ final class PrecalcMonitoring2398KafkaAssertions {
         assertEquals(expectation.result(), text(event, "result"), "Некорректный result в monitoring event\n" + event);
         assertEquals(expectation.requestId(), text(event, "requestIdIn"), "Некорректный requestIdIn в monitoring event\n" + event);
         assertEquals(expectation.soConfigVersion(), number(event, "soConfigVersion"), "Некорректный soConfigVersion\n" + event);
-        assertTrue(SUPPORTED_SERVICE_NAMES.contains(text(event, "service")),
-                "Некорректный service в monitoring event\n" + event);
+        assertServiceName(event);
 
         assertPrecalcSplittingPoint(event);
         assertCompletedTimestamp(event, sinceEpochMillis);
@@ -85,13 +84,15 @@ final class PrecalcMonitoring2398KafkaAssertions {
                                                         Duration timeout) {
         var consumer = kafkaService.consumerClient(envName, timeout);
         List<String> messagesSince = new ArrayList<>();
-        try {
+        try (KafkaAllureLog.Scope ignored = KafkaAllureLog.waitingForTopic(
+                envName,
+                topic,
+                timeout,
+                "function=PRE_CALC_REQUEST, requestIdIn=" + requestId)) {
             consumer.subscribe(topic);
             consumer.poll(Duration.ofMillis(300));
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
-            waitForTopic(envName, topic, timeout,
-                    "ищем function=PRE_CALC_REQUEST, requestIdIn=" + requestId);
             while (System.currentTimeMillis() < deadline) {
                 consumer.poll(Duration.ofMillis(300));
                 try {
@@ -232,6 +233,12 @@ final class PrecalcMonitoring2398KafkaAssertions {
     private static void assertMessageIsNotBlank(JsonNode event) {
         String message = text(event, "message");
         assertFalse(message == null || message.isBlank(), "Monitoring event должен содержать непустой message\n" + event);
+    }
+
+    private static void assertServiceName(JsonNode event) {
+        String service = text(event, "service");
+        assertTrue(SUPPORTED_SERVICE_NAMES.contains(service),
+                "Некорректный service в monitoring event: " + service + "\n" + event);
     }
 
     private static String text(JsonNode node, String field) {

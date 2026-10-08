@@ -1,0 +1,22 @@
+// Isolated local launch of existing project scenarios, not a replacement test suite.
+allprojects {
+    afterEvaluate { p ->
+        if (p.plugins.hasPlugin('java')) {
+            p.tasks.register('schedulerLocalSmokeTest', org.gradle.api.tasks.testing.Test) {
+                dependsOn p.tasks.named('testClasses')
+                testClassesDirs = p.sourceSets.test.output.classesDirs
+                classpath = p.sourceSets.test.runtimeClasspath
+                workingDir = p.file('local-services/scheduler-regression/.runtime/test-work')
+                useJUnitPlatform()
+                filter { includeTestsMatching('ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest.sch135') }
+                systemProperty 'allure.results.directory', p.file('local-services/scheduler-regression/.runtime/allure-results').absolutePath
+                systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'
+                systemProperty 'file.encoding', 'UTF-8'
+                maxParallelForks = 1
+                testLogging { events 'passed', 'failed', 'skipped'; exceptionFormat 'full' }
+                reports.junitXml.outputLocation.set(p.file('local-services/scheduler-regression/.runtime/junit'))
+                reports.html.outputLocation.set(p.file('local-services/scheduler-regression/.runtime/test-report'))
+            }
+        }
+    }
+}

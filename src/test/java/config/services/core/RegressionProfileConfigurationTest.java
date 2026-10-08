@@ -11,8 +11,32 @@ import util.SplitterKafkaProperties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RegressionProfileConfigurationTest {
+    @ParameterizedTest
+    @CsvSource({"ift-dm", "ift_dm", "eift-dm", "eift_dm"})
+    void legacyDefaultHelperKeepsIftDmSeparate(String environment) {
+        assertEquals("splitter_ift_dm", SplitterKafkaProperties.defaultKafkaEnv(environment));
+    }
+
+    @Test
+    void legacyDefaultHelperRejectsMissingEnvironment() {
+        assertThrows(IllegalArgumentException.class, () -> SplitterKafkaProperties.defaultKafkaEnv(null));
+        assertThrows(IllegalArgumentException.class, () -> SplitterKafkaProperties.defaultKafkaEnv(""));
+    }
+
+    @Test
+    void emptyIftDmTopicCannotUseIftTopicOrGlobalDefault() {
+        Properties profiles = profiles();
+        String key = "splitter.config.kafka.monitoring.topic";
+        profiles.setProperty("ift-dm." + key, "");
+        profiles.setProperty(key, "global-monitoring");
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> RegressionProfileConfiguration.resolve(profiles, "ift-dm", key));
+        assertTrue(failure.getMessage().contains("ift-dm." + key));
+    }
+
     @ParameterizedTest
     @CsvSource({"dev,splitter_dev,dev-monitoring", "ift,splitter_ift,ift-monitoring", "eift-ds,splitter_ift,ift-monitoring"})
     void kafkaProfileAndTopicSelectTheSameEnvironment(String env, String expectedProfile, String expectedTopic) {
@@ -33,8 +57,14 @@ class RegressionProfileConfigurationTest {
     @ParameterizedTest
     @CsvSource({"ift-dm", "lt", "local"})
     void otherEnvironmentsRequireTheirOwnKafkaProfile(String env) {
-        assertThrows(IllegalStateException.class,
-                () -> RegressionProfileConfiguration.resolve(profiles(), env, "splitter.config.kafka.env"));
+        Properties source = profiles();
+        String key = "splitter.config.kafka.env";
+        IllegalStateException missing = assertThrows(IllegalStateException.class,
+                () -> RegressionProfileConfiguration.resolve(source, env, key));
+        assertTrue(missing.getMessage().contains(env + "." + key));
+        String ownProfile = "splitter_" + env.replace('-', '_');
+        source.setProperty(env + "." + key, ownProfile);
+        assertEquals(ownProfile, RegressionProfileConfiguration.resolve(source, env, key));
     }
 
     @Test
@@ -56,11 +86,24 @@ class RegressionProfileConfigurationTest {
             System.setProperty("env", "stale-invalid-environment");
             for (String key : routingKeys) {
                 System.setProperty(key, "stale-other-environment");
-                String expected = RegressionProfileConfiguration.resolve(fileProfiles, environment, key);
-                assertEquals(expected, SplitterKafkaProperties.string(key, "unsafe-default"), key);
-                if (key.endsWith(".env")) {
-                    assertEquals(expected, SplitterKafkaProperties.kafkaEnv(key), key);
+                String expected;
+                try {
+                    expected = RegressionProfileConfiguration.resolve(fileProfiles, environment, key);
+                } catch (IllegalStateException missingProfile) {
+                    // A stand used only by another suite need not configure splitter routing.
+                    // Missing routing must reject stale JVM values and the caller's fallback.
+                    IllegalStateException rejected = assertThrows(IllegalStateException.class,
+                            () -> SplitterKafkaProperties.string(key, "unsafe-default"), key);
+                    assertEquals(missingProfile.getMessage(), rejected.getMessage(), key);
+                    if (key.endsWith(".env")) {
+                        rejected = assertThrows(IllegalStateException.class,
+                                () -> SplitterKafkaProperties.kafkaEnv(key), key);
+                        assertEquals(missingProfile.getMessage(), rejected.getMessage(), key);
+                    }
+                    continue;
                 }
+                assertEquals(expected, SplitterKafkaProperties.string(key, "unsafe-default"), key);
+                if (key.endsWith(".env")) assertEquals(expected, SplitterKafkaProperties.kafkaEnv(key), key);
             }
         } finally {
             previous.forEach((key, value) -> {

@@ -112,15 +112,17 @@ public final class KafkaQueueAsserts {
         Objects.requireNonNull(timeout, "timeout");
 
         var consumer = kafkaService.consumerClient(envName, timeout);
-        try {
+        try (KafkaAllureLog.Scope ignored = KafkaAllureLog.waitingForTopic(
+                envName,
+                topic,
+                timeout,
+                "hostname~" + hostnameSubstring + ", expected substring")) {
             // subscribe + join group
             consumer.subscribe(topic);
             consumer.poll(Duration.ofMillis(300));
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
             List<String> matchedByHostAndTime = new ArrayList<>();
-            KafkaAllureLog.waitForTopic(envName, topic, timeout,
-                    "ищем payload по hostname~=" + hostnameSubstring + ", expected substring");
 
             try {
                 while (System.currentTimeMillis() < deadline) {
@@ -196,14 +198,17 @@ public final class KafkaQueueAsserts {
         Objects.requireNonNull(timeout, "timeout");
 
         var consumer = kafkaService.consumerClient(envName, timeout);
-        try {
+        try (KafkaAllureLog.Scope ignored = KafkaAllureLog.waitingForTopic(
+                envName,
+                topic,
+                timeout,
+                "expected substring")) {
             // subscribe + join group
             consumer.subscribe(topic);
             consumer.poll(Duration.ofMillis(300));
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
             List<String> matchedByHostAndTime = new ArrayList<>();
-            KafkaAllureLog.waitForTopic(envName, topic, timeout, "ищем payload по expected substring");
 
             try {
                 while (System.currentTimeMillis() < deadline) {
@@ -276,14 +281,16 @@ public final class KafkaQueueAsserts {
             @NotNull Duration timeout
     ) {
         var consumer = kafkaService.consumerClient(envName);
-        try {
+        try (KafkaAllureLog.Scope ignored = KafkaAllureLog.waitingForTopic(
+                envName,
+                topic,
+                timeout,
+                "hostname~" + hostnameSubstring + ", expected unicode substring")) {
             consumer.subscribe(topic);
             consumer.poll(Duration.ofMillis(300));
 
             long deadline = System.currentTimeMillis() + timeout.toMillis();
             List<String> matched = new ArrayList<>();
-            KafkaAllureLog.waitForTopic(envName, topic, timeout,
-                    "ищем payload по hostname~=" + hostnameSubstring + ", expected substring");
 
             while (System.currentTimeMillis() < deadline) {
                 consumer.poll(Duration.ofMillis(300));

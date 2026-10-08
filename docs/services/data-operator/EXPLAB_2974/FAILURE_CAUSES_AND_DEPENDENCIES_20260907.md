@@ -14,7 +14,7 @@
 
 Всего 77 ответов 500. В логе 89 ERROR-записей, поскольку 10 NPE дополнительно логируются как 10 оборачивающих RuntimeException, а ещё 2 записи относятся к отсутствующему справочнику. Это не 89 отдельных запросов с 500.
 
-Ожидания сверены с исходным экспортом v7: `exps` не может быть пустым, `number` — int16; некорректный формат даёт HTTP 400 с `message="Некорректный запрос"`, схема ошибки содержит обязательный `id` UUID. [Извлечённый текст исходной спецификации](A:/Codex/Functional/BACK/06_temp_work/explab-2974-analysis/endpoint-spec.txt:229).
+Ожидания сверены с исходным экспортом v7: `exps` не может быть пустым, `number` — int16; некорректный формат даёт HTTP 400 с `message="Некорректный запрос"`, схема ошибки содержит обязательный `id` UUID. [Извлечённый текст исходной спецификации](<workspace>/BACK/06_temp_work/explab-2974-analysis/endpoint-spec.txt:229).
 
 В текущем `GlobalExceptionHandler` ни одна ветка не формирует требуемый `id`. Поэтому даже изменение HTTP-статуса за счёт иных данных не сделает такой ответ соответствующим проверяемой схеме.
 
@@ -24,11 +24,11 @@
 
 Участки кода:
 
-- [Загрузка справочников при старте](A:/Codex/Functional/BACK/01_reference_sources/data_operator_service/EXPLAB-2974_06fd6acb646/src/main/java/explab/dataoperator/service/DictionaryCacheServiceImpl.java:29).
-- [Расчёт links и чтение param_cache](A:/Codex/Functional/BACK/01_reference_sources/data_operator_service/EXPLAB-2974_06fd6acb646/src/main/java/explab/dataoperator/service/DataOperatorServiceImpl.java:112).
-- [Поиск links через Ignite](A:/Codex/Functional/BACK/01_reference_sources/data_operator_service/EXPLAB-2974_06fd6acb646/src/main/java/explab/dataoperator/service/SearchServiceImpl.java:143).
-- [Общий обработчик исключений](A:/Codex/Functional/BACK/01_reference_sources/data_operator_service/EXPLAB-2974_06fd6acb646/src/main/java/explab/dataoperator/errorhandler/GlobalExceptionHandler.java:31).
-- [DTO условия: int16 не ограничен, @NotBlank применён к List](A:/Codex/Functional/BACK/01_reference_sources/data_operator_service/EXPLAB-2974_06fd6acb646/src/main/java/explab/dataoperator/api/dto/ObjectSelectConditionsDto.java:20).
+- [Загрузка справочников при старте](<workspace>/BACK/01_reference_sources/data_operator_service/EXPLAB-2974_06fd6acb646/src/main/java/explab/dataoperator/service/DictionaryCacheServiceImpl.java:29).
+- [Расчёт links и чтение param_cache](<workspace>/BACK/01_reference_sources/data_operator_service/EXPLAB-2974_06fd6acb646/src/main/java/explab/dataoperator/service/DataOperatorServiceImpl.java:112).
+- [Поиск links через Ignite](<workspace>/BACK/01_reference_sources/data_operator_service/EXPLAB-2974_06fd6acb646/src/main/java/explab/dataoperator/service/SearchServiceImpl.java:143).
+- [Общий обработчик исключений](<workspace>/BACK/01_reference_sources/data_operator_service/EXPLAB-2974_06fd6acb646/src/main/java/explab/dataoperator/errorhandler/GlobalExceptionHandler.java:31).
+- [DTO условия: int16 не ограничен, @NotBlank применён к List](<workspace>/BACK/01_reference_sources/data_operator_service/EXPLAB-2974_06fd6acb646/src/main/java/explab/dataoperator/api/dto/ObjectSelectConditionsDto.java:20).
 
 В частности, `@NotBlank` на List/enum нельзя исправить установкой соседнего микросервиса. Для исправления сервиса нужны корректные ограничения DTO, каскадная валидация, правила десериализации и обработчики ошибок. В рамках этого анализа сервисный код не изменялся.
 
@@ -45,7 +45,7 @@
 
 Это диагностическое повторение HTTP-обмена, а не новый приёмочный Allure-прогон. Ignite, Kafka и уже загруженные метаданные оставались доступными. Отключение заглушки после старта не проверяет запуск с пустым Ignite и недоступными dictionaries.
 
-[Результаты всех запросов](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/dependency-diagnostic-20260907-210537/results.json), [лог интервала](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/dependency-diagnostic-20260907-210537/service-interval.log), [восстановленное состояние](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/dependency-diagnostic-20260907-210537/restored.json).
+[Результаты всех запросов](<workspace>/BACK/06_temp_work/explab-2974-compatible/dependency-diagnostic-20260907-210537/results.json), [лог интервала](<workspace>/BACK/06_temp_work/explab-2974-compatible/dependency-diagnostic-20260907-210537/service-interval.log), [восстановленное состояние](<workspace>/BACK/06_temp_work/explab-2974-compatible/dependency-diagnostic-20260907-210537/restored.json).
 
 ## Когда нужны другие сервисы или более полные заглушки
 

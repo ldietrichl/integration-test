@@ -1,6 +1,5 @@
 package ru.sber.qa.splitter.Operators;
 
-import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import constants.Endpoints;
 
 import config.services.core.RestEndpointResolver;
@@ -25,6 +24,9 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.UUID;
+
+import util.support.SplitterVersionProvider;
 
 import static io.qameta.allure.Allure.step;
 import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
@@ -33,7 +35,6 @@ import static ru.sber.qa.matchers.RestMatchers.haveStatusCode;
 @ExtendWith(PerfeccionistaExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
-@AnyConfigLoadMode
 public class SplitterLogicOperatorsLinkRulesTest {
     private static final String splitterBaseUri = RestEndpointResolver.baseUri(RestServiceEndpoint.SPLITTER);
      String endpointConfig=Endpoints.Splitter.SPLITTER_CONFIG;
@@ -41,7 +42,6 @@ public class SplitterLogicOperatorsLinkRulesTest {
 
 
     /** Общее хранилище для id между тестами. */
-@AnyConfigLoadMode
     public static class SharedState {
     }
 
@@ -57,15 +57,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -93,7 +93,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqPos),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
                                         ;
         });
 
@@ -108,7 +108,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' }.objectResults.size() == 0"))
+                                    "splittingResults[0].objectResults.size() == 0"))
                     ;
         });
     }
@@ -124,15 +124,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -160,7 +160,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqPos),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
                     ;
         });
 
@@ -175,7 +175,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' }.objectResults.size() == 0"))
+                                    "splittingResults[0].objectResults.size() == 0"))
                     ;
         });
     }
@@ -192,15 +192,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -228,7 +228,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqPos),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
                     ;
         });
 
@@ -243,7 +243,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' }.objectResults.size() == 0"))
+                                    "splittingResults[0].objectResults.size() == 0"))
                     ;
         });
     }
@@ -259,15 +259,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -296,9 +296,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
+                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
+                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
                     ;
         });
 
@@ -312,7 +312,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"))
                     ;
         });
 
@@ -330,15 +330,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -367,9 +367,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
+                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
+                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
                     ;
         });
 
@@ -383,7 +383,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
                     ;
         });
 
@@ -401,15 +401,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -438,9 +438,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
+                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
+                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
                     ;
         });
 
@@ -454,7 +454,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"))
                     ;
         });
 
@@ -475,15 +475,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileReqNeg_1 = Files.readString(pathReqNeg_1);
         String fileReqNeg_2 = Files.readString(pathReqNeg_2);
         String fileReqNeg_3 = Files.readString(pathReqNeg_3);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -512,11 +512,11 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
+                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"),
+                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
+                                    "splittingResults[2].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
                     ;
         });
 
@@ -530,7 +530,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_1),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"))
                     ;
         });
 
@@ -544,7 +544,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_2),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
                     ;
         });
 
@@ -558,8 +558,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_3),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' }.objectResults.size() == 0"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectResults.size() == 0"))
                     ;
         });
 
@@ -580,15 +579,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileReqNeg_1 = Files.readString(pathReqNeg_1);
         String fileReqNeg_2 = Files.readString(pathReqNeg_2);
         String fileReqNeg_3 = Files.readString(pathReqNeg_3);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -617,11 +616,11 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
+                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"),
+                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
+                                    "splittingResults[2].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
                     ;
         });
 
@@ -636,9 +635,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
+                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
+                                    "splittingResults[1].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
                     ;
         });
 
@@ -652,7 +651,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_2),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
                     ;
         });
 
@@ -666,8 +665,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_3),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' }.objectResults.size() == 0"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectResults.size() == 0"))
                     ;
         });
 
@@ -684,15 +682,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileConfig = Files.readString(pathConfig);
         String fileReqPos = Files.readString(pathReqPos);
         String fileReqNeg = Files.readString(pathReqNeg);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -721,9 +719,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789' } != null"),
+                                    "splittingResults[0].objectId == '46871f54-7d8c-40bb-8ca7-35c667e21789'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2' } != null"))
+                                    "splittingResults[1].objectId == '1f53341b-aaa9-4f28-ae70-4bbb91c3c8c2'"))
                     ;
         });
 
@@ -737,7 +735,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e' } != null"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == 'f45e3522-ae0c-426e-948b-11a4ec96c04e'"))
                     ;
         });
 
@@ -758,15 +756,15 @@ public class SplitterLogicOperatorsLinkRulesTest {
         String fileReqNeg_1 = Files.readString(pathReqNeg_1);
         String fileReqNeg_2 = Files.readString(pathReqNeg_2);
         String fileReqNeg_3 = Files.readString(pathReqNeg_3);
-        Long unixTime = System.currentTimeMillis() / 1000L;;
+        Long unixTime = SplitterVersionProvider.nextVersion();
 
 
         ObjectMapper objectMapper = new ObjectMapper();
         SplittingConfigMessageDto rawMessage =
                 objectMapper.readValue(fileConfig, SplittingConfigMessageDto.class);
         SplittingConfigMessageDto message= new SplittingConfigMessageDto(
-                rawMessage.messageId(),
-                rawMessage.requestId(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 unixTime,
                 rawMessage.forceConfigLoad(),
                 rawMessage.splittingPointCode(),
@@ -795,9 +793,9 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == 'cdd20fe8-a0a7-483d-9a4f-b19f23f63ea8' } != null"),
+                                    "splittingResults[0].objectId == 'cdd20fe8-a0a7-483d-9a4f-b19f23f63ea8'"),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '0c879e13-4e9f-4600-9cf5-03eb3a10e7da' } != null"))
+                                    "splittingResults[1].objectId == '0c879e13-4e9f-4600-9cf5-03eb3a10e7da'"))
                     ;
         });
 
@@ -812,7 +810,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
                             RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == 'cdd20fe8-a0a7-483d-9a4f-b19f23f63ea8' } != null"))
+                                    "splittingResults[0].objectId == 'cdd20fe8-a0a7-483d-9a4f-b19f23f63ea8'"))
                     ;
         });
 
@@ -826,7 +824,7 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_2),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults.find { it.objectId == '0c879e13-4e9f-4600-9cf5-03eb3a10e7da' } != null"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectId == '0c879e13-4e9f-4600-9cf5-03eb3a10e7da'"))
                     ;
         });
 
@@ -840,11 +838,11 @@ public class SplitterLogicOperatorsLinkRulesTest {
                                             .body(fileReqNeg_3),
                             splitterBaseUri+endpointReq)
                     .should(haveStatusCode(HttpStatus.SC_OK),
-                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression(
-                                    "splittingResults.find { it.objectId == '0c879e13-4e9f-4600-9cf5-03eb3a10e7da' }.objectResults.size() == 0"))
+                            RestMatchers.haveBodyWithEvaluatableJsonPathExpression("splittingResults[0].objectResults.size() == 0"))
                     ;
         });
 
     }
+
 }
 

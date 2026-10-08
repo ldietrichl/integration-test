@@ -39,7 +39,7 @@ public class CreateLayerNegativeTest extends Flows {
                                     JsonMatchers.haveNotBlankJsonValue("id"),
                                     JsonMatchers.haveJsonValue("message",
                                             TextConditions.equalToText("Некорректный запрос")),
-                                    JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                    JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                             );
                 })
                 .run();
@@ -69,7 +69,7 @@ public class CreateLayerNegativeTest extends Flows {
                                     JsonMatchers.haveNotBlankJsonValue("id"),
                                     JsonMatchers.haveJsonValue("message",
                                             TextConditions.equalToText("Некорректные границы диапазона распределения")),
-                                    JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                    JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                             );
                 })
                 .run();
@@ -104,7 +104,7 @@ public class CreateLayerNegativeTest extends Flows {
                                     JsonMatchers.haveNotBlankJsonValue("id"),
                                     JsonMatchers.haveJsonValue("message",
                                             TextConditions.equalToText("Границы интервалов распределения пересекаются")),
-                                    JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                    JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                             );
                 })
                 .run();

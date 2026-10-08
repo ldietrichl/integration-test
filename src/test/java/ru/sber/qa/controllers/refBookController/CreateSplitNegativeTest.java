@@ -34,7 +34,7 @@ public class CreateSplitNegativeTest extends Flows {
                             .should(
                                     JsonMatchers.haveNotBlankJsonValue("id"),
                                     JsonMatchers.haveJsonValue("message", TextConditions.equalToText("Неверная структура описания групп")),
-                                    JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                    JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                             );
                 }).run();
     }
@@ -56,7 +56,7 @@ public class CreateSplitNegativeTest extends Flows {
                             .should(
                                     JsonMatchers.haveNotBlankJsonValue("id"),
                                     JsonMatchers.haveJsonValue("message", TextConditions.equalToText("Не уникальны коды групп")),
-                                    JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                    JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                             );
                 }).run();
     }
@@ -76,7 +76,7 @@ public class CreateSplitNegativeTest extends Flows {
                             .should(
                                     JsonMatchers.haveNotBlankJsonValue("id"),
                                     JsonMatchers.haveJsonValue("message", TextConditions.equalToText("Некорректный запрос")),
-                                    JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                    JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                             );
                 }).run();
     }

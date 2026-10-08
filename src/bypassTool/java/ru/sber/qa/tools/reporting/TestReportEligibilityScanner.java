@@ -240,11 +240,26 @@ public final class TestReportEligibilityScanner {
 
             if (classDisabled || containsAnnotation(annotationBlock, "Disabled")) {
                 result.add(TestDecision.excluded(fullName, relativePath, Reason.DISABLED,
-                        "JUnit @Disabled test is intentionally omitted from functional reports"));
+                        disabledReason(classDisabled ? classAnnotationBlock : annotationBlock)));
                 continue;
             }
 
-            if (method == null || !containsVerification(methodName, methods, new HashSet<>())) {
+            if (Boolean.getBoolean("scheduler.regression.selection.enabled")
+                    && packageName.equals("ru.sber.qa.scheduler.regression")
+                    && !className.equals("testsheduler")) {
+                var policy = infrastructure.scheduler.SchedulerRegressionPolicy.selected();
+                var group = infrastructure.scheduler.SchedulerRegressionPolicy.group(className, methodName);
+                if (policy != infrastructure.scheduler.SchedulerRegressionPolicy.Phase.FULL && policy != group) {
+                    result.add(TestDecision.excluded(fullName, relativePath, Reason.SCHEDULER_PHASE,
+                            "PHASE_NOT_SELECTED: selected=" + policy + "; required=" + group
+                                    + "; not executed and not coverage"));
+                    continue;
+                }
+            }
+
+            if (method == null || (!containsVerification(methodName, methods, new HashSet<>())
+                    && !containsKnownStatusVerification(source, method.body())
+                    && !containsDelegatedVerification(sourceRoot, source, methodName, method.body()))) {
                 result.add(TestDecision.excluded(fullName, relativePath, Reason.NO_ASSERTION,
                         "No assertion, matcher, expected-status check or verified local helper call was found"));
                 continue;
@@ -253,6 +268,33 @@ public final class TestReportEligibilityScanner {
             result.add(TestDecision.eligible(fullName, relativePath));
         }
         return result;
+    }
+
+
+    /** Explicit source-backed delegation, not an unconditional service/class allowlist. */
+    private static boolean containsDelegatedVerification(Path root, String source, String name, String body)
+            throws IOException {
+        Matcher annotation = Pattern.compile("@(?:[\\w.]+\\.)?UsesScenarioSteps\\(\\s*([\\w.]+)\\.class\\s*\\)")
+                .matcher(source);
+        if (!annotation.find() || !Pattern.compile("\\." + Pattern.quote(name) + "\\s*\\(").matcher(body).find())
+            return false;
+        String type = annotation.group(1);
+        if (!type.startsWith("steps.") || type.contains("..")) return false;
+        Optional<Path> file = findProjectFile(root, "src/main/java/" + type.replace('.', '/') + ".java");
+        if (file.isEmpty()) return false;
+        String stepSource = stripComments(Files.readString(file.get(), StandardCharsets.UTF_8));
+        Map<String, MethodSource> steps = findMethods(stepSource);
+        MethodSource delegated = steps.get(name);
+        return containsVerification(name, steps, new HashSet<>())
+                || (delegated != null && containsKnownStatusVerification(stepSource, delegated.body()));
+    }
+
+    /** This exact project helper checks the HTTP status with JUnit; arbitrary expect() calls do not qualify. */
+    private static boolean containsKnownStatusVerification(String source, String body) {
+        boolean imported = Pattern.compile(
+                "(?m)^\\s*import\\s+static\\s+steps\\.rest\\.scheduler\\.SchedulerSteps\\.(?:expect|\\*)\\s*;")
+                .matcher(source).find();
+        return imported && Pattern.compile("\\bexpect\\s*\\(").matcher(body).find();
     }
 
     private static Map<String, MethodSource> findMethods(String source) {
@@ -330,6 +372,12 @@ public final class TestReportEligibilityScanner {
             }
         }
         return rules;
+    }
+
+    private static String disabledReason(String annotations) {
+        var matcher = Pattern.compile("@(?:[\\w.]+\\.)?Disabled\\s*\\(\\s*\"([^\"]*)\"").matcher(annotations);
+        return matcher.find() ? matcher.group(1)
+                : "JUnit @Disabled: inspect the source annotation for the re-enable condition";
     }
 
     private static void writeOutputs(Path outputDir,
@@ -851,6 +899,7 @@ public final class TestReportEligibilityScanner {
 
     private enum Reason {
         DISABLED("disabled"),
+        SCHEDULER_PHASE("scheduler-phase"),
         SPLITTER_CONFIG_LOAD_MODE("splitter-config-load-mode"),
         SPLITTER_TEST_PROFILE("splitter-test-profile"),
         SPLITTER_KAFKA_STATUS_REQUIRED("splitter-kafka-status-required"),

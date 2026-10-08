@@ -33,11 +33,11 @@ SL-01 создал через REST 7 объектов D1, получил точ�
 Общий отчёт собран только из двух завершённых частей этого повтора. Сверены 104 результата JUnit, 104 HTTP-обмена и 104 Allure result-файла. Проверены 116 container-файлов и 312 вложений по ссылкам; потерянных результатов/вложений нет. Статистика опубликованного HTML также показывает 1 passed и 103 failed. Синтетические unit-проверки в отчёт не включены; загрузка в TestOps не выполнялась.
 
 - [Allure](http://127.0.0.1:18086/).
-- [Сводка](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/analysis.json).
-- [Все результаты и HTTP-ответы](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/results-with-http.json).
-- [Сравнение с предыдущим полным запуском](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/comparison.json).
-- [Проверка целостности Allure](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/report-integrity.json).
-- [Статистика опубликованного отчёта](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/served-allure-summary.json).
-- [Состояние инфраструктуры и расположение Docker на A](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/final-environment.json).
-- [Очистка D1](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-fixture-20260907-223518-129/fixture-cleanup.json).
-- [Лог сервиса во время проверок](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/service-test-interval.log).
+- [Сводка](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/analysis.json).
+- [Все результаты и HTTP-ответы](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/results-with-http.json).
+- [Сравнение с предыдущим полным запуском](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/comparison.json).
+- [Проверка целостности Allure](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/report-integrity.json).
+- [Статистика опубликованного отчёта](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/served-allure-summary.json).
+- [Состояние инфраструктуры и расположение Docker на A](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/final-environment.json).
+- [Очистка D1](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-fixture-20260907-223518-129/fixture-cleanup.json).
+- [Лог сервиса во время проверок](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-full-20260907-223518/service-test-interval.log).

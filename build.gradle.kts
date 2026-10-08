@@ -15,6 +15,20 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
+// The wrapper properties are the single source for the approved distribution.
+tasks.named<org.gradle.api.tasks.wrapper.Wrapper>("wrapper") {
+    val wrapperSettings = Properties().apply {
+        rootProject.file("gradle/wrapper/gradle-wrapper.properties").inputStream().use { load(it) }
+    }
+    // settings.gradle.kts checks this version against the configured distribution.
+    gradleVersion = gradle.gradleVersion
+    distributionType = org.gradle.api.tasks.wrapper.Wrapper.DistributionType.BIN
+    distributionUrl = wrapperSettings.getProperty("distributionUrl")
+        ?: throw GradleException("Missing distributionUrl in gradle-wrapper.properties")
+    distributionSha256Sum = wrapperSettings.getProperty("distributionSha256Sum")
+        ?: throw GradleException("Missing distributionSha256Sum in gradle-wrapper.properties")
+}
+
 // Compile handwritten source sets and assemble the project without running scenarios.
 // Generated registration-only bypass tests are deliberately outside this task.
 tasks.register("compileWithoutTests") {

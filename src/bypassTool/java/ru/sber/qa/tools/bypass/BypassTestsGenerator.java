@@ -60,18 +60,24 @@ public final class BypassTestsGenerator {
 
     public static void main(String[] args) throws IOException {
         if (args.length != 3) {
-            throw new IllegalArgumentException("Expected arguments: <source-test-java-dir> <generated-output-dir> <excluded-tests-file>");
+            throw new IllegalArgumentException("Expected arguments: <source-test-java-dir> <generated-output-dir> <eligible-tests-file>");
         }
 
         Path sourceRoot = Path.of(args[0]).toAbsolutePath().normalize();
         Path outputRoot = Path.of(args[1]).toAbsolutePath().normalize();
-        Path excludedTestsFile = Path.of(args[2]).toAbsolutePath().normalize();
-        Set<String> excludedTests = loadExcludedTests(excludedTestsFile);
+        Path eligibleTestsFile = Path.of(args[2]).toAbsolutePath().normalize();
+        Set<String> eligibleTests = loadEligibleTests(eligibleTestsFile);
 
         if (!Files.isDirectory(sourceRoot)) {
             throw new IllegalArgumentException("Source test directory does not exist: " + sourceRoot);
         }
 
+        Path project = sourceRoot.getParent().getParent().getParent();
+        Path build = project.resolve("build").normalize();
+        if (!outputRoot.startsWith(build) || outputRoot.equals(build))
+            throw new IllegalArgumentException("Registration output must be a dedicated directory under project/build");
+        for (Path node = outputRoot; node != null; node = node.getParent())
+            if (Files.isSymbolicLink(node)) throw new IllegalArgumentException("Redirected output is not permitted");
         deleteDirectory(outputRoot);
         Files.createDirectories(outputRoot);
 
@@ -81,7 +87,7 @@ public final class BypassTestsGenerator {
             paths.filter(path -> Files.isRegularFile(path) && path.toString().endsWith(".java"))
                     .forEach(path -> {
                         try {
-                            Optional<GeneratedClass> generatedClass = generateClass(sourceRoot, path, excludedTests);
+                            Optional<GeneratedClass> generatedClass = generateClass(sourceRoot, path, eligibleTests);
                             if (generatedClass.isPresent()) {
                                 writeGeneratedClass(outputRoot, generatedClass.get());
                                 stats.classes++;
@@ -98,7 +104,7 @@ public final class BypassTestsGenerator {
         System.out.println(summary);
     }
 
-    private static Optional<GeneratedClass> generateClass(Path sourceRoot, Path sourceFile, Set<String> excludedTests) throws IOException {
+    private static Optional<GeneratedClass> generateClass(Path sourceRoot, Path sourceFile, Set<String> eligibleTests) throws IOException {
         String rawSource = Files.readString(sourceFile, StandardCharsets.UTF_8);
         String source = stripComments(rawSource);
 
@@ -118,7 +124,7 @@ public final class BypassTestsGenerator {
         Metadata classMetadata = extractMetadata(classAnnotationBlock);
         String fqcn = packageName + "." + className;
         ImportContext imports = extractImports(source);
-        List<GeneratedMethod> methods = findTestMethods(source, classMetadata, fqcn, packageName, imports, excludedTests);
+        List<GeneratedMethod> methods = findTestMethods(source, classMetadata, fqcn, packageName, imports, eligibleTests);
         if (methods.isEmpty()) {
             return Optional.empty();
         }
@@ -132,7 +138,7 @@ public final class BypassTestsGenerator {
                                                          String fqcn,
                                                          String packageName,
                                                          ImportContext imports,
-                                                         Set<String> excludedTests) {
+                                                         Set<String> eligibleTests) {
         Matcher matcher = TEST_METHOD_PATTERN.matcher(source);
         List<GeneratedMethod> methods = new ArrayList<>();
         Set<String> seenNames = new LinkedHashSet<>();
@@ -144,7 +150,7 @@ public final class BypassTestsGenerator {
 
             String originalName = matcher.group(1);
             String originalParameters = matcher.group(2);
-            if (excludedTests.contains(fqcn + "." + originalName)) {
+            if (!eligibleTests.contains(fqcn + "." + originalName)) {
                 continue;
             }
             String generatedName = originalName;
@@ -310,7 +316,7 @@ public final class BypassTestsGenerator {
             builder.append("@ManualTest\n");
         }
 
-        builder.append("@DisplayName(\"").append(escapeJavaString(generatedClass.className())).append(" / bypass registration mode\")\n")
+        builder.append("@DisplayName(\"").append(escapeJavaString(generatedClass.className())).append(" / только регистрация\")\n")
                 .append("class ").append(generatedClass.className()).append(" {\n\n");
 
         for (GeneratedMethod method : generatedClass.methods()) {
@@ -331,10 +337,10 @@ public final class BypassTestsGenerator {
             renderMetadataLabels(builder, mergeMetadata(classMetadata, methodMetadata));
             builder.append("        Allure.label(\"testFramework\", \"platform-v-at-framework\");\n");
 
-            builder.append("        Allure.step(\"Bypass registration: original functional test is not executed\", () -> {\n")
-                    .append("            Allure.addAttachment(\"Bypass mode\", \"text/plain\", \"")
-                    .append(escapeJavaString("This is a technical passed result generated by ./gradlew bypassTests for TMS/TestOps registration. Original source: "
-                            + generatedClass.sourceFile() + ", method: " + method.originalName()))
+            builder.append("        Allure.step(\"Зарегистрировать описание сценария без выполнения проверок\", () -> {\n")
+                    .append("            Allure.addAttachment(\"Режим регистрации\", \"text/plain\", \"")
+                    .append(escapeJavaString("Техническая регистрация TestOps. Сервис не проверялся, ConfigMap не собиралась. Исходный файл: "
+                            + generatedClass.sourceFile() + ", метод: " + method.originalName()))
                     .append("\");\n")
                     .append("        });\n")
                     .append("    }\n\n");
@@ -366,9 +372,9 @@ public final class BypassTestsGenerator {
         return generatedClass.methods().stream().anyMatch(method -> method.metadata().manual());
     }
 
-    private static Set<String> loadExcludedTests(Path file) throws IOException {
+    private static Set<String> loadEligibleTests(Path file) throws IOException {
         if (!Files.exists(file)) {
-            return Set.of();
+            throw new IllegalArgumentException("Explicit eligible-tests file is missing: " + file);
         }
         LinkedHashSet<String> result = new LinkedHashSet<>();
         for (String rawLine : Files.readAllLines(file, StandardCharsets.UTF_8)) {
@@ -377,6 +383,7 @@ public final class BypassTestsGenerator {
                 result.add(line);
             }
         }
+        if (result.isEmpty()) throw new IllegalArgumentException("No eligible tests; registration was not generated");
         return result;
     }
 

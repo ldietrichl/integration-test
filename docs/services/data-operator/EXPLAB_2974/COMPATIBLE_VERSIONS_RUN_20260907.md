@@ -19,7 +19,7 @@
 | Kafka | 127.0.0.1:19074 | 127.0.0.1:19084 |
 | Заглушки dictionaries/experiments | 127.0.0.1:18075 | 127.0.0.1:18085 |
 
-Образы предварительно скачаны через Docker Compose, Maven загрузил Ignite 2.18.0 и транзитивные библиотеки. Сборка завершилась `BUILD SUCCESS`. Фактический состав boot JAR проверен: `ignite-core/indexing` и новые бинарные модули — 2.18.0, `kafka-clients` — 3.9.1. Полный список и digest образов записаны в [environment.json](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/environment.json).
+Образы предварительно скачаны через Docker Compose, Maven загрузил Ignite 2.18.0 и транзитивные библиотеки. Сборка завершилась `BUILD SUCCESS`. Фактический состав boot JAR проверен: `ignite-core/indexing` и новые бинарные модули — 2.18.0, `kafka-clients` — 3.9.1. Полный список и digest образов записаны в [environment.json](<workspace>/BACK/06_temp_work/explab-2974-compatible/environment.json).
 
 Выбор сохраняет линию Ignite 2.x и выравнивает Kafka с клиентом сервиса. JDK 17 входит в [перечень проверенных JDK Apache Ignite](https://ignite.apache.org/docs/ignite2/latest/quick-start/java). Образ Kafka 3.9.1 указан в [официальной документации Docker-запуска Kafka](https://kafka.apache.org/39/getting-started/docker/). Это основание для локальной проверки, а не утверждение об эквивалентности закрытому Ignite SE 17.6.0.
 
@@ -45,12 +45,12 @@
 
 ## Артефакты и продолжение
 
-- [Все 103 результата с HTTP](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-20260907-192019/results-with-http.json).
-- [Машинное сравнение и распределение исключений](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-20260907-192019/analysis.json).
-- [Лог сервиса в тестовом интервале](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-20260907-192019/service-test-interval.log).
-- [Состояние кэшей после тестов](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-20260907-192019/post-run-state.json).
-- [Корректный контрольный запрос и ответ](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/control-response.json).
-- [Allure HTML](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-20260907-192019/allure-report/index.html).
+- [Все 103 результата с HTTP](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-20260907-192019/results-with-http.json).
+- [Машинное сравнение и распределение исключений](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-20260907-192019/analysis.json).
+- [Лог сервиса в тестовом интервале](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-20260907-192019/service-test-interval.log).
+- [Состояние кэшей после тестов](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-20260907-192019/post-run-state.json).
+- [Корректный контрольный запрос и ответ](<workspace>/BACK/06_temp_work/explab-2974-compatible/control-response.json).
+- [Allure HTML](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-20260907-192019/allure-report/index.html).
 - [Команды запуска, прогона и остановки](../../../../local-services/data-operator-explab-2974/README.md).
 
 Это реализованные валидационные SL-35–43 и SL-45; остальные пункты плана не были выполнены этим запуском. Реальные dictionaries/experiments, SE security и TLS/mTLS по-прежнему требуют соответствующих компонентов. [Что можно предоставить для корпоративного контура](INFRASTRUCTURE_REQUIREMENTS.md). Для продолжения текущих локальных проверок дополнительные установки от пользователя не нужны.

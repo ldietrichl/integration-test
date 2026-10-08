@@ -21,8 +21,7 @@ import java.util.List;
 @ResourceLock("explab-2696-running-cache")
 public class RunningV1CacheV2CjEnabled2696FlowTest extends AbstractRunningV1Cache2696FlowTest {
 
-    // Для этих сценариев тоггл EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED должен быть включен:
-    // yaml сервиса обновлен, pod'ы перезапущены, в запуск тестов передан -DEXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED=true.
+    // Toggle EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED должен быть включен: true.
     @BeforeEach
     void requireV2CjToggleEnabled() {
         assumeV2CjExperimentsToggleEnabledStand();

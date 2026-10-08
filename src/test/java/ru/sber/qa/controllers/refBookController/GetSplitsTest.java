@@ -46,7 +46,7 @@ public class GetSplitsTest extends Flows {
                                 .should(
                                         JsonMatchers.haveNotBlankJsonValue("id"),
                                         JsonMatchers.haveJsonValue("message", TextConditions.equalToText("Отсутствует обязательный параметр")),
-                                        JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                        JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                                 ))
                 .run();
     }

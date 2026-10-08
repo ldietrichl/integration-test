@@ -1,5 +1,21 @@
 # Команды для терминала IntelliJ IDEA
 
+Текущий стандарт проекта: Gradle 8.4, JDK 17. В IDEA выберите Gradle distribution:
+Wrapper и Gradle JVM: JDK 17. [Инструкция перехода](GRADLE_8_4.md).
+
+Для текущей поставки проекта используйте:
+
+```powershell
+.\gradlew.bat --version
+.\gradlew.bat testClasses
+.\gradlew.bat schedulerReadOnlyRegression -PschedulerTunnel=true
+```
+
+Ниже сохранены примеры старой внешней launch-обвязки. Её скриптов нет
+в текущей поставке; они не требуются для wrapper-запуска.
+Числа старых bypass-результатов не являются ожидаемыми результатами нового прогона.
+
+
 Команды рассчитаны на PowerShell-терминал IDEA, открытый для проекта:
 
 ```powershell
@@ -16,7 +32,7 @@ Cleanup удаляет старые копии файлов из `src/test`, п�
 Set-ExecutionPolicy -Scope Process Bypass -Force
 Set-Location "C:\Work\IdeaProjects\integration-test"
 
-Expand-Archive "A:\Codex\Functional\output\integration-test-structure-refactor-files-20260806_221333.zip" -DestinationPath "." -Force
+Expand-Archive "<workspace>\output\integration-test-structure-refactor-files-20260806_221333.zip" -DestinationPath "." -Force
 .\scripts\cleanup-structure-refactor.ps1
 ```
 
@@ -29,9 +45,9 @@ REST-сервисы, Kafka и реальные брокеры для него н
 Set-ExecutionPolicy -Scope Process Bypass -Force
 Set-Location "C:\Work\IdeaProjects\integration-test"
 
-$env:LOCAL_LIB_DIR = "A:\Codex\Functional\lib"
+$env:LOCAL_LIB_DIR = "<workspace>\lib"
 $env:USE_LOCAL_LIBS = "true"
-$env:GRADLE_USER_HOME = "A:\Codex\Functional\integration-test\.gradle"
+$env:GRADLE_USER_HOME = Join-Path $env:USERPROFILE '.gradle'
 
 .\launch-project.ps1 -Mode project -EnvName ift
 ```
@@ -50,9 +66,9 @@ Bypass tests generated: classes=120, methods=506
 Set-ExecutionPolicy -Scope Process Bypass -Force
 Set-Location "C:\Work\IdeaProjects\integration-test"
 
-$env:LOCAL_LIB_DIR = "A:\Codex\Functional\lib"
+$env:LOCAL_LIB_DIR = "<workspace>\lib"
 $env:USE_LOCAL_LIBS = "true"
-$env:GRADLE_USER_HOME = "A:\Codex\Functional\integration-test\.gradle"
+$env:GRADLE_USER_HOME = Join-Path $env:USERPROFILE '.gradle'
 
 .\launch-project.ps1 -Mode check
 ```
@@ -63,26 +79,26 @@ $env:GRADLE_USER_HOME = "A:\Codex\Functional\integration-test\.gradle"
 Set-ExecutionPolicy -Scope Process Bypass -Force
 Set-Location "C:\Work\IdeaProjects\integration-test"
 
-$env:LOCAL_LIB_DIR = "A:\Codex\Functional\lib"
+$env:LOCAL_LIB_DIR = "<workspace>\lib"
 $env:USE_LOCAL_LIBS = "true"
-$env:GRADLE_USER_HOME = "A:\Codex\Functional\integration-test\.gradle"
+$env:GRADLE_USER_HOME = Join-Path $env:USERPROFILE '.gradle'
 
 .\launch-project.ps1 -Mode compile -EnvName ift
 ```
 
-## Если Gradle 8.10 лежит в другом месте
+## Если Gradle 8.4 установлен отдельно
 
-Если в `GRADLE_USER_HOME` нет распакованного `gradle-8.10\bin\gradle.bat`, укажи путь к Gradle явно:
+Вместо смены версии wrapper можно явно указать каталог установленного Gradle 8.4:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass -Force
 Set-Location "C:\Work\IdeaProjects\integration-test"
 
-$env:LOCAL_LIB_DIR = "A:\Codex\Functional\lib"
+$env:LOCAL_LIB_DIR = "<workspace>\lib"
 $env:USE_LOCAL_LIBS = "true"
-$gradleHome = "C:\Users\Dietrich\.gradle\wrapper\dists\gradle-8.10-bin\deqhafrv1ntovfmgh0nh3npr9\gradle-8.10"
+$gradleHome = Read-Host 'Абсолютный путь к каталогу установленного Gradle 8.4'
 
-.\launch-project.ps1 -Mode project -EnvName ift -GradleHome $gradleHome
+& (Join-Path $gradleHome 'bin/gradle.bat') testClasses generateReportEligibility bypassTests
 ```
 
 ## Корпоративный режим

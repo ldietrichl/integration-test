@@ -19,9 +19,9 @@
 
 Артефакты:
 
-- [Успешный D1: analysis.json](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-fixture-20260907-214206-990/analysis.json), [JUnit + фактический HTTP](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-fixture-20260907-214206-990/results-with-http.json), [подтверждение очистки](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-fixture-20260907-214206-990/fixture-cleanup.json).
-- [Изоляция двух наборов и отказ очистки MAPPER](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/fixture-isolation-20260907-213726/isolation-result.json).
-- [Повтор 103 негативных вариантов и сравнение](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-20260907-213541-692/analysis.json).
+- [Успешный D1: analysis.json](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-fixture-20260907-214206-990/analysis.json), [JUnit + фактический HTTP](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-fixture-20260907-214206-990/results-with-http.json), [подтверждение очистки](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-fixture-20260907-214206-990/fixture-cleanup.json).
+- [Изоляция двух наборов и отказ очистки MAPPER](<workspace>/BACK/06_temp_work/explab-2974-compatible/fixture-isolation-20260907-213726/isolation-result.json).
+- [Повтор 103 негативных вариантов и сравнение](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-20260907-213541-692/analysis.json).
 
 ## Контракт и границы
 

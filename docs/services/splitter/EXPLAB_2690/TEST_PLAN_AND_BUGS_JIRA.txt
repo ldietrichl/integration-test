@@ -1,0 +1,418 @@
+h1. EXPLAB-2690 — тестовый план и разбор прогона
+
+*Исторический разбор. Актуализация 07.10.2026:* уточнение АК разрешило спор MAIN: при true требуется MAIN.resultExps=[], при false объект возвращается как несвязанный. Прежние 11 failed по запрету пустого MAIN — ошибка ожиданий автотестов, не доказательство дефекта сервиса. Текущий контракт описан в README.md и TEST_PLAN_JIRA.txt. Статусы и доказательства ниже не изменены; новый стендовый прогон после исправления assertions ещё требуется. Исправление профиля T07 подтверждено отдельным прогоном 06.10.2026.
+
+Дата анализа: 06.10.2026. Прогон: 05.10.2026, 18:34:24–18:45:18 МСК, задача {{explab2690Coverage}}, DEV, загрузка бизнес-конфигурации через REST.
+Runtime metadata: splitter 0.12.3. Номер версии сервиса не подтверждает конкретный commit или ветку поставки.
+
+h2. Итоги
+
+||Область||Выполнено||Passed||Failed||Broken / Skipped||
+|MAPPER|28|21|7|0 / 0|
+|REACTIONS|21|17|4|0 / 0|
+|Всего|49|38|11|0 / 0|
+
+Это 26 вариантов сценариев и 49 выполнений с учётом профиля: allow-result-without-main=true — 26 (15 passed, 11 failed); false — 23 (все passed). T04 (2 варианта) и T07 (1 вариант) включены только в базовый профиль true. Для T07 этот флаг фактически подготовлен на MAPPER, хотя запрос направлен в REACTIONS; профиль REACTIONS у T07 не подтверждён, см. [BUG-2690-TEST-01|#BUG-2690-TEST-01].
+Все 11 падений имеют один наблюдаемый симптом: техническая запись {{MAIN.resultExps=[]}}. Это *один кандидат в дефект*, требующий согласования контракта, а не 11 независимых подтверждённых багов. [Разбор и доказательства|#DRAFT-2690-01].
+
+JUnit и raw Allure согласованы. В подготовленном пакете TestOps 49 результатов с теми же UUID и статусами; хеши всех исходных файлов из manifest совпадают. Разорванных ссылок на вложения и детей контейнеров не обнаружено. Это подтверждает подготовку пакета, но не отправку в TestOps.
+У всех 49 выполнений есть runtime metadata, ConfigMap и текстовое вложение лога pod: 38 COLLECTED, 11 EMPTY_WINDOW. EMPTY_WINDOW означает отсутствие строк в выбранном интервале, а не отсутствие вложения. У T07 перечисленные инфраструктурные вложения относятся к неверному сервису MAPPER, поэтому наличие файла не подтверждает корректность диагностики REACTIONS. Состояние и события pod приложены при 11 падениях. Совпадение количества EMPTY_WINDOW и failed само по себе не означает совпадения сценариев или причинную связь.
+
+h2. Границы и предусловия
+
+План описывает фактически выполненный REST-набор EXPLAB-2690 для MAPPER и REACTIONS. Проверки Kafka/report, расширенные матрицы других пакетов и другие заявки в этот отчёт не входят.
+
+# Подготовить профиль сервиса общим механизмом Fabric8: прочитать текущую ConfigMap, при необходимости изменить управляемые параметры, перезапустить pod и дождаться готовности. Соблюдать lease и восстановить исходное состояние после завершения; чужой lease не снимать.
+# Для REST включить {{SPLITTER_API_CONFIG_LOAD=true}}, возврат ALL и пустых объектов; выставить {{SPLITTER_ALLOW_RESULT_WITHOUT_MAIN}} согласно варианту. Конкретное применённое состояние проверять по вложению «ConfigMap — перед операцией», а не только по приложенному образцу YAML.
+# Загрузить бизнес-конфигурацию через {{POST /api/v1/splitter/mapper/config}} либо {{/api/v1/splitter/reactions/config}} с новой версией, проверить HTTP 200 и {{result=LOADED}}.
+# Для каждого варианта выполнить {{POST /api/v1/splitter/mapper/split}} либо {{/api/v1/splitter/reactions/split}}. splittingId подобрать под заданный диапазон распределения; идентификатор запроса уникален. Условия связывания должны соответствовать объектам варианта.
+# Проверить HTTP 200, версию загруженной конфигурации, состав объектов без потерь и дублей, затем правила, эксперименты, группы и параметры согласно сценарию. Сохранить setup → test body → teardown, запросы/ответы, runtime metadata, ConfigMap, текстовый лог pod за интервал операции; подробные события — при сбое.
+
+Для обычной сработавшей группы проверяются {{expGroup=finalExpGroup}}, корректный {{conditionId}}, параметры результата, идентификатор эксперимента и отсутствие лишних строк. Для альтернативы MAPPER {{expGroup}} относится к связи объекта, {{finalExpGroup}} — к реально сработавшей группе; альтернативная строка не должна попадать в публичный ALL. REACTIONS не должен возвращать альтернативу.
+
+*Открытое требование R-MAIN:* текущие assertions запрещают технический пустой MAIN. Спецификация v16, стр. 91, требует результат без записи MAIN; модель v10, стр. 5–6, также требует отсутствия блока для несработавшей группы. Но алгоритм v16, стр. 96, предписывает пустую запись финального правила, а описание свойства на стр. 425 допускает пустой MAIN. До решения АК это спорный критерий, а не однозначный дефект реализации. Сам факт присутствия технической записи доказан.
+При allow=true отсутствие MAIN не отменяет ALL действительно связанной сработавшей группы. Ожидание «полностью пустой ответ» в T05/T08 при true было бы неверным; текущие проверки его не используют.
+
+h2. Сценарии
+
+ID существующих сценариев сохранены. ID {{EXPLAB-2690-RG-*}} — обозначения только этого плана для параметров метода {{groups(boolean, String, int)}}; они не выданы за существующие Allure/TestOps ID. Ссылки ниже внутренние: план и багрепорт следует вставить в одно поле Jira с поддержкой wiki-разметки.
+
+
+{anchor:EXPLAB-2690-01-A}
+h3. EXPLAB-2690-01-A — MAPPER
+
+*Действия:* Создать A/B/C с conditionId=1/2/3 и диапазонами 0–2500 / 2500–5000 / 5000–7500. Связать объект со всеми группами. Подобрать splittingId для A.
+
+*Ожидание:* MAIN и публичный ALL содержат только A; expGroup=finalExpGroup=A. Условие и resultParams взяты из этой группы; нет случайного выбора другой связи.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterMapperWorkedGroup2690FlowTest.mapperShouldReturnOnlyWorkedGroupAndNoTechnicalMain}}|
+|false|PASSED|{{SplitterMapperWorkedGroupDenied2690FlowTest.mapperShouldReturnOnlyWorkedGroupAndNoTechnicalMain}}|
+
+{anchor:EXPLAB-2690-01-B}
+h3. EXPLAB-2690-01-B — MAPPER
+
+*Действия:* Создать A/B/C с conditionId=1/2/3 и диапазонами 0–2500 / 2500–5000 / 5000–7500. Связать объект со всеми группами. Подобрать splittingId для B.
+
+*Ожидание:* MAIN и публичный ALL содержат только B; expGroup=finalExpGroup=B. Условие и resultParams взяты из этой группы; нет случайного выбора другой связи.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterMapperWorkedGroup2690FlowTest.mapperShouldReturnOnlyWorkedGroupAndNoTechnicalMain}}|
+|false|PASSED|{{SplitterMapperWorkedGroupDenied2690FlowTest.mapperShouldReturnOnlyWorkedGroupAndNoTechnicalMain}}|
+
+{anchor:EXPLAB-2690-01-C}
+h3. EXPLAB-2690-01-C — MAPPER
+
+*Действия:* Создать A/B/C с conditionId=1/2/3 и диапазонами 0–2500 / 2500–5000 / 5000–7500. Связать объект со всеми группами. Подобрать splittingId для C.
+
+*Ожидание:* MAIN и публичный ALL содержат только C; expGroup=finalExpGroup=C. Условие и resultParams взяты из этой группы; нет случайного выбора другой связи.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterMapperWorkedGroup2690FlowTest.mapperShouldReturnOnlyWorkedGroupAndNoTechnicalMain}}|
+|false|PASSED|{{SplitterMapperWorkedGroupDenied2690FlowTest.mapperShouldReturnOnlyWorkedGroupAndNoTechnicalMain}}|
+
+{anchor:EXPLAB-2690-02-NO-MAIN}
+h3. EXPLAB-2690-02-NO-MAIN — MAPPER
+
+*Действия:* Использовать конфигурацию A/B/C предыдущего сценария. Подобрать splittingId для свободного диапазона 7500–10000.
+
+*Ожидание:* Связанная сработавшая группа отсутствует: objectResults пуст или отсутствует. Запрет технического MAIN при true зависит от R-MAIN.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|FAILED — [DRAFT-2690-01|#DRAFT-2690-01]|{{SplitterMapperWorkedGroup2690FlowTest.mapperShouldReturnOnlyWorkedGroupAndNoTechnicalMain}}|
+|false|PASSED|{{SplitterMapperWorkedGroupDenied2690FlowTest.mapperShouldReturnOnlyWorkedGroupAndNoTechnicalMain}}|
+
+{anchor:EXPLAB-2690-03-A}
+h3. EXPLAB-2690-03-A — MAPPER
+
+*Действия:* Создать A/B/C с общим conditionId=1 и диапазонами 0–2500 / 2500–5000 / 5000–7500. Связать объект со всеми группами. Подобрать splittingId для A.
+
+*Ожидание:* MAIN и публичный ALL содержат только A; expGroup=finalExpGroup=A. Условие и resultParams взяты из этой группы; нет случайного выбора другой связи.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterMapperWorkedGroup2690FlowTest.mapperShouldDeterministicallyUseWorkedGroupWhenSeveralGroupsShareCondition}}|
+|false|PASSED|{{SplitterMapperWorkedGroupDenied2690FlowTest.mapperShouldDeterministicallyUseWorkedGroupWhenSeveralGroupsShareCondition}}|
+
+{anchor:EXPLAB-2690-03-B}
+h3. EXPLAB-2690-03-B — MAPPER
+
+*Действия:* Создать A/B/C с общим conditionId=1 и диапазонами 0–2500 / 2500–5000 / 5000–7500. Связать объект со всеми группами. Подобрать splittingId для B.
+
+*Ожидание:* MAIN и публичный ALL содержат только B; expGroup=finalExpGroup=B. Условие и resultParams взяты из этой группы; нет случайного выбора другой связи.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterMapperWorkedGroup2690FlowTest.mapperShouldDeterministicallyUseWorkedGroupWhenSeveralGroupsShareCondition}}|
+|false|PASSED|{{SplitterMapperWorkedGroupDenied2690FlowTest.mapperShouldDeterministicallyUseWorkedGroupWhenSeveralGroupsShareCondition}}|
+
+{anchor:EXPLAB-2690-03-C}
+h3. EXPLAB-2690-03-C — MAPPER
+
+*Действия:* Создать A/B/C с общим conditionId=1 и диапазонами 0–2500 / 2500–5000 / 5000–7500. Связать объект со всеми группами. Подобрать splittingId для C.
+
+*Ожидание:* MAIN и публичный ALL содержат только C; expGroup=finalExpGroup=C. Условие и resultParams взяты из этой группы; нет случайного выбора другой связи.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterMapperWorkedGroup2690FlowTest.mapperShouldDeterministicallyUseWorkedGroupWhenSeveralGroupsShareCondition}}|
+|false|PASSED|{{SplitterMapperWorkedGroupDenied2690FlowTest.mapperShouldDeterministicallyUseWorkedGroupWhenSeveralGroupsShareCondition}}|
+
+{anchor:EXPLAB-2690-04-A-WORKED}
+h3. EXPLAB-2690-04-A-WORKED — MAPPER
+
+*Действия:* Две группы одного эксперимента связать с разными объектами. Подобрать splittingId для группы A, передать оба объекта.
+
+*Ожидание:* Для объекта сработавшей группы — обычный MAIN. Для второго — альтернативный MAIN: expGroup/conditionId/resultParams от его группы связи, finalExpGroup от сработавшей группы. Публичный ALL не содержит альтернативную строку.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterMapperAlternative2690FlowTest.alternativeMainShouldUseObjectLinkedGroupAndExposeActualWorkedGroup}}|
+
+{anchor:EXPLAB-2690-04-B-WORKED}
+h3. EXPLAB-2690-04-B-WORKED — MAPPER
+
+*Действия:* Две группы одного эксперимента связать с разными объектами. Подобрать splittingId для группы B, передать оба объекта.
+
+*Ожидание:* Для объекта сработавшей группы — обычный MAIN. Для второго — альтернативный MAIN: expGroup/conditionId/resultParams от его группы связи, finalExpGroup от сработавшей группы. Публичный ALL не содержит альтернативную строку.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterMapperAlternative2690FlowTest.alternativeMainShouldUseObjectLinkedGroupAndExposeActualWorkedGroup}}|
+
+{anchor:EXPLAB-2690-05-EMPTY-RESULT-PARAMS}
+h3. EXPLAB-2690-05-EMPTY-RESULT-PARAMS — MAPPER
+
+*Действия:* Эксперимент 269005, группа A на 0–10000, conditionId=1, объект segment=2690 INTEGER. В результате группы передать пустой resultParams группы.
+
+*Ожидание:* Итоговый эксперимент не выбран. При true — точный ALL эксперимента 269005, группа A/A, корректные параметры; при false — пустой objectResults. Запрет MAIN=[] при true зависит от R-MAIN. Это проверка выбора MAIN, а не отрицательный тест HTTP-валидации запроса.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|FAILED — [DRAFT-2690-01|#DRAFT-2690-01]|{{SplitterMapperNoMain2690FlowTest.objectShouldLookUnlinkedWhenMapperCannotSelectMain}}|
+|false|PASSED|{{SplitterMapperNoMainDenied2690FlowTest.objectShouldLookUnlinkedWhenMapperCannotSelectMain}}|
+
+{anchor:EXPLAB-2690-05-MISSING-ACTION-TYPE}
+h3. EXPLAB-2690-05-MISSING-ACTION-TYPE — MAPPER
+
+*Действия:* Эксперимент 269005, группа A на 0–10000, conditionId=1, объект segment=2690 INTEGER. В результате группы исключить actionType, оставить result=500 INTEGER.
+
+*Ожидание:* Итоговый эксперимент не выбран. При true — точный ALL эксперимента 269005, группа A/A, корректные параметры; при false — пустой objectResults. Запрет MAIN=[] при true зависит от R-MAIN. Это проверка выбора MAIN, а не отрицательный тест HTTP-валидации запроса.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|FAILED — [DRAFT-2690-01|#DRAFT-2690-01]|{{SplitterMapperNoMain2690FlowTest.objectShouldLookUnlinkedWhenMapperCannotSelectMain}}|
+|false|PASSED|{{SplitterMapperNoMainDenied2690FlowTest.objectShouldLookUnlinkedWhenMapperCannotSelectMain}}|
+
+{anchor:EXPLAB-2690-05-UNKNOWN-ACTION-TYPE}
+h3. EXPLAB-2690-05-UNKNOWN-ACTION-TYPE — MAPPER
+
+*Действия:* Эксперимент 269005, группа A на 0–10000, conditionId=1, объект segment=2690 INTEGER. В результате группы передать actionType=99 INTEGER, которого нет в values-map.
+
+*Ожидание:* Итоговый эксперимент не выбран. При true — точный ALL эксперимента 269005, группа A/A, корректные параметры; при false — пустой objectResults. Запрет MAIN=[] при true зависит от R-MAIN. Это проверка выбора MAIN, а не отрицательный тест HTTP-валидации запроса.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|FAILED — [DRAFT-2690-01|#DRAFT-2690-01]|{{SplitterMapperNoMain2690FlowTest.objectShouldLookUnlinkedWhenMapperCannotSelectMain}}|
+|false|PASSED|{{SplitterMapperNoMainDenied2690FlowTest.objectShouldLookUnlinkedWhenMapperCannotSelectMain}}|
+
+{anchor:EXPLAB-2690-05-WRONG-ACTION-TYPE-DATA-TYPE}
+h3. EXPLAB-2690-05-WRONG-ACTION-TYPE-DATA-TYPE — MAPPER
+
+*Действия:* Эксперимент 269005, группа A на 0–10000, conditionId=1, объект segment=2690 INTEGER. В результате группы передать actionType=1 STRING вместо INTEGER.
+
+*Ожидание:* Итоговый эксперимент не выбран. При true — точный ALL эксперимента 269005, группа A/A, корректные параметры; при false — пустой objectResults. Запрет MAIN=[] при true зависит от R-MAIN. Это проверка выбора MAIN, а не отрицательный тест HTTP-валидации запроса.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|FAILED — [DRAFT-2690-01|#DRAFT-2690-01]|{{SplitterMapperNoMain2690FlowTest.objectShouldLookUnlinkedWhenMapperCannotSelectMain}}|
+|false|PASSED|{{SplitterMapperNoMainDenied2690FlowTest.objectShouldLookUnlinkedWhenMapperCannotSelectMain}}|
+
+{anchor:EXPLAB-2690-06-A-WORKED}
+h3. EXPLAB-2690-06-A-WORKED — REACTIONS
+
+*Действия:* Эксперимент 269006: группы A/B связать с разными объектами. Подобрать splittingId для A и передать оба объекта.
+
+*Ожидание:* Обычный MAIN и ALL только у объекта своей сработавшей группы; второй объект без результата. Во всём ответе нет isAlternative=true. Запрет MAIN=[] у второго объекта при true зависит от R-MAIN.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|FAILED — [DRAFT-2690-01|#DRAFT-2690-01]|{{SplitterReactionsNoAlternative2690FlowTest.reactionsShouldUseWorkedFinalGroupForLinkedObjects}}|
+|false|PASSED|{{SplitterReactionsNoAlternativeDenied2690FlowTest.reactionsShouldUseWorkedFinalGroupForLinkedObjects}}|
+
+{anchor:EXPLAB-2690-06-B-WORKED}
+h3. EXPLAB-2690-06-B-WORKED — REACTIONS
+
+*Действия:* Эксперимент 269006: группы A/B связать с разными объектами. Подобрать splittingId для B и передать оба объекта.
+
+*Ожидание:* Обычный MAIN и ALL только у объекта своей сработавшей группы; второй объект без результата. Во всём ответе нет isAlternative=true. Запрет MAIN=[] у второго объекта при true зависит от R-MAIN.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|FAILED — [DRAFT-2690-01|#DRAFT-2690-01]|{{SplitterReactionsNoAlternative2690FlowTest.reactionsShouldUseWorkedFinalGroupForLinkedObjects}}|
+|false|PASSED|{{SplitterReactionsNoAlternativeDenied2690FlowTest.reactionsShouldUseWorkedFinalGroupForLinkedObjects}}|
+
+{anchor:EXPLAB-2690-07}
+h3. EXPLAB-2690-07 — REACTIONS
+
+*Действия:* Создать 269071 с layerPriority=1, 269072/269073/269074 с layerPriority=3; группы A на 0–10000 связаны с объектом. Правило finalExpByLayerAndId: max-layer-priority=true, max-id=false.
+
+*Ожидание:* В MAIN ровно 269072 — минимальный expId среди максимального приоритета, expGroup=finalExpGroup=A. Проверяются обязательные поля и отсутствие альтернатив. При наличии ALL проверяется точный состав 269071–269074. Наличие ALL этим тестом проверяется условно; сам passed не доказывает обязательность ALL.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true (заявлен; REACTIONS не подтверждён)|PASSED; [дефект подготовки и диагностики|#BUG-2690-TEST-01]|{{SplitterReactionsFinalExperiments2690FlowTest.reactionsMainShouldContainSelectedExperimentOfMaximumLayerPriority}}|
+
+{anchor:EXPLAB-2690-08}
+h3. EXPLAB-2690-08 — MAPPER
+
+*Действия:* В один запрос включить обычный объект, альтернативный объект, объект без выбранного MAIN и несвязанный объект. Эксперименты 269011 и 269012.
+
+*Ожидание:* Результаты независимы по objectId. Обычный/альтернативный объекты соответствуют своим контрактам; несвязанный пуст. Для no-MAIN при true сохраняется ALL 269012 A/A, при false результат пуст. Запрет технического MAIN зависит от R-MAIN.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|FAILED — [DRAFT-2690-01|#DRAFT-2690-01]|{{SplitterMapperMixedObjects2690FlowTest.mapperShouldProcessNormalAlternativeNoMainAndUnlinkedObjectsIndependently}}|
+|false|PASSED|{{SplitterMapperMixedObjectsDenied2690FlowTest.mapperShouldProcessNormalAlternativeNoMainAndUnlinkedObjectsIndependently}}|
+
+{anchor:EXPLAB-2690-08-CURRENT}
+h3. EXPLAB-2690-08-CURRENT — MAPPER
+
+*Действия:* В один запрос включить обычный объект, объект без выбранного MAIN и несвязанный объект. Эксперименты 269011 и 269012.
+
+*Ожидание:* Результаты независимы по objectId. Обычный/альтернативный объекты соответствуют своим контрактам; несвязанный пуст. Для no-MAIN при true сохраняется ALL 269012 A/A, при false результат пуст. Запрет технического MAIN зависит от R-MAIN.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|FAILED — [DRAFT-2690-01|#DRAFT-2690-01]|{{SplitterMapperMixedObjects2690FlowTest.mapperShouldProcessNormalNoMainAndUnlinkedObjectsIndependentlyOnCurrentSdk}}|
+|false|PASSED|{{SplitterMapperMixedObjectsDenied2690FlowTest.mapperShouldProcessNormalNoMainAndUnlinkedObjectsIndependentlyOnCurrentSdk}}|
+
+{anchor:EXPLAB-2690-RG-DIFF-A}
+h3. EXPLAB-2690-RG-DIFF-A — REACTIONS
+
+*Действия:* Эксперимент 269080, группы A/B/C с разными conditionId=1/2/3. Диапазоны 0–2500 / 2500–5000 / 5000–7500; у C пустые resultParams. Передать связанный и несвязанный объекты. Выбрать группу A.
+
+*Ожидание:* У связанного объекта MAIN и ALL только группы A, expGroup=finalExpGroup=A; точные условие и параметры группы. Пустые resultParams группы C допустимы для этого REACTIONS-сценария. Несвязанный объект пуст; нет isAlternative=true и лишних строк.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterReactionsGroups2690FlowTest.groups}}|
+|false|PASSED|{{SplitterReactionsGroupsDenied2690FlowTest.groups}}|
+
+{anchor:EXPLAB-2690-RG-DIFF-B}
+h3. EXPLAB-2690-RG-DIFF-B — REACTIONS
+
+*Действия:* Эксперимент 269080, группы A/B/C с разными conditionId=1/2/3. Диапазоны 0–2500 / 2500–5000 / 5000–7500; у C пустые resultParams. Передать связанный и несвязанный объекты. Выбрать группу B.
+
+*Ожидание:* У связанного объекта MAIN и ALL только группы B, expGroup=finalExpGroup=B; точные условие и параметры группы. Пустые resultParams группы C допустимы для этого REACTIONS-сценария. Несвязанный объект пуст; нет isAlternative=true и лишних строк.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterReactionsGroups2690FlowTest.groups}}|
+|false|PASSED|{{SplitterReactionsGroupsDenied2690FlowTest.groups}}|
+
+{anchor:EXPLAB-2690-RG-DIFF-C}
+h3. EXPLAB-2690-RG-DIFF-C — REACTIONS
+
+*Действия:* Эксперимент 269080, группы A/B/C с разными conditionId=1/2/3. Диапазоны 0–2500 / 2500–5000 / 5000–7500; у C пустые resultParams. Передать связанный и несвязанный объекты. Выбрать группу C.
+
+*Ожидание:* У связанного объекта MAIN и ALL только группы C, expGroup=finalExpGroup=C; точные условие и параметры группы. Пустые resultParams группы C допустимы для этого REACTIONS-сценария. Несвязанный объект пуст; нет isAlternative=true и лишних строк.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterReactionsGroups2690FlowTest.groups}}|
+|false|PASSED|{{SplitterReactionsGroupsDenied2690FlowTest.groups}}|
+
+{anchor:EXPLAB-2690-RG-DIFF-NONE}
+h3. EXPLAB-2690-RG-DIFF-NONE — REACTIONS
+
+*Действия:* Эксперимент 269080, группы A/B/C с разными conditionId=1/2/3. Диапазоны 0–2500 / 2500–5000 / 5000–7500; у C пустые resultParams. Передать связанный и несвязанный объекты. Выбрать диапазон 7500–10000 (NONE).
+
+*Ожидание:* У связанного объекта отсутствуют MAIN и ALL; запрет MAIN=[] при true зависит от R-MAIN. Несвязанный объект пуст; нет isAlternative=true и лишних строк.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|FAILED — [DRAFT-2690-01|#DRAFT-2690-01]|{{SplitterReactionsGroups2690FlowTest.groups}}|
+|false|PASSED|{{SplitterReactionsGroupsDenied2690FlowTest.groups}}|
+
+{anchor:EXPLAB-2690-RG-SAME-A}
+h3. EXPLAB-2690-RG-SAME-A — REACTIONS
+
+*Действия:* Эксперимент 269080, группы A/B/C с общим conditionId=1. Диапазоны 0–2500 / 2500–5000 / 5000–7500; у C пустые resultParams. Передать связанный и несвязанный объекты. Выбрать группу A.
+
+*Ожидание:* У связанного объекта MAIN и ALL только группы A, expGroup=finalExpGroup=A; точные условие и параметры группы. Пустые resultParams группы C допустимы для этого REACTIONS-сценария. Несвязанный объект пуст; нет isAlternative=true и лишних строк.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterReactionsGroups2690FlowTest.groups}}|
+|false|PASSED|{{SplitterReactionsGroupsDenied2690FlowTest.groups}}|
+
+{anchor:EXPLAB-2690-RG-SAME-B}
+h3. EXPLAB-2690-RG-SAME-B — REACTIONS
+
+*Действия:* Эксперимент 269080, группы A/B/C с общим conditionId=1. Диапазоны 0–2500 / 2500–5000 / 5000–7500; у C пустые resultParams. Передать связанный и несвязанный объекты. Выбрать группу B.
+
+*Ожидание:* У связанного объекта MAIN и ALL только группы B, expGroup=finalExpGroup=B; точные условие и параметры группы. Пустые resultParams группы C допустимы для этого REACTIONS-сценария. Несвязанный объект пуст; нет isAlternative=true и лишних строк.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterReactionsGroups2690FlowTest.groups}}|
+|false|PASSED|{{SplitterReactionsGroupsDenied2690FlowTest.groups}}|
+
+{anchor:EXPLAB-2690-RG-SAME-C}
+h3. EXPLAB-2690-RG-SAME-C — REACTIONS
+
+*Действия:* Эксперимент 269080, группы A/B/C с общим conditionId=1. Диапазоны 0–2500 / 2500–5000 / 5000–7500; у C пустые resultParams. Передать связанный и несвязанный объекты. Выбрать группу C.
+
+*Ожидание:* У связанного объекта MAIN и ALL только группы C, expGroup=finalExpGroup=C; точные условие и параметры группы. Пустые resultParams группы C допустимы для этого REACTIONS-сценария. Несвязанный объект пуст; нет isAlternative=true и лишних строк.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|PASSED|{{SplitterReactionsGroups2690FlowTest.groups}}|
+|false|PASSED|{{SplitterReactionsGroupsDenied2690FlowTest.groups}}|
+
+{anchor:EXPLAB-2690-RG-SAME-NONE}
+h3. EXPLAB-2690-RG-SAME-NONE — REACTIONS
+
+*Действия:* Эксперимент 269080, группы A/B/C с общим conditionId=1. Диапазоны 0–2500 / 2500–5000 / 5000–7500; у C пустые resultParams. Передать связанный и несвязанный объекты. Выбрать диапазон 7500–10000 (NONE).
+
+*Ожидание:* У связанного объекта отсутствуют MAIN и ALL; запрет MAIN=[] при true зависит от R-MAIN. Несвязанный объект пуст; нет isAlternative=true и лишних строк.
+
+||allow-result-without-main||Результат 05.10.2026||Автотест (класс.метод)||
+|true|FAILED — [DRAFT-2690-01|#DRAFT-2690-01]|{{SplitterReactionsGroups2690FlowTest.groups}}|
+|false|PASSED|{{SplitterReactionsGroupsDenied2690FlowTest.groups}}|
+
+{anchor:DRAFT-2690-01}
+h2. DRAFT-2690-01 — технический пустой MAIN при отсутствии итогового эксперимента
+
+*Статус:* воспроизведено; классификация как продуктового бага требует согласования АК из-за противоречия требований. DRAFT-2690-01 — идентификатор раздела документа, не зарегистрированный ключ Jira.
+*Окружение:* DEV, splitter 0.12.3, REST, MAPPER и REACTIONS, allow-result-without-main=true.
+*Частота в этом прогоне:* 11 из 11 соответствующих выполнений; устойчивость между отдельными повторными прогонами здесь не измеряется.
+
+h3. Минимальное воспроизведение
+
+# Выполнить общие предусловия для MAPPER с allow=true.
+# Загрузить конфигурацию и выполнить [EXPLAB-2690-02-NO-MAIN|#EXPLAB-2690-02-NO-MAIN]: объект связан с группами A/B/C, но splittingId попадает в 7500–10000, где ни одна группа не срабатывает.
+# Получить успешный HTTP 200 и проверить objectResults.
+
+*Фактически:* объект содержит запись:
+{code:json}
+{"ruleCode":"MAIN","resultExps":[]}
+{code}
+Это фрагмент ответа, не полный response. В T05/T08 одновременно возвращается корректный ALL; лишним по текущей тестовой модели считается именно технический MAIN. В T02/T06/RG-NONE сработавшей группы для объекта нет, ALL отсутствует, но MAIN=[] остаётся.
+
+*Ожидается по текущим assertions, стр. 91 v16 и модели v10:* техническая запись MAIN отсутствует; ALL сохраняется только для реально связанной сработавшей группы. При отсутствии такой группы результат объекта пуст.
+*Противоречие:* алгоритм v16, стр. 96, предписывает пустую запись финального правила; описание свойства на стр. 425 говорит о пустом MAIN при true. Поэтому фактический ответ совместим с этими пунктами, но расходится с указанной моделью и стр. 91.
+
+*Влияние:* неоднозначная форма REST-контракта для потребителей, проверяющих наличие MAIN как признак выбранного эксперимента. Потеря реально выбранного эксперимента, неверная группа или неверный ALL этим симптомом не доказаны.
+*Корневая причина:* не установлена. Присутствие MAIN=[] не доказывает, какой внутренний этап сервиса его сформировал.
+
+h3. Сценарии и доказательства
+
+UUID — идентификатор результата raw Allure; файл ответа находится среди вложений той же задачи. Воспроизводимые ссылки ведут на ID тестового плана выше. Во всех строках ниже allow=true.
+
+||Сценарий плана||Allure UUID||Вложение HTTP-ответа||
+|[EXPLAB-2690-02-NO-MAIN|#EXPLAB-2690-02-NO-MAIN]|{{59b78173-e427-4b9b-9b20-c1e3a1356b4b}}|{{4629d737-7851-4489-904a-fb383861b4d3-attachment.html}}|
+|[EXPLAB-2690-05-EMPTY-RESULT-PARAMS|#EXPLAB-2690-05-EMPTY-RESULT-PARAMS]|{{bb7af1f9-3fa7-44cb-9060-ba597b84e52b}}|{{366c2da9-f896-4d9d-a134-1359ea64ebb3-attachment.html}}|
+|[EXPLAB-2690-05-MISSING-ACTION-TYPE|#EXPLAB-2690-05-MISSING-ACTION-TYPE]|{{e8c22542-1583-4356-8ee7-1e73f6d52345}}|{{0f5a2921-f523-422e-92c0-1b8099ba286b-attachment.html}}|
+|[EXPLAB-2690-05-UNKNOWN-ACTION-TYPE|#EXPLAB-2690-05-UNKNOWN-ACTION-TYPE]|{{7e335a82-c531-45a9-b0f5-6cbc1e00a123}}|{{69543a8f-40d2-479c-8e7b-4fcf74c1d69c-attachment.html}}|
+|[EXPLAB-2690-05-WRONG-ACTION-TYPE-DATA-TYPE|#EXPLAB-2690-05-WRONG-ACTION-TYPE-DATA-TYPE]|{{1a2e44f2-e395-4209-8f6d-f3c71dc907e3}}|{{0554b9c8-ab05-4fac-af89-cd6e05016455-attachment.html}}|
+|[EXPLAB-2690-06-A-WORKED|#EXPLAB-2690-06-A-WORKED]|{{05e92bd5-615b-4278-93f6-5b71bb2dbc5e}}|{{15dda73f-139e-4459-8b3f-87bd79e833ec-attachment.html}}|
+|[EXPLAB-2690-06-B-WORKED|#EXPLAB-2690-06-B-WORKED]|{{740a8858-6ff0-497e-b539-6ed849edda34}}|{{ece8ab6b-0762-4e05-aad3-f13db3f27240-attachment.html}}|
+|[EXPLAB-2690-08|#EXPLAB-2690-08]|{{b816a6ca-7c8f-44a2-ad68-abc0b9456117}}|{{44292853-bd75-4264-a79e-ea0bbcf96458-attachment.html}}|
+|[EXPLAB-2690-08-CURRENT|#EXPLAB-2690-08-CURRENT]|{{1e068b06-9793-4190-a92f-f2e21e1d46ac}}|{{2bb938cc-1ef9-479f-bf18-1f7f5ad1cf7d-attachment.html}}|
+|[EXPLAB-2690-RG-DIFF-NONE|#EXPLAB-2690-RG-DIFF-NONE]|{{fcec10c4-13d9-4884-bff8-29c93801b278}}|{{35d95977-65ea-4675-a9de-a24c6e70151a-attachment.html}}|
+|[EXPLAB-2690-RG-SAME-NONE|#EXPLAB-2690-RG-SAME-NONE]|{{9cdc59c7-aad0-4776-ba2e-6082d93d783c}}|{{e519e8ac-03d7-4ea2-a664-04bee1f8e708-attachment.html}}|
+
+h3. Контроль и решение по дефекту
+
+Все 23 выполнения allow=false прошли, включая соответствующие отрицательные по выбору MAIN варианты. Это подтверждает управляемость профиля и зависимость наблюдения от allow=true; не разрешает противоречие спецификации.
+В T05/T08 агрегированные проверки показывают единственное расхождение в составе правил: ожидался ALL, получен ALL+MAIN. В T02 строгая проверка пустоты прерывается на наличии MAIN, поэтому последующие проверки нельзя объявлять выполненными.
+
+*Вопрос АК:* должен ли публичный REST-ответ при allow=true и отсутствии итогового эксперимента содержать MAIN с пустым resultExps или полностью исключать MAIN, сохраняя только допустимый ALL?
+* Если подтверждено отсутствие MAIN — зарегистрировать один дефект по этому описанию и повторить 11 вариантов, затем весь набор 49.
+* Если подтверждён пустой MAIN — уточнить модель и противоречивые пункты спецификации, затем изменить только согласованные assertions; точный состав ALL и контроль allow=false сохранить.
+
+h2. Что не следует включать в открытые баги этого прогона
+
+* Альтернативный MAIN MAPPER (T04): оба варианта passed.
+* Выбор группы при общем conditionId (T03): все шесть выполнений passed.
+* Выбор REACTIONS по максимальному layerPriority и минимальному expId (T07): passed. Старое ожидание трёх итоговых экспериментов не соответствует текущему тесту. При этом подготовка/диагностика этого теста дефектна, см. BUG-2690-TEST-01.
+* REACTIONS A/B/C с общими и разными conditionId: все 12 выполнений passed; открытый симптом относится к NONE при allow=true.
+* Наличие ALL у MAPPER без MAIN при allow=true: само по себе корректно; T05/T08 не требуют пустого ALL.
+* Ошибка подготовки TestOps: в предоставленном пакете не воспроизведена. Реальная отправка и серверная обработка этим набором файлов не подтверждены.
+
+Без разрешения R-MAIN в этом прогоне нет однозначно подтверждённого нового продуктового бага. Есть один документированный кандидат с 11 воспроизведениями. Успешные сценарии подтверждают только свои достигнутые проверки и использованные данные.
+
+{anchor:BUG-2690-TEST-01}
+h2. BUG-2690-TEST-01 — T07 подготавливает MAPPER и собирает его логи при запросах в REACTIONS
+
+*Тип:* подтверждённый дефект автоматизации, не дефект splitter-service. Идентификатор этого раздела не является зарегистрированным ключом Jira.
+*Сценарий:* [EXPLAB-2690-07|#EXPLAB-2690-07].
+*Автотест:* {{SplitterReactionsFinalExperiments2690FlowTest.reactionsMainShouldContainSelectedExperimentOfMaximumLayerPriority}}.
+*Allure UUID:* {{abd9069a-6412-4537-a10b-20fde81c38e2}}. Итог JUnit/Allure — passed.
+
+*Шаги воспроизведения:*
+# Запустить {{explab2690Coverage}} с управлением профилями стенда.
+# В результате T07 сопоставить адреса config/split с runtime metadata, снимками ConfigMap и заголовком текстового лога pod.
+
+*Фактически:*
+* Запрос конфигурации направлен в {{/api/v1/splitter/reactions/config}}, split — в {{/api/v1/splitter/reactions/split}}.
+* Runtime metadata содержит {{splitter.splittingPoint=MAPPER}} и адреса MAPPER.
+* Снимки «перед операцией» относятся к {{splitter-mapper-service-lib}} и {{splitter-mapper-service}}.
+* Текстовый лог pod содержит {{service=splitter-mapper-service}}, {{status=EMPTY_WINDOW}}.
+
+*Ожидается:* бизнес-запросы, управляемый WorkloadTarget, ConfigMap, проверка готовности, runtime metadata и интервал сбора pod-логов относятся к одному сервису REACTIONS. Подготовка REACTIONS должна происходить до config/split этого сценария.
+
+*Причина по текущему коду:* {{ReactionsFinalExperimentsSteps}} наследует {{WorkedGroupSteps}}, где {{endpointMode()}} по умолчанию возвращает MAPPER. В этой ветке наследования нет переопределения на REACTIONS. {{prepareExplab2690StandState()}} и {{runtimeSplittingPoint()}} используют этот метод, тогда как тело T07 явно передаёт {{EndpointMode.REACTIONS}} в loadConfig/split.
+
+*Влияние:* сценарий зависит от внешнего/предыдущего состояния REACTIONS; его ConfigMap и логи в этом результате отсутствуют. Успешный ответ REACTIONS и проверка MAIN=269072 доказаны, но корректная подготовка и изоляция этого сервиса — нет. Нельзя считать приложенный лог MAPPER логом проверяемого сервиса.
+
+||Доказательство||Вложение||
+|POST REACTIONS config|{{1bad1910-3520-4ab8-80e2-91458672953f-attachment.html}}|
+|POST REACTIONS split|{{eaf03444-e02b-46f5-9277-ea2d917bcc0c-attachment.html}}|
+|Runtime metadata MAPPER|{{bf70d793-6323-4c39-8ed8-8e9beb595d4f-attachment.txt}}|
+|ConfigMap MAPPER rules|{{a91ce99b-2fdf-45c1-af11-bd2d5d1cf92f-attachment.txt}}|
+|ConfigMap MAPPER service|{{70a178b0-c922-4be9-af39-6c5ac17d821e-attachment.txt}}|
+|Лог pod MAPPER|{{9a8c3c59-5bd1-441c-b325-58f49b75aec1-attachment.txt}}|
+
+*Критерий исправления:* явно задать REACTIONS в существующем компоненте профиля этой ветки сценариев, сохранив общий Fabric8 lifecycle. Проверить T07 отдельно и в полном наборе: снимки ConfigMap, probe, metadata и pod-log относятся к REACTIONS; восстановление состояния и владение сохранены. Пустой интервал лога допустим, но только для правильного сервиса и с явным EMPTY_WINDOW. Исправление кода в рамках текущего анализа не выполнялось.

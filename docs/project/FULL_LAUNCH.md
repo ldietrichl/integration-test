@@ -1,6 +1,19 @@
 # Полный локальный запуск
 
-Проект - Java 17 Gradle-набор автотестов для ExpLab A/B testing services.
+Проект - Java 17 / Gradle 8.4 набор автотестов для ExpLab A/B testing services.
+
+Актуальный стандарт запуска: [Gradle 8.4](GRADLE_8_4.md).
+Сначала используйте wrapper:
+
+```powershell
+.\gradlew.bat --version
+.\gradlew.bat testClasses
+```
+
+Примеры `launch-project.ps1` ниже относятся к внешней локальной обвязке,
+которая не входит в текущую поставку проекта. Она не должна переключать Gradle
+на другую версию; для корпоративного запуска достаточно wrapper.
+
 
 ## 1. Локальная настройка
 
@@ -30,12 +43,12 @@ nexus-ci.delta.sbrf.ru
 ```
 
 Перед первым запуском нужна корпоративная сеть/VPN. Без нее `gradlew.bat`
-не сможет скачать Gradle 7.3.3 и зависимости проекта.
+не сможет скачать Gradle 8.4 и зависимости проекта.
 
-Если Gradle 7.3.3 недоступен, bootstrap автоматически пробует локальный
-Gradle 8.10 из `%USERPROFILE%\.gradle\wrapper\dists`. Это позволяет стартовать
-сам build, но внутренние зависимости `ru.sber.qa.platform-v-at-framework`
-все равно требуют доступный Nexus или локальный Gradle cache.
+Автоматический переход на другую версию Gradle не допускается: проект принимает
+только 8.4. Используйте `.\gradlew.bat` или установленный Gradle 8.4.
+Внутренние зависимости `ru.sber.qa.platform-v-at-framework` по-прежнему
+требуют доступный Nexus или заранее подготовленный локальный cache.
 
 Для запуска без корпоративного Nexus локальные jar-файлы подключаются только
 явно, чтобы не менять поведение проекта в корпоративной сети. Включить режим
@@ -43,13 +56,13 @@ Gradle 8.10 из `%USERPROFILE%\.gradle\wrapper\dists`. Это позволяе�
 
 ```powershell
 $env:USE_LOCAL_LIBS = "true"
-$env:LOCAL_LIB_DIR = "A:\Codex\Functional\lib"
+$env:LOCAL_LIB_DIR = "<workspace>\lib"
 ```
 
 или:
 
 ```powershell
-.\launch-project.ps1 -Mode project -EnvName ift -GradleArgs "-PuseLocalLibs=true", "-PlocalLibDir=A:\Codex\Functional\lib"
+.\launch-project.ps1 -Mode project -EnvName ift -GradleArgs "-PuseLocalLibs=true", "-PlocalLibDir=<workspace>\lib"
 ```
 
 Папка `lib` может быть копией Gradle cache `modules-2/files-2.1`: Gradle

@@ -2,346 +2,59 @@ package ru.sber.qa.allure;
 
 import config.services.core.TestEnvironment;
 import config.services.core.TestConfigurationFiles;
-
+import infrastructure.scheduler.SchedulerAllurePresentation;
+import infrastructure.scheduler.SchedulerOutcomeClassification;
+import infrastructure.scheduler.SchedulerRegressionPolicy;
 import io.qameta.allure.listener.TestLifecycleListener;
 import io.qameta.allure.model.Label;
-import io.qameta.allure.model.Parameter;
 import io.qameta.allure.model.TestResult;
-
 import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.LinkedHashSet;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
+import java.nio.file.*;
+import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
-/**
- * Applies the project-wide TestOps labels and replaces arbitrary JUnit/Allure tags with the
- * canonical reporting taxonomy.
- *
- * <p>The only tags written to a result are:</p>
- * <ul>
- *     <li>task id, for example {@code EXPLAB-2690};</li>
- *     <li>service name;</li>
- *     <li>{@code regress} and {@code critical-regress};</li>
- *     <li>exactly one execution type: {@code manual} or {@code automated}.</li>
- * </ul>
- */
+/** Preserve all observed results. Eligibility belongs before execution, never in a shutdown deleter. */
 public class RequiredAllureLabelsExtension implements TestLifecycleListener {
-
-    private static final String SYSTEM = "CI07963639";
-    private static final String LAYER = "api";
-    private static final String TEAM = "EXPLAB";
-    private static final String APP_TYPE = "backend";
-    private static final String DEFAULT_TEST_STAGE = "ift";
-    private static final String DEFAULT_ALLURE_RESULTS_DIRECTORY = "build/allure-results";
-
-    private static final Pattern TASK_PATTERN = Pattern.compile(
-            "(?i)\\b(EXPLAB|LG)[-_ ]?(\\d{3,6})\\b");
-
-    private static final Set<String> ALLOWED_TEST_STAGES = Set.of(
-            "code", "dev", "devBarier", "st", "ift", "lt", "psi", "prom"
-    );
-    private static final Set<String> ALLOWED_SPLITTER_CONFIG_LOAD_MODES = Set.of("rest", "kafka");
-    private static final Pattern JSON_FULL_NAME_PATTERN = Pattern.compile(
-            "\"fullName\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
-
-    private static final Path PROJECT_DIRECTORY = Path.of(System.getProperty("user.dir", "."))
-            .toAbsolutePath()
-            .normalize();
-    private static final AtomicBoolean PRUNE_HOOK_REGISTERED = new AtomicBoolean(false);
-    private static final Set<String> RESULT_UUIDS_TO_PRUNE = ConcurrentHashMap.newKeySet();
-    private static final Set<String> EXCLUDED_TEST_NAMES = loadExcludedTestNames();
-    private static final List<OutdatedRule> OUTDATED_RULES = loadOutdatedRules();
-
-    @Override
-    public void beforeTestWrite(TestResult testResult) {
-        Optional<Class<?>> testClass = resolveTestClass(testResult);
-        Optional<Method> testMethod = resolveTestMethod(testResult, testClass);
-        registerPruneHook();
-        if (mustBeExcludedFromAllure(testResult, testClass, testMethod)) {
-            Optional.ofNullable(testResult.getUuid())
-                    .filter(uuid -> !uuid.isBlank())
-                    .ifPresent(RESULT_UUIDS_TO_PRUNE::add);
+    private static final Path PROJECT = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize();
+    @Override public void beforeTestWrite(TestResult result) {
+        String env = TestEnvironment.current();
+        String stage = resolveTestStage();
+        String mode = System.getProperty("splitter.config.load.mode",
+                TestConfigurationFiles.load("test.properties").getProperty("splitter.config.load.mode", "rest"));
+        CanonicalAllureMetadata.apply(result, env, stage, mode);
+        String fullName = result.getFullName() == null ? "" : result.getFullName();
+        Set<String> excluded = loadExcludedTestNames(PROJECT, System.getProperty("report.exclusions.file"));
+        int dot = fullName.lastIndexOf('.');
+        String type = dot < 0 ? fullName : fullName.substring(0, dot);
+        if (excluded.contains(fullName) || excluded.contains(type)) {
+            result.getLabels().add(new Label().setName("reportEligibility").setValue("explicitly-excluded-but-executed"));
         }
-
-        String testStage = resolveTestStage();
-        String service = resolveService(testResult, testClass);
-        boolean criticalRegression = hasAnnotation(testClass, testMethod, CriticalRegression.class);
-        boolean regression = criticalRegression || hasAnnotation(testClass, testMethod, Regression.class);
-        boolean manual = hasAnnotation(testClass, testMethod, ManualTest.class);
-
-        replaceLabel(testResult, "system", SYSTEM);
-        replaceLabel(testResult, "layer", LAYER);
-        replaceLabel(testResult, "team", TEAM);
-        replaceLabel(testResult, "appType", APP_TYPE);
-        replaceLabel(testResult, "functionalArea", service);
-        replaceLabel(testResult, "serviceUnderTest", service);
-        replaceLabel(testResult, "testStage", testStage);
-        replaceLabel(testResult, "testEnvironment", TestEnvironment.current());
-        applySplitterConfigLoadMode(testResult, service, testClass, testMethod);
-
-        if (regression) {
-            replaceLabel(testResult, "regress", "true");
-        } else {
-            removeLabel(testResult, "regress");
-        }
-        if (criticalRegression) {
-            replaceLabel(testResult, "criticalRegress", "true");
-        } else {
-            removeLabel(testResult, "criticalRegress");
-        }
-
-        // Capture task ids before removing legacy tags, then write only canonical tags.
-        Set<String> taskIds = canonicalTaskIds(testResult, testClass);
-        removeLabel(testResult, "tag");
-        taskIds.forEach(task -> addLabel(testResult, "tag", task));
-        addLabel(testResult, "tag", service);
-        if (regression) {
-            addLabel(testResult, "tag", "regress");
-        }
-        if (criticalRegression) {
-            addLabel(testResult, "tag", "critical-regress");
-        }
-        addLabel(testResult, "tag", manual ? "manual" : "automated");
-    }
-
-    private static boolean mustBeExcludedFromAllure(
-            TestResult testResult,
-            Optional<Class<?>> testClass,
-            Optional<Method> testMethod) {
-        String fullName = resolveCanonicalFullName(testResult, testClass, testMethod);
-        if (fullName.isBlank()) {
-            return false;
-        }
-
-        String className = testClass
-                .map(Class::getName)
-                .orElseGet(() -> classNameFromFullName(fullName));
-
-        if (EXCLUDED_TEST_NAMES.contains(fullName) || EXCLUDED_TEST_NAMES.contains(className)) {
-            return true;
-        }
-        return OUTDATED_RULES.stream()
-                .anyMatch(rule -> rule.matches(fullName) || rule.matches(className));
-    }
-
-    private static String resolveCanonicalFullName(
-            TestResult testResult,
-            Optional<Class<?>> testClass,
-            Optional<Method> testMethod) {
-        Optional<String> fullName = Optional.ofNullable(testResult.getFullName())
-                .filter(value -> !value.isBlank())
-                .map(RequiredAllureLabelsExtension::stripInvocationSuffix);
-        if (fullName.isPresent()) {
-            return fullName.get();
-        }
-        if (testClass.isPresent() && testMethod.isPresent()) {
-            return testClass.get().getName() + "." + testMethod.get().getName();
-        }
-        return "";
-    }
-
-    private static String classNameFromFullName(String fullName) {
-        int lastDot = fullName.lastIndexOf('.');
-        return lastDot > 0 ? fullName.substring(0, lastDot) : fullName;
-    }
-
-    private static void registerPruneHook() {
-        if (PRUNE_HOOK_REGISTERED.compareAndSet(false, true)) {
-            Runtime.getRuntime().addShutdownHook(new Thread(
-                    RequiredAllureLabelsExtension::pruneExcludedAllureResults,
-                    "allure-excluded-results-pruner"));
+        if (fullName.startsWith("ru.sber.qa.scheduler.")) {
+            SchedulerAllurePresentation.steps(result.getSteps());
+            String message = result.getStatusDetails() == null ? "" : result.getStatusDetails().getMessage();
+            String status = result.getStatus() == null ? "unknown" : result.getStatus().value();
+            result.getLabels().removeIf(label -> Set.of("outcomeKind", "schedulerPhase").contains(label.getName()));
+            result.getLabels().add(new Label().setName("outcomeKind").setValue(SchedulerOutcomeClassification.classify(status, message)));
+            result.getLabels().add(new Label().setName("schedulerPhase").setValue(SchedulerRegressionPolicy.selected().name()));
         }
     }
 
-    private static void pruneExcludedAllureResults() {
-        Path resultsDirectory = resolveAllureResultsDirectory();
-        if (!Files.isDirectory(resultsDirectory)) {
-            return;
-        }
-
-        try (Stream<Path> files = Files.list(resultsDirectory)) {
-            files.filter(path -> path.getFileName().toString().endsWith("-result.json"))
-                    .forEach(RequiredAllureLabelsExtension::pruneResultIfExcluded);
-        } catch (IOException exception) {
-            System.err.println("Cannot prune excluded Allure results: " + exception.getMessage());
-        }
-    }
-
-    private static void pruneResultIfExcluded(Path resultFile) {
-        try {
-            String fileName = resultFile.getFileName().toString();
-            String uuid = fileName.substring(0, fileName.length() - "-result.json".length());
-            String content = Files.readString(resultFile, StandardCharsets.UTF_8);
-            String fullName = extractJsonFullName(content)
-                    .map(RequiredAllureLabelsExtension::stripInvocationSuffix)
-                    .orElse("");
-
-            if (RESULT_UUIDS_TO_PRUNE.contains(uuid)
-                    || EXCLUDED_TEST_NAMES.contains(fullName)
-                    || OUTDATED_RULES.stream().anyMatch(rule -> rule.matches(fullName)
-                    || rule.matches(classNameFromFullName(fullName)))) {
-                Files.deleteIfExists(resultFile);
-            }
-        } catch (IOException exception) {
-            System.err.println("Cannot delete excluded Allure result " + resultFile + ": "
-                    + exception.getMessage());
-        }
-    }
-
-    private static Optional<String> extractJsonFullName(String content) {
-        Matcher matcher = JSON_FULL_NAME_PATTERN.matcher(content);
-        if (!matcher.find()) {
-            return Optional.empty();
-        }
-        return Optional.of(unescapeJsonString(matcher.group(1)));
-    }
-
-    private static String unescapeJsonString(String value) {
-        return value
-                .replace("\\\"", "\"")
-                .replace("\\\\", "\\")
-                .replace("\\/", "/")
-                .replace("\\b", "\b")
-                .replace("\\f", "\f")
-                .replace("\\n", "\n")
-                .replace("\\r", "\r")
-                .replace("\\t", "\t");
-    }
-
-    private static Path resolveAllureResultsDirectory() {
-        String configured = firstNotBlank(
-                System.getProperty("allure.results.directory"),
-                System.getenv("ALLURE_RESULTS_DIRECTORY"),
-                readPropertyFromAllureProperties("allure.results.directory"),
-                DEFAULT_ALLURE_RESULTS_DIRECTORY
-        );
-        Path path = Path.of(configured.trim());
-        return path.isAbsolute() ? path.normalize() : PROJECT_DIRECTORY.resolve(path).normalize();
-    }
-
-    private static Set<String> loadExcludedTestNames() {
-        return loadExcludedTestNames(PROJECT_DIRECTORY, System.getProperty("report.exclusions.file"));
-    }
 
     static Set<String> loadExcludedTestNames(Path projectDirectory, String configured) {
-        // Generated exclusions belong to one Gradle stage. Direct IDEA launches have no stage file.
         if (configured == null || configured.isBlank()) return Set.of();
         Path candidate = Path.of(configured.trim());
         if (!candidate.isAbsolute()) candidate = projectDirectory.resolve(candidate);
-        if (!Files.isRegularFile(candidate)) {
-            throw new IllegalStateException("Configured report exclusions are missing: " + candidate);
-        }
+        if (!Files.isRegularFile(candidate)) throw new IllegalStateException("Configured report exclusions are missing: " + candidate);
         try {
             Set<String> result = new LinkedHashSet<>();
-            Files.readAllLines(candidate, StandardCharsets.UTF_8).stream()
-                    .map(String::trim)
-                    .filter(line -> !line.isEmpty() && !line.startsWith("#"))
-                    .forEach(result::add);
+            Files.readAllLines(candidate, StandardCharsets.UTF_8).stream().map(String::trim)
+                    .filter(line -> !line.isEmpty() && !line.startsWith("#")).forEach(result::add);
             return result;
-        } catch (IOException error) {
-            throw new IllegalStateException("Cannot read report exclusions: " + candidate, error);
-        }
+        } catch (IOException error) { throw new IllegalStateException("Cannot read report exclusions: " + candidate, error); }
     }
-
-    private static List<OutdatedRule> loadOutdatedRules() {
-        List<OutdatedRule> result = new ArrayList<>();
-        List<Path> candidates = Arrays.asList(
-                optionalPath(System.getProperty("report.outdated.tests.file")),
-                PROJECT_DIRECTORY.resolve("config/reporting/outdated-tests.properties")
-        );
-        for (Path candidate : candidates) {
-            if (candidate == null || !Files.isRegularFile(candidate)) {
-                continue;
-            }
-            try {
-                Files.readAllLines(candidate, StandardCharsets.UTF_8).stream()
-                        .map(String::trim)
-                        .filter(line -> !line.isEmpty() && !line.startsWith("#"))
-                        .map(RequiredAllureLabelsExtension::parseOutdatedRule)
-                        .forEach(result::add);
-            } catch (IOException exception) {
-                System.err.println("Cannot read outdated report rules from " + candidate + ": "
-                        + exception.getMessage());
-            }
-        }
-        return result;
-    }
-
-    private static OutdatedRule parseOutdatedRule(String line) {
-        int separator = line.indexOf('=');
-        String pattern = separator >= 0 ? line.substring(0, separator).trim() : line;
-        return new OutdatedRule(pattern);
-    }
-
-    private static Path optionalPath(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        Path path = Path.of(value.trim());
-        return path.isAbsolute() ? path.normalize() : PROJECT_DIRECTORY.resolve(path).normalize();
-    }
-
-    private static String readPropertyFromAllureProperties(String propertyName) {
-        Properties properties = new Properties();
-        try (InputStream inputStream = RequiredAllureLabelsExtension.class
-                .getClassLoader()
-                .getResourceAsStream("allure.properties")) {
-            if (inputStream == null) {
-                return null;
-            }
-            properties.load(inputStream);
-            return properties.getProperty(propertyName);
-        } catch (IOException exception) {
-            return null;
-        }
-    }
-
-    private static <A extends java.lang.annotation.Annotation> boolean hasAnnotation(
-            Optional<Class<?>> testClass,
-            Optional<Method> testMethod,
-            Class<A> annotationType) {
-        return testMethod.map(method -> method.isAnnotationPresent(annotationType)).orElse(false)
-                || testClass.map(clazz -> clazz.isAnnotationPresent(annotationType)).orElse(false);
-    }
-
-    private static Set<String> canonicalTaskIds(TestResult testResult, Optional<Class<?>> testClass) {
-        Set<String> result = new TreeSet<>();
-        StringBuilder source = new StringBuilder();
-        source.append(Optional.ofNullable(testResult.getFullName()).orElse("")).append(' ')
-                .append(Optional.ofNullable(testResult.getName()).orElse("")).append(' ')
-                .append(testClass.map(Class::getName).orElse(""));
-
-        testResult.getLabels().stream()
-                .filter(label -> "tag".equals(label.getName())
-                        || "story".equals(label.getName())
-                        || "issue".equals(label.getName()))
-                .map(Label::getValue)
-                .filter(value -> value != null && !value.isBlank())
-                .forEach(value -> source.append(' ').append(value));
-
-        Matcher matcher = TASK_PATTERN.matcher(source);
-        while (matcher.find()) {
-            result.add(matcher.group(1).toUpperCase(Locale.ROOT) + "-" + matcher.group(2));
-        }
-        return result;
-    }
-
+    private static final String DEFAULT_TEST_STAGE = "ift";
+    private static final Set<String> ALLOWED_TEST_STAGES = Set.of("code", "dev", "devBarier", "st", "ift", "lt", "psi", "prom");
     private static String resolveTestStage() {
         String rawStage = firstNotBlank(
                 System.getProperty("allure.testStage"),
@@ -378,199 +91,5 @@ public class RequiredAllureLabelsExtension implements TestLifecycleListener {
             }
         }
         return DEFAULT_TEST_STAGE;
-    }
-
-    private static String readPropertyFromTestProperties(String propertyName) {
-        return TestConfigurationFiles.load("test.properties").getProperty(propertyName);
-    }
-
-    private static String resolveService(TestResult testResult, Optional<Class<?>> testClass) {
-        String packageName = testClass
-                .map(Class::getPackageName)
-                .orElseGet(() -> findLabel(testResult, "package").orElse(""));
-
-        if (packageName.startsWith("ru.sber.qa.splitter.EXPLAB_2729")) {
-            return "data-operator-service";
-        }
-        if (packageName.startsWith("ru.sber.qa.configurations")) {
-            return "configuration-service";
-        }
-        if (packageName.startsWith("ru.sber.qa.experiments")
-                || packageName.startsWith("ru.sber.qa.controllers")) {
-            return "experiment-service";
-        }
-        if (packageName.startsWith("ru.sber.qa.dictionaries")) {
-            return "dictionaries-service";
-        }
-        if (packageName.startsWith("ru.sber.qa.splitter")) {
-            return "splitter-service";
-        }
-        if (packageName.startsWith("ru.sber.qa.dataoperator")) {
-            return "data-operator-service";
-        }
-        if (packageName.startsWith("ru.sber.qa.messages")) {
-            return "message-service";
-        }
-        if (packageName.startsWith("config.services.core")) {
-            return "integration-test";
-        }
-        return "abtm-backend";
-    }
-
-    private static void applySplitterConfigLoadMode(
-            TestResult testResult,
-            String service,
-            Optional<Class<?>> testClass,
-            Optional<Method> testMethod) {
-        if (!"splitter-service".equals(service)) {
-            return;
-        }
-
-        String mode = firstNotBlank(
-                System.getProperty("splitter.config.load.mode"),
-                System.getenv("SPLITTER_CONFIG_LOAD_MODE"),
-                readPropertyFromTestProperties("splitter.config.load.mode"),
-                "rest"
-        ).trim().replace('-', '_').toLowerCase(Locale.ROOT);
-        if (!ALLOWED_SPLITTER_CONFIG_LOAD_MODES.contains(mode)) {
-            throw new IllegalArgumentException("Unsupported splitter.config.load.mode value: '"
-                    + mode + "'. Allowed values: " + ALLOWED_SPLITTER_CONFIG_LOAD_MODES);
-        }
-
-        addParameter(testResult, "splitter.config.load.mode", mode);
-        replaceLabel(testResult, "splitterConfigLoadMode", mode);
-
-        String historyId = Optional.ofNullable(testResult.getHistoryId())
-                .filter(value -> !value.isBlank())
-                .orElseGet(() -> resolveCanonicalFullName(testResult, testClass, testMethod));
-        if (!historyId.isBlank() && !historyId.endsWith("::splitter.config.load.mode=" + mode)) {
-            testResult.setHistoryId(historyId + "::splitter.config.load.mode=" + mode);
-        }
-    }
-
-    private static Optional<Class<?>> resolveTestClass(TestResult testResult) {
-        Optional<String> fullName = Optional.ofNullable(testResult.getFullName())
-                .filter(value -> !value.isBlank());
-        if (fullName.isPresent()) {
-            String withoutInvocation = stripInvocationSuffix(fullName.get());
-            int lastDot = withoutInvocation.lastIndexOf('.');
-            if (lastDot > 0) {
-                Optional<Class<?>> loadedClass = loadClass(withoutInvocation.substring(0, lastDot));
-                if (loadedClass.isPresent()) {
-                    return loadedClass;
-                }
-            }
-        }
-
-        Optional<String> testClassLabel = findLabel(testResult, "testClass")
-                .or(() -> findLabel(testResult, "class"));
-        return testClassLabel.flatMap(RequiredAllureLabelsExtension::loadClass);
-    }
-
-    private static Optional<Method> resolveTestMethod(TestResult testResult, Optional<Class<?>> testClass) {
-        if (testClass.isEmpty()) {
-            return Optional.empty();
-        }
-        Optional<String> methodName = Optional.ofNullable(testResult.getFullName())
-                .filter(value -> !value.isBlank())
-                .map(RequiredAllureLabelsExtension::stripInvocationSuffix)
-                .map(value -> {
-                    int lastDot = value.lastIndexOf('.');
-                    return lastDot >= 0 ? value.substring(lastDot + 1) : value;
-                });
-        if (methodName.isEmpty()) {
-            return Optional.empty();
-        }
-        return Arrays.stream(testClass.get().getDeclaredMethods())
-                .filter(method -> method.getName().equals(methodName.get()))
-                .findFirst();
-    }
-
-    private static String stripInvocationSuffix(String value) {
-        int bracketIndex = value.indexOf('[');
-        int parenthesisIndex = value.indexOf('(');
-        int cutIndex = value.length();
-        if (bracketIndex >= 0) {
-            cutIndex = Math.min(cutIndex, bracketIndex);
-        }
-        if (parenthesisIndex >= 0) {
-            cutIndex = Math.min(cutIndex, parenthesisIndex);
-        }
-        return value.substring(0, cutIndex);
-    }
-
-    private static Optional<Class<?>> loadClass(String className) {
-        try {
-            return Optional.of(Class.forName(className));
-        } catch (ClassNotFoundException exception) {
-            return Optional.empty();
-        }
-    }
-
-    private static Optional<String> findLabel(TestResult testResult, String name) {
-        return testResult.getLabels().stream()
-                .filter(label -> name.equals(label.getName()))
-                .map(Label::getValue)
-                .findFirst();
-    }
-
-    private static void replaceLabel(TestResult testResult, String name, String value) {
-        removeLabel(testResult, name);
-        addLabel(testResult, name, value);
-    }
-
-    private static void addLabel(TestResult testResult, String name, String value) {
-        if (value == null || value.isBlank()) {
-            return;
-        }
-        Set<String> existing = new LinkedHashSet<>();
-        testResult.getLabels().stream()
-                .filter(label -> name.equals(label.getName()))
-                .map(Label::getValue)
-                .forEach(existing::add);
-        if (!existing.contains(value)) {
-            testResult.getLabels().add(new Label().setName(name).setValue(value));
-        }
-    }
-
-    private static void addParameter(TestResult testResult, String name, String value) {
-        if (value == null || value.isBlank()) {
-            return;
-        }
-        List<Parameter> parameters = new ArrayList<>(Optional.ofNullable(testResult.getParameters())
-                .orElseGet(List::of));
-        parameters.removeIf(parameter -> name.equals(parameter.getName()));
-        parameters.add(new Parameter().setName(name).setValue(value));
-        testResult.setParameters(parameters);
-    }
-
-    private static void removeLabel(TestResult testResult, String name) {
-        testResult.setLabels(new ArrayList<>(testResult.getLabels().stream()
-                .filter(label -> !name.equals(label.getName()))
-                .toList()));
-    }
-
-    private record OutdatedRule(String pattern, Pattern compiledPattern) {
-        private OutdatedRule(String pattern) {
-            this(pattern, Pattern.compile(wildcardToRegex(pattern)));
-        }
-
-        private boolean matches(String value) {
-            return value != null && !value.isBlank() && compiledPattern.matcher(value).matches();
-        }
-
-        private static String wildcardToRegex(String wildcard) {
-            StringBuilder regex = new StringBuilder("^");
-            for (char character : wildcard.toCharArray()) {
-                if (character == '*') {
-                    regex.append(".*");
-                } else if (character == '?') {
-                    regex.append('.');
-                } else {
-                    regex.append(Pattern.quote(String.valueOf(character)));
-                }
-            }
-            return regex.append('$').toString();
-        }
     }
 }

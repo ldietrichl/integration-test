@@ -1,0 +1,78 @@
+# Append the relevant keys to the existing src/test/resources/test.properties.
+# Preserve its current env, rest.<env>.*.base-uri and credential placeholders.
+# Choose exactly one environment in the EXISTING env=dev|ift|ift-dm|lt setting.
+# Resolve every secret placeholder only from ignored secure.local.override.properties.
+# secure.local.properties is a tracked template, not a runtime secret source.
+# Environment/JVM/gradle.local properties no longer supply secrets or connections.
+
+explab2972.regular.cases=1,4,5,7,16,18,19,20
+explab2972.fixture=src/test/resources/explab2972/experiment-template.json
+explab2972.timeout.seconds=180
+explab2972.cleanup=draft
+explab2972.keystore=src/test/resources/keystore.p12
+
+# Fill the real primary user's id for EACH environment you will use.
+# No fallback identity is provided.
+# explab2972.dev.auth.primary.user-id=123
+# explab2972.ift.auth.primary.user-id=456
+# explab2972.ift-dm.auth.primary.user-id=789
+# explab2972.lt.auth.primary.user-id=123
+
+# Managed examples: enable only after preparing the stand using the runbook.
+# The environment prefix scopes settings to the chosen stand.
+# explab2972.ift.managed.cases=14
+# explab2972.ift.case.14.prepared=true
+# explab2972.ift.case.14.fixture-id=12345
+# For cases 2 and 3, put these references in test.properties and their secret values
+# only in secure.local.override.properties:
+# explab2972.ift.auth.approver.token=${SECURE_EXPLAB2972_IFT_APPROVER_TOKEN}
+# explab2972.ift.auth.approver.user-id=456
+# explab2972.ift.auth.denied.token=${SECURE_EXPLAB2972_IFT_DENIED_TOKEN}
+# explab2972.ift.auth.denied.user-id=789
+
+# Read-only DB names resolve db.<env>.<name>.* in the EXISTING database.properties.
+# Select separate names here if services use separate databases.
+# explab2972.ift.db.experiment.name=explab
+# explab2972.ift.db.configuration.name=explab
+
+# Optional fixture overrides:
+# explab2972.ift.fixture=src/test/resources/explab2972/ift-reviewed-template.json
+# explab2972.ift.timeout.seconds=240
+# explab2972.ift.case.22.status=STOPPED
+# explab2972.ift.case.51.mode=mixed
+# case.51.mode=fault is for an externally prepared DB fault affecting only the fixture.
+
+# Prepare complete, valid experiments through the API before narrowly seeding
+# any unavailable state. Do not use minimal experiment INSERTs as API fixtures.
+# TP13 needs a non-null scheduleParam with repeatPeriod, monthShift and saltTextPart,
+# autoStop=true and endDt in the past. v2.5 expects cancellation even with scheduleParam.
+# TP24/37 require a verified PLANNED START/STOP scheduler task before the delete fault.
+
+# TP26 checks both start and stop independently while the actual server MAPPER flag is true.
+# The first fixture is AGREED; the separate second fixture is IN_PROGRESS.
+# Both names must begin with EXPLAB-2972- and contain complete valid API-created data.
+# explab2972.ift.case.26.prepared=true
+# explab2972.ift.case.26.fixture-id=12345
+# explab2972.ift.case.26.stopping-fixture-id=12346
+
+# All 60 scenario ids are implemented (8 regular, 52 managed).
+# Controlled cases also require the capabilities described in CONTROL-API.md.
+# explab2972.ift.control.base-uri=https://<environment-controller>
+# explab2972.ift.control.token=${SECURE_2972_CONTROL_TOKEN}
+# Corporate controller: mTLS uses the common PKCS12 by default; TLS trust uses the JVM truststore.
+# For an explicitly Bearer-only endpoint, set control.mtls.enabled=false.
+# explab2972.ift.control.mtls.enabled=true
+# explab2972.ift.control.keystore=src/test/resources/controller-keystore.p12
+# explab2972.ift.control.keystore.pass=${SECURE_2972_CONTROLLER_KEYSTORE_PASSWORD}
+# explab2972.ift.kafka.topics=<exp>,<splitting>,<legacy>,<links>
+# explab2972.ift.case.60.legacy-fixture-id=12345
+
+# Kafka CONNECTION settings belong in kafka-consumers.properties, NOT test.properties.
+# EXPLAB-2972 selects the env profile with '-' changed to '_': ift-dm -> ift_dm.
+# Native SDK examples, to add to kafka-consumers.properties only:
+# kafka_consumer.ift.bootstrap.servers=<BROKERS>
+# kafka_consumer.ift.security.protocol=SASL_SSL
+# kafka_consumer.ift.sasl.mechanism=<SASL_MECHANISM>
+# kafka_consumer.ift.sasl.jaas.config=${SECURE_KAFKA_IFT_JAAS}
+# Producer connections use kafka_producer.<profile>.* in kafka-producers.properties.
+# Move old explab2972.<env>.kafka.bootstrap.servers / kafka.property.* into that profile.

@@ -1,8 +1,9 @@
 package ru.sber.qa.splitter.EXPLAB_2690;
+import steps.flow.splitter.workedgroup.ReactionsFinalExperimentsSteps;
 
 import ru.sber.qa.splitter.support.AnyConfigLoadMode;
 import config.environment.EnvironmentConfigurationExample;
-import dto.splitter.config.ExperimentDto;
+
 import dto.splitter.config.LoadConfigRequestDto;
 import dto.splitter.split.SplitRequestDto;
 import io.perfeccionista.framework.SetEnvironmentConfiguration;
@@ -17,15 +18,13 @@ import ru.sber.qa.allure.CriticalRegression;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
 import util.support.SplitterVersionProvider;
 
-import java.util.List;
-
 @ExtendWith(PerfeccionistaExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
 @SetEnvironmentConfiguration(EnvironmentConfigurationExample.class)
 @ResourceLock("splitter-config")
 @DisplayName("EXPLAB-2690. REACTIONS: итоговый эксперимент по layerPriority и expId")
 @AnyConfigLoadMode
-public class SplitterReactionsFinalExperiments2690FlowTest extends AbstractExplab2690FlowTest {
+public class SplitterReactionsFinalExperiments2690FlowTest extends ReactionsFinalExperimentsSteps {
 
     @CriticalRegression
     @Test
@@ -59,14 +58,5 @@ public class SplitterReactionsFinalExperiments2690FlowTest extends AbstractExpla
                             assertNoAlternativeTrueAnywhere(response);
                         })
                 .run();
-    }
-
-    private ExperimentDto reactionExperiment(int expId, int layerId, int layerPriority, String resultValue) {
-        return layeredExperiment(expId,
-                SALT_2690 + "-" + expId,
-                layerId,
-                layerPriority,
-                List.of(objectParamEqualsCondition(1, "segment", "2690", "INTEGER")),
-                List.of(groupWithDocResult("A", shares(0, 10000), 1, "1", resultValue)));
     }
 }

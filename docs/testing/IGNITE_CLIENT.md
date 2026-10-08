@@ -7,12 +7,12 @@
 | Компонент | Назначение |
 |---|---|
 | `src/main/java/config/services/core/TestEnvironment.java` | Единый выбор среды для REST и Ignite |
-| `src/test/java/util/ignite/EnvironmentProperties.java` | Чтение параметров с приоритетами источников |
+| `src/test/java/util/ignite/EnvironmentProperties.java` | Чтение параметров выбранного профиля из `ignite.properties` |
 | `src/test/java/util/ignite/IgniteConfiguration.java` | Параметры подключения выбранной среды и совместимость со старыми ключами |
 | `src/test/java/util/ignite/IgniteClientRuntime.java` | Проверка библиотек по SHA256, отдельная компиляция helper-классов и запуск дочерней JVM |
 | `tools/ignite-client/IgniteClientSupport.java` | Общие настройки Ignite и TLS для helper-классов |
 | `tools/ignite-client/IgniteConnectionProbe.java` | Вход и получение количества кэшей без чтения строк и записи данных |
-| `tools/ignite-client/corporate-client.init.gradle` | Подготовка корпоративного комплекта и передача параметров `-P`/`-D` в JVM тестов |
+| `tools/ignite-client/corporate-client.init.gradle` | Подготовка корпоративного комплекта из репозиториев проекта |
 | `tools/ignite-client/pom-corporate.xml` | Корпоративные зависимости и управление их версиями |
 | `tools/ignite-client/ignite-profiles.properties.example` | Шаблон профилей без действующих реквизитов |
 
@@ -20,9 +20,9 @@
 
 ## Выбор среды
 
-Один `env` выбирает и REST, и Ignite. Порядок выбора: JVM property `env`, затем переменная `ENV`, затем `env` из `src/test/resources/test.properties`. При запуске через новый init-скрипт явный `-Penv` передаётся в дочерние JVM и имеет приоритет перед `-Denv`.
+Один `env` выбирает REST, Kafka, БД и Ignite. Его единственный источник — `src/test/resources/test.properties`. Аргументы JVM/Gradle и переменные окружения не переключают среду. Подключение выбранной среды находится в `src/test/resources/ignite.properties`.
 
-Пустой явно переданный `env` и неизвестная среда приводят к ошибке. Перехода к DEV при таком ошибочном значении нет.
+Пустой `env` в файле и неизвестная среда приводят к ошибке. Перехода к DEV при таком ошибочном значении нет.
 
 | Значения `env`, без учёта регистра | Профиль |
 |---|---|
@@ -32,7 +32,7 @@
 | `lt` | `ignite.lt.*` |
 | `local`, `localhost` | `ignite.local.*` |
 
-Подчёркивание в имени среды эквивалентно дефису: например, `eift_ds` выбирает `ift`. Профиль `ift-dm` остаётся отдельным от `ift`. Настройки DEV не используются как резервные для ИФТ; отсутствие параметров выбранной среды останавливает запуск.
+Подчёркивание в имени среды эквивалентно дефису: например, `eift_ds` выбирает `ift`. Профиль `ift-dm` остаётся отдельным от `ift`. Настройки DEV не используются как резервные для ИФТ; отсутствие параметров выбранной среды останавливает запуск. В корпоративной поставке IFT-DM намеренно оставлен пустым: перед запуском его заполняют фактическими параметрами этого стенда, без подстановки IFT.
 
 ## Имена параметров и миграция
 
@@ -65,30 +65,21 @@
 
 ### Перенос профиля целиком
 
-Пока в выбранной среде не задан ни один поддерживаемый ключ `ignite.<env>.*`, соединение использует прежний профиль `links.fixture.<env>.*` этой же среды. При появлении любого нового ключа выбирается новый профиль целиком. Отсутствующие реквизиты нового профиля не дополняются старыми.
+Совместимость со старыми ключами относится к содержимому профильного файла `ignite.properties`: пока в выбранной среде не задан ни один поддерживаемый ключ `ignite.<env>.*`, соединение использует прежний профиль `links.fixture.<env>.*` этой же среды из этого файла. При появлении любого нового ключа выбирается новый профиль целиком. Отсутствующие реквизиты нового профиля не дополняются старыми.
 
 Поэтому нельзя переносить только `runtime.directory`, оставив адреса или пароль исключительно в старых ключах. Даже новый `output.directory`, таймаут или пустое значение из шаблона переключает профиль. Перенесите все используемые параметры соединения одной среды, сохранив их действующие значения. Затем отдельно перенесите флаг и каталог фикстур. При отсутствии обязательных параметров запуск завершится ошибкой до обращения к Ignite.
 
-Для DEV и ИФТ выполняется отдельный перенос. Готовность профиля DEV не подтверждает правильность сертификатов, адресов или разрешений ИФТ. Значения старых ключей можно оставить на время проверки: после полной миграции они не участвуют в выборе соединения. Не помещайте незаполненный шаблон поверх рабочего защищённого файла.
+Для DEV и ИФТ выполняется отдельный перенос. Готовность профиля DEV не подтверждает правильность сертификатов, адресов или разрешений ИФТ. Значения старых ключей можно оставить на время проверки: после полной миграции они не участвуют в выборе соединения. Не помещайте незаполненный шаблон поверх рабочих файлов конфигурации или существующего override.
 
 Переименование параметров не требует переименования файлов сертификатов, keystore или truststore. Можно сохранить существующие имена и пути. Можно также сохранить существующее имя секретного placeholder, если его разрешение в защищённых настройках уже работает; перенос ключа подключения сам по себе не меняет значение секрета.
 
-### Приоритет источников
+### Источники конфигурации
 
-Для каждого полного ключа `EnvironmentProperties` использует:
+`EnvironmentProperties` выбирает только профиль нужной среды из `src/test/resources/ignite.properties`. В нём находятся адреса, SSL, пути и типы хранилищ, runtime directory и таймауты. Пользователь, пароль и пароли хранилищ задаются ссылками `${SECURE_...}`. Значения этих ссылок читаются только из корневого игнорируемого `secure.local.override.properties`; `secure.local.properties` — версионируемый шаблон.
 
-1. JVM property с полным именем.
-2. Переменную окружения: все точки и дефисы заменяются на `_`, имя переводится в верхний регистр.
-3. Настройки проекта через `SecureLocalConfigScope`, включая `secure.local.override.properties` перед `secure.local.properties`.
-4. `src/test/resources/test.properties`.
+Пустые обязательные параметры и незаполненные placeholders отклоняются до подключения. `addresses` и `ssl.enabled` обязательны, адреса разделяются запятыми без пустых элементов. `username` и `password` задаются вместе либо оба отсутствуют, если стенд допускает соединение без этих реквизитов.
 
-Пример соответствия: `ignite.ift.ssl.key-store.path` → `IGNITE_IFT_SSL_KEY_STORE_PATH`; `data-operator.fixture.dev.enabled` → `DATA_OPERATOR_FIXTURE_DEV_ENABLED`.
-
-Пустое присутствующее значение блокирует источники ниже него. Обязательный параметр в этом случае приводит к ошибке; незаполненные placeholders тоже отклоняются. `addresses` и `ssl.enabled` обязательны, адреса разделяются запятыми без пустых элементов. `username` и `password` задаются вместе либо оба отсутствуют, если стенд допускает соединение без этих реквизитов.
-
-Для гарантированной передачи командных параметров используйте `-I tools/ignite-client/corporate-client.init.gradle` и при подготовке клиента, и при запуске тестов. Скрипт передаёт `env`, `ignite.*`, `data-operator.fixture.*` и совместимые `links.fixture.*` в задачи `Test` и `JavaExec`, даже если такого ключа ещё нет в защищённом файле. Явные `-P` имеют приоритет перед `-D`; скрипт не выводит их значения. Не полагайтесь на передачу новых ключей штатным build-файлом без этого init-скрипта: корпоративные версии build-файла могут различаться.
-
-Некоторые корпоративные build-файлы поднимают все secure-настройки до JVM properties. Новый init удаляет неявно переданные параметры перечисленных профилей `dev`, `ift`, `ift-dm`, `lt`, `local` из задач и заново применяет явные `-P`/`-D`. Остальные значения Java читает из профильных переменных окружения, затем secure-файлов и ресурса. Поэтому отдельные task-specific `systemProperty` для этих пространств имён замените явными параметрами запуска или настройками профиля. Непрофильные настройки, включая `links.fixture.manifest`, сохраняются; существующий выбор `env` из build сохраняется при отсутствии явного `-Penv`/`-Denv`. Для проверок среды используйте команды с явным `-Penv` ниже.
+Флаги `data-operator.fixture.<env>.enabled`, выходной каталог фикстур и параметры сценариев находятся в `test.properties`. Runtime connection settings не берутся из этого файла, `gradle.local.properties`, JVM properties или переменных окружения. Init script используется для подготовки библиотек и не пересылает подключения/секреты в JVM тестов. При обычном запуске тестов подключать его повторно не требуется.
 
 ## TLS и форматы хранилищ
 
@@ -102,67 +93,53 @@
 
 ## Подготовка и три уровня проверки
 
-Команды ниже выполняются отдельно в PowerShell на корпоративном компьютере, из `C:\Work\IdeaProjects\integration-test`. Локальная сборка или доступ к стенду для подготовки документа не выполнялись.
+Команды выполняются в PowerShell из корня проекта с JDK 17. Подготовка библиотек использует корпоративные репозитории из `gradle.properties` и Nexus credentials из `secure.local.override.properties`; обращений к стенду нет. Версии в `pom-corporate.xml` необходимо сверить с целевым сервисом. Артефакты Apache Ignite не заменяют корпоративные зависимости `com.sbt`.
 
-Для русскоязычного вывода терминала:
-
-```powershell
-chcp 1251 > $null
-$enc = [System.Text.Encoding]::GetEncoding(1251)
-[Console]::InputEncoding = $enc
-[Console]::OutputEncoding = $enc
-$OutputEncoding = $enc
-```
-
-Подготовить общий комплект из зависимостей, уже доступных в корпоративном Gradle-кэше:
+Общий комплект для диагностики соединения:
 
 ```powershell
-.\gradlew.bat -I tools/ignite-client/corporate-client.init.gradle prepareCorporateIgniteClient -x testOpsUpload --console=plain --offline
+.\gradlew.bat -I tools/ignite-client/corporate-client.init.gradle prepareCorporateIgniteClient
+Get-Content -LiteralPath '.\build\corporate-ignite-runtimes\ignite-client\latest-runtime.txt'
 ```
 
-Требуется JDK 17 или новее. Задача разрешает отдельную конфигурацию `corporateIgniteClientLibraries`, проверяет библиотеки и компилирует только два общих helper-класса. В POM сохранены корпоративные Ignite и security-модули версии `17.6.0` и прежние BOM. При отсутствии зависимостей в кэше подготовку на корпоративном компьютере можно повторить без `--offline`; используются только репозитории, уже настроенные в проекте.
-
-Готовый каталог находится в `tools/ignite-client/corporate-runtimes/<sha256>`. Путь публикуется в `tools/ignite-client/corporate-runtimes/latest-runtime.txt` только после успешной проверки и компиляции:
+Он создаётся в `build/corporate-ignite-runtimes/ignite-client/<runtime-sha256>`. Для data-operator подготовьте отдельный комплект, содержащий `LinksCacheTool` и `LinksCacheSchema`:
 
 ```powershell
-Get-Content -LiteralPath '.\tools\ignite-client\corporate-runtimes\latest-runtime.txt'
+.\gradlew.bat -I tools/data-operator-explab-2974/corporate-client.init.gradle prepareExplab2974CorporateClient
+Get-Content -LiteralPath '.\build\corporate-ignite-runtimes\data-operator-explab-2974\latest-runtime.txt'
 ```
 
-Запишите полученный путь в `ignite.dev.runtime.directory` в составе полностью перенесённого профиля DEV. Для ИФТ выберите свой `ignite.ift.runtime.directory` явно. Один совместимый библиотечный комплект допустимо использовать в нескольких профилях, но его выбор и реквизиты задаются отдельно. Указатель `latest-runtime.txt` не выбирается автоматически для всех сред.
+Его путь — `build/corporate-ignite-runtimes/data-operator-explab-2974/<runtime-sha256>`. Задачи проверяют SHA-256, состав корпоративных библиотек и компиляцию helper. Подробности в [README общего клиента](../../tools/ignite-client/README.md) и [README клиента фикстур](../../tools/data-operator-explab-2974/README.md).
+
+Запишите подходящий относительный путь в `ignite.<env>.runtime.directory` файла `ignite.properties`. Selector `latest-runtime.txt` сам по себе не выбирает runtime. Среда уже должна быть выбрана ключом `env` в `test.properties`. Для каждой среды используются её отдельные адреса, сертификаты и credentials. Отсутствующие исторические runtime необходимо восстановить из корпоративной резервной копии; новая сборка не подтверждает совместимость со старым lease.
 
 | Проверка | Что подтверждает | Что записывает |
 |---|---|---|
-| `ru.sber.qa.infrastructure.ignite.IgniteConnectionTest` | Соединение, вход и получение количества кэшей; пустой кластер допустим | Только локальные диагностические файлы |
-| `ru.sber.qa.dataoperator.EXPLAB_2974.DataOperatorLinksConnectionTest` | Вход, чтение пяти кэшей data-operator и совместимость схемы хранения | Только локальные диагностические файлы |
-| Два класса FunctionalFlowTest и ValidationFlowTest | 70 функциональных и 103 валидационных варианта endpoint | Функциональные сценарии создают собственные данные и выполняют их очистку |
+| `ru.sber.qa.infrastructure.ignite.IgniteConnectionTest` | Соединение, вход и получение количества кэшей; пустой кластер допустим | Диагностику внутри `build` |
+| `ru.sber.qa.dataoperator.EXPLAB_2974.DataOperatorLinksConnectionTest` | Вход, чтение кэшей data-operator и совместимость схемы хранения | Диагностику внутри `build` |
+| `DataOperatorLinksFunctionalFlowTest` / `DataOperatorLinksValidationFlowTest` | Функциональные и валидационные варианты endpoint | Собственные данные сценариев на стенде и их очистку |
 
-Общая диагностика DEV, без зависимости от data-operator и флага фикстур:
-
-```powershell
-.\gradlew.bat -I tools/ignite-client/corporate-client.init.gradle test -Penv=dev --tests 'ru.sber.qa.infrastructure.ignite.IgniteConnectionTest' --rerun-tasks -x testOpsUpload --console=plain --offline
-```
-
-Общая диагностика ИФТ после заполнения отдельного профиля:
+После настройки выбранного стенда общая диагностика запускается так:
 
 ```powershell
-.\gradlew.bat -I tools/ignite-client/corporate-client.init.gradle test -Penv=ift --tests 'ru.sber.qa.infrastructure.ignite.IgniteConnectionTest' --rerun-tasks -x testOpsUpload --console=plain --offline
+.\gradlew.bat test --tests 'ru.sber.qa.infrastructure.ignite.IgniteConnectionTest' --console=plain
 ```
 
-Проверка схемы data-operator использует адаптер фикстур, поэтому требует `data-operator.fixture.dev.enabled=true` либо действующего legacy-флага этой среды. Сам диагностический тест не пишет данные в Ignite:
+Проверка схемы data-operator использует адаптер фикстур и его отдельный runtime. Задайте `data-operator.fixture.<env>.enabled=true` в `test.properties`. Сам диагностический тест не пишет данные в Ignite:
 
 ```powershell
-.\gradlew.bat -I tools/ignite-client/corporate-client.init.gradle test -Penv=dev --tests 'ru.sber.qa.dataoperator.EXPLAB_2974.DataOperatorLinksConnectionTest' --rerun-tasks -x testOpsUpload --console=plain --offline
+.\gradlew.bat test --tests 'ru.sber.qa.dataoperator.EXPLAB_2974.DataOperatorLinksConnectionTest' --console=plain
 ```
 
-Прогон endpoint-сценариев после готовности нужного обработчика в развёрнутом сервисе:
+Прогон endpoint-сценариев после выполнения предусловий:
 
 ```powershell
-.\gradlew.bat -I tools/ignite-client/corporate-client.init.gradle test -Penv=dev --tests 'ru.sber.qa.dataoperator.EXPLAB_2974.DataOperatorLinksFunctionalFlowTest' --tests 'ru.sber.qa.dataoperator.EXPLAB_2974.DataOperatorLinksValidationFlowTest' --rerun-tasks -x testOpsUpload --console=plain --offline
+.\gradlew.bat test --tests 'ru.sber.qa.dataoperator.EXPLAB_2974.DataOperatorLinksFunctionalFlowTest' --tests 'ru.sber.qa.dataoperator.EXPLAB_2974.DataOperatorLinksValidationFlowTest' --console=plain
 ```
 
-Вход в Ignite не доказывает доступность REST endpoint, права записи и успешность очистки. Смена имён параметров не исправляет отсутствующий обработчик API. Функциональные тесты сохраняют исходные ожидания ответа и проверку нулевого остатка собственных данных.
+Вход в Ignite не доказывает доступность REST endpoint, права записи или успешность очистки. Функциональные тесты проверяют ответы сервиса и нулевой остаток собственных данных.
 
-Диагностика общей сборки: `build/ignite-client-compile/dependency-diagnostics.json` и `build/ignite-client-compile/<sha256>/compile.log`. Для результатов запуска используются `build/ignite/<env>/probe-*`, для data-operator — `build/explab-2974-fixtures/<env>`. JUnit и Allure остаются в каталогах, выбранных существующей конфигурацией проекта.
+Диагностика сборки находится в `build/ignite-client-compile` и `build/explab-2974-client-compile`. Probe пишет в `build/ignite/<env>`, фикстуры — в настроенный каталог внутри `build`; исторические корпоративные JSON сохранены в `build/regression-fixtures`. JUnit, Allure, regression и TestOps также создаются внутри `build`.
 
 ## Использование в других тестах
 
@@ -207,14 +184,14 @@ Fingerprint выполнения рассчитывается как SHA256 ба
 Для data-operator есть два случая:
 
 - Старый комплект содержит `LinksCacheSchema.java` и `LinksCacheTool.java`: адаптер использует именно эти неизменяемые копии, в прежнем порядке. Исторический `fixtureRuntimeSha256`, schema 3 манифеста и путь фикстур сохраняют смысл.
-- Новый общий комплект содержит общие helpers, а оба feature helper-файла берутся из `tools/data-operator-explab-2974` проекта. Fingerprint фикстуры включает эти feature-исходники и поэтому отличается от SHA каталога общего комплекта. Это ожидаемо: проверяются разные наборы исходников.
+- Новый комплект data-operator создаётся отдельной задачей и содержит собственные helper-исходники. Generic probe runtime не считается готовым runtime фикстур. При использовании других helper-исходников fingerprint их выполнения отличается; это требует отдельной проверки, а не изменения старого манифеста.
 
-Перед заменой комплекта или feature helper-исходников завершите очистку незавершённых фикстур. Новый общий комплект сам по себе не архивирует версии feature helpers из проекта. Для восстановления после их последующего изменения потребуется сохранить или восстановить исходные байты этих файлов вместе с нужным lock и библиотеками. Старые каталоги `tools/data-operator-explab-2974/corporate-runtimes` не удаляйте и не переписывайте.
+Перед заменой комплекта, helper-исходников или выполнением `clean` завершите очистку незавершённых фикстур. Если остаются активные lease, сохраните во внутреннем хранилище вне проекта полный каталог конкретного запуска с manifest/ownership/recovery и точный runtime: lock, библиотеки и исходники helper. Сохраните соответствующие настройки среды. Одного отчёта Allure для восстановления недостаточно.
+
+Обычный `clean` удаляет весь `build`, включая runtime и исторические JSON фикстур. После него для нового запуска подготовьте библиотеки повторно и проверьте `ignite.<env>.runtime.directory`. При восстановлении старого запуска верните сохранённые каталоги в прежние относительные пути; не подменяйте исходный runtime новым fingerprint. Старые внешние корпоративные runtime не удаляются и не переписываются поставкой.
 
 Восстановление data-operator проверяет, что манифест находится в каталоге выбранной среды, а среда, URI сервиса, адреса Ignite, schema 3 и fingerprint совпадают. При расхождении оно останавливается. Не исправляйте fingerprint, адреса или владельцев в манифесте для обхода проверки. Чтобы восстановить старую фикстуру после миграции имён, в полном новом профиле этой же среды можно явно выбрать прежний runtime-каталог, сохранив исходные параметры соединения и каталог фикстур.
 
-## Границы подтверждённой проверки
+## Границы проверки
 
-Корпоративный комплект Ignite `17.6.0` и прежний адаптер до этого рефакторинга уже прошли вход и чтение кэшей на DEV; функциональный прогон подтвердил работу подготовки и очистки собственных фикстур. Это не является результатом запуска новой версии общего кода и не подтверждает ИФТ.
-
-Для текущего изменения выполняется статическая проверка исходников, имён и состава поставки. Новую компиляцию и диагностические команды нужно выполнить на корпоративном компьютере. Порядок: подготовка общего клиента, общая диагностика каждой настроенной среды, затем проверка схемы сервиса и его функциональные сценарии.
+Компиляция и проверки файлов конфигурации не подтверждают доступ к корпоративному Ignite. После восстановления недостающих runtime и сертификатов выполните в корпоративной сети подготовку клиента, диагностику соединения каждой настроенной среды, затем проверку схемы и функциональные сценарии. Результаты прошлых запусков относятся к соответствующим версиям и стендам.

@@ -14,7 +14,6 @@ import io.perfeccionista.framework.extension.PerfeccionistaExtension;
 import io.qameta.allure.Allure;
 import io.restassured.RestAssured;
 import io.restassured.config.RestAssuredConfig;
-import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.DisplayName;
@@ -28,7 +27,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 import static io.qameta.allure.Allure.step;
 
 @ExtendWith(PerfeccionistaExtension.class)
@@ -45,12 +43,8 @@ public class SplitterHappyPassPost {
     String endpointConfig = Endpoints.Splitter.SPLITTER_CONFIG;
     String endpointReq = Endpoints.Splitter.SPLITTER_SPLIT;
 
-    RestAssuredConfig P12_CONFIG = RestAssuredConfig.config().sslConfig(
-            new SSLConfig()
-                    .keyStore("src/test/resources/keystore.p12", TEST_CONFIG.keystorePass())
-                    .keystoreType("PKCS12")
-                    .relaxedHTTPSValidation()
-    );
+    private final RestAssuredConfig P12_CONFIG = config.services.rest.RestMtlsConfiguration.apply(
+            RestAssuredConfig.config(), splitterBaseUri);
 
     //@Disabled("Ручной exploratory-сценарий. Включать точечно для исследования фактического поведения сервиса.")
     @Test
@@ -117,6 +111,7 @@ public class SplitterHappyPassPost {
         SplittingConfigMessageDto message = objectMapper.readValue(configBody, SplittingConfigMessageDto.class);
         return RestAssured.given()
                 .config(P12_CONFIG)
+                .filter(config.services.rest.RestMtlsConfiguration.requestGuard())
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
                 .header("Content-Type", "application/json")
@@ -131,6 +126,7 @@ public class SplitterHappyPassPost {
     private Response postJson(String targetUrl, String body) {
         return RestAssured.given()
                 .config(P12_CONFIG)
+                .filter(config.services.rest.RestMtlsConfiguration.requestGuard())
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
                 .header("Content-Type", "application/json")

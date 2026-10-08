@@ -41,7 +41,7 @@ public class DeleteSplitNegativeTest extends Flows {
                                 .should(
                                         JsonMatchers.haveNotBlankJsonValue("id"),
                                         JsonMatchers.haveJsonValue("message", TextConditions.equalToText("Для удаления сплит должен быть остановлен")),
-                                        JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                        JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                                 ))
 
                 .step("Удаление тестовых данных", flow -> {
@@ -69,7 +69,7 @@ public class DeleteSplitNegativeTest extends Flows {
                                 .should(
                                         JsonMatchers.haveNotBlankJsonValue("id"),
                                         JsonMatchers.haveJsonValue("message", TextConditions.equalToText("Отсутствует обязательный параметр")),
-                                        JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                        JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                                 ))
                 .run();
     }

@@ -46,7 +46,7 @@ public class ChangeSplitNegativeTest extends Flows {
                             .should(
                                     JsonMatchers.haveNotBlankJsonValue("id"),
                                     JsonMatchers.haveJsonValue("message", TextConditions.equalToText("Некорректный запрос")),
-                                    JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                    JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                             );
                 })
 

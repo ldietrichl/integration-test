@@ -52,7 +52,7 @@ public class ChangeLayerNegativeTest extends Flows {
                                     JsonMatchers.haveNotBlankJsonValue("id"),
                                     JsonMatchers.haveJsonValue("message",
                                             TextConditions.equalToText("Некорректный запрос")),
-                                    JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                    JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                             );
                 }).run();
     }
@@ -85,7 +85,7 @@ public class ChangeLayerNegativeTest extends Flows {
                                     JsonMatchers.haveNotBlankJsonValue("id"),
                                     JsonMatchers.haveJsonValue("message",
                                             TextConditions.equalToText("Слой с id=1000000000000000000 не найден")),
-                                    JsonMatchers.evaluateJsonPathExpression("containsKey('params')")
+                                    JsonMatchers.evaluateGroovyPathExpression("containsKey('params')")
                             );
                 }).run();
     }

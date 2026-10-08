@@ -1467,25 +1467,25 @@ public final class KubernetesWorkloadControl implements AutoCloseable {
             java.math.BigDecimal availableBytes = hardBytes.subtract(usedBytes).max(java.math.BigDecimal.ZERO);
             java.math.BigDecimal requiredBytes = perPodBytes.multiply(java.math.BigDecimal.valueOf(additionalReplicas));
             String quotaName = quota.at("/metadata/name").asText("unknown");
-            attachment("Scale memory quota preflight", WorkloadJson.JSON.valueToTree(Map.of(
+            steps.container.KubernetesTunnelSteps.evidence("Scale memory quota preflight", Map.of(
                     "quota", quotaName, "hard", hardText, "used", usedText,
                     "availableBytes", availableBytes.toPlainString(),
                     "requiredBytes", requiredBytes.toPlainString(),
                     "perPodBytes", perPodBytes.toPlainString(),
                     "additionalReplicas", additionalReplicas,
                     "resourceSource", "live-ready-pod-including-injected-containers",
-                    "pod", livePod.at("/metadata/name").asText(), "mutationDispatched", false)).toPrettyString());
+                    "pod", livePod.at("/metadata/name").asText(), "mutationDispatched", false));
             if (requiredBytes.compareTo(availableBytes) > 0)
                 throw new IllegalStateException("QUOTA_INSUFFICIENT: limits.memory required="
                         + requiredBytes.toPlainString() + " bytes, available=" + availableBytes.toPlainString()
                         + " bytes in resourcequota/" + quotaName + "; no scale mutation was sent");
         }
         if (evaluated == 0)
-            attachment("Scale memory quota preflight", WorkloadJson.JSON.valueToTree(Map.of(
+            steps.container.KubernetesTunnelSteps.evidence("Scale memory quota preflight", Map.of(
                     "status", "NO_LIMITS_MEMORY_QUOTA", "perPodBytes", perPodBytes.toPlainString(),
                     "additionalReplicas", additionalReplicas,
                     "resourceSource", "live-ready-pod-including-injected-containers",
-                    "pod", livePod.at("/metadata/name").asText(), "mutationDispatched", false)).toPrettyString());
+                    "pod", livePod.at("/metadata/name").asText(), "mutationDispatched", false));
     }
 
     private JsonNode readyPodForDeployment(JsonNode deployment) {

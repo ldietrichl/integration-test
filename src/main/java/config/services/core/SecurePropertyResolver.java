@@ -3,6 +3,7 @@ package config.services.core;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.jasypt.util.text.BasicTextEncryptor;
 import ru.sber.qa.services.configuration.converters.SecretPropertyConverter;
 
 import static config.services.core.SecureLocalConfigScope.SECURE_LOCAL_CONFIG;
@@ -16,6 +17,7 @@ public final class SecurePropertyResolver {
     private static final SecretPropertyConverter SECRET_PROPERTY_CONVERTER = new SecretPropertyConverter();
     private static final String FAIL_ON_UNRESOLVED_PROPERTY = "secure.placeholders.fail-on-unresolved";
     private static final String FAIL_ON_UNRESOLVED_ENV = "SECURE_PLACEHOLDERS_FAIL_ON_UNRESOLVED";
+    private static final String ENCRYPTION_PASSWORD_PROPERTY = "encryption.password";
 
     private SecurePropertyResolver() {
     }
@@ -29,7 +31,7 @@ public final class SecurePropertyResolver {
                 return value;
             }
             throw new IllegalStateException("Секретное значение не заполнено: " + value.trim()
-                    + ". Заполните secure.local.override.properties, secure.local.properties, env или JVM -D property.");
+                    + ". Заполните secure.local.override.properties.");
         }
 
         Matcher matcher = PLACEHOLDER_PATTERN.matcher(value);
@@ -47,7 +49,7 @@ public final class SecurePropertyResolver {
                     continue;
                 }
                 throw new IllegalStateException("Не найдено значение для плейсхолдера ${" + name
-                        + "}. Заполните secure.local.override.properties, secure.local.properties, env или JVM -D property.");
+                        + "}. Заполните secure.local.override.properties.");
             }
             matcher.appendReplacement(result, Matcher.quoteReplacement(convertIfNeeded(resolved)));
         }
@@ -63,16 +65,7 @@ public final class SecurePropertyResolver {
     }
 
     private static String lookup(String name) {
-        return firstUsable(
-                System.getProperty(name),
-                System.getenv(name),
-                System.getenv(toEnvName(name)),
-                SECURE_LOCAL_CONFIG.getProperty(name)
-        );
-    }
-
-    private static String toEnvName(String name) {
-        return name.replaceAll("[^A-Za-z0-9]", "_").toUpperCase();
+        return firstUsable(SECURE_LOCAL_CONFIG.getProperty(name));
     }
 
     private static String convertIfNeeded(String value) {
@@ -80,7 +73,28 @@ public final class SecurePropertyResolver {
             return null;
         }
         String trimmed = value.trim();
-        if (trimmed.startsWith("ENC(") || trimmed.startsWith("vault.")) {
+        if (trimmed.startsWith("ENC(")) {
+            String password = lookup(ENCRYPTION_PASSWORD_PROPERTY);
+            if (password == null) {
+                throw new IllegalStateException("Для ENC требуется encryption.password в secure.local.override.properties.");
+            }
+            if (!trimmed.endsWith(")") || trimmed.length() <= 5) {
+                throw new IllegalStateException("Некорректное значение ENC в конфигурации.");
+            }
+            // Same Jasypt algorithm as the SDK, without its JVM/env lookup or regex replacement
+            // of decrypted text (which treats '$' and backslashes as replacement syntax).
+            BasicTextEncryptor crypt = new BasicTextEncryptor();
+            crypt.setPassword(password);
+            String decrypted;
+            try {
+                decrypted = crypt.decrypt(trimmed.substring(4, trimmed.length() - 1));
+            } catch (RuntimeException failure) {
+                // Do not expose ciphertext, a password, or SDK exception text in test reports.
+                throw new IllegalStateException("Не удалось расшифровать ENC; проверьте encryption.password в secure.local.override.properties.");
+            }
+            return decrypted.startsWith("vault.") ? SECRET_PROPERTY_CONVERTER.convert(decrypted) : decrypted;
+        }
+        if (trimmed.startsWith("vault.")) {
             return SECRET_PROPERTY_CONVERTER.convert(trimmed);
         }
         return value;

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import dto.splitter.config.LoadConfigRequestDto;
 
 import java.util.List;
+import java.util.Set;
 
 import static util.TestAssertions.assertEquals;
 import static util.TestAssertions.assertFalse;
@@ -11,6 +12,8 @@ import static util.TestAssertions.assertNotNull;
 import static util.TestAssertions.assertTrue;
 
 final class SplitterConfigLoadMonitoring2399Assertions {
+
+    private static final Set<String> SUPPORTED_SERVICE_NAMES = Set.of("splitter-service", "splitter--service");
 
     private SplitterConfigLoadMonitoring2399Assertions() {
     }
@@ -34,16 +37,23 @@ final class SplitterConfigLoadMonitoring2399Assertions {
                 "statusDesc должен содержать: " + expectedText + "\n" + statusMessage.toPrettyString());
     }
 
+    static void assertConfigLoadMonitoring(JsonNode monitoringMessage,
+                                           LoadConfigRequestDto config,
+                                           String expectedResult) {
+        assertMonitoringCommon(monitoringMessage, config, expectedResult);
+        assertEquals("KAFKA", value(monitoringMessage, "loadMethod"), monitoringMessage.toPrettyString());
+    }
+
     static void assertLoadedWithPrecalcMonitoring(JsonNode monitoringMessage,
                                                   LoadConfigRequestDto config) {
         assertMonitoringCommon(monitoringMessage, config, "LOADED_WITH_PRECALC");
         assertEquals("KAFKA", value(monitoringMessage, "loadMethod"), monitoringMessage.toPrettyString());
-        assertPresentAny(monitoringMessage, "splittingPointCode", "splittingPoing", "splittingPoint");
+        assertPresentAny(monitoringMessage, "splittingPointCode", "splittingPoing");
         assertPresent(monitoringMessage, "completedTimestamp");
-        assertFieldExists(monitoringMessage, "soConfigVersion");
+        assertPresent(monitoringMessage, "soConfigVersion");
         assertNumericField(monitoringMessage, "notLinkedObjects");
         assertNumericField(monitoringMessage, "totalObjects");
-        assertNumericField(monitoringMessage, "notLinkedExps");
+        assertNumericField(monitoringMessage, "linkedExps");
         assertNumericField(monitoringMessage, "totalExps");
     }
 
@@ -51,16 +61,14 @@ final class SplitterConfigLoadMonitoring2399Assertions {
                                            LoadConfigRequestDto config) {
         assertMonitoringCommon(monitoringMessage, config, "NOT_LOADED_OLD_VERSION");
         assertEquals("KAFKA", value(monitoringMessage, "loadMethod"), monitoringMessage.toPrettyString());
-        assertFieldExists(monitoringMessage, "resultDetails");
-        assertKafkaMetadata(monitoringMessage);
+        assertContainsAny(monitoringMessage, "resultDetails", List.of("младше текущей", "не актуальной версии", "старее текущей"));
     }
 
     static void assertRequestParamsWithPrecalcMonitoring(JsonNode monitoringMessage,
                                                          LoadConfigRequestDto config) {
         assertMonitoringCommon(monitoringMessage, config, "REQUEST_PARAMS_WITH_PRECALC_ENABLED");
         assertEquals("KAFKA", value(monitoringMessage, "loadMethod"), monitoringMessage.toPrettyString());
-        assertFieldExists(monitoringMessage, "resultDetails");
-        assertKafkaMetadata(monitoringMessage);
+        assertContainsAny(monitoringMessage, "resultDetails", List.of("REQUEST_PARAMS", "параметрами запроса", "предрасчет"));
     }
 
     static void assertValidationFailedMonitoring(JsonNode monitoringMessage,
@@ -69,14 +77,13 @@ final class SplitterConfigLoadMonitoring2399Assertions {
         assertMonitoringCommon(monitoringMessage, config, "VALIDATION_FAILED");
         assertEquals("KAFKA", value(monitoringMessage, "loadMethod"), monitoringMessage.toPrettyString());
         assertContainsAny(monitoringMessage, "resultDetails", List.of(expectedDetailsText));
-        assertKafkaMetadata(monitoringMessage);
     }
 
     static void assertInvalidMessageMonitoring(JsonNode monitoringMessage, String messageId) {
         assertEquals("SPLITTING_CONFIG_LOAD", value(monitoringMessage, "function"), monitoringMessage.toPrettyString());
         assertEquals("VALIDATION_FAILED", normalized(monitoringMessage, "result"), monitoringMessage.toPrettyString());
         assertEquals("KAFKA", value(monitoringMessage, "loadMethod"), monitoringMessage.toPrettyString());
-        assertEquals("splitter-service", value(monitoringMessage, "service"), monitoringMessage.toPrettyString());
+        assertServiceName(monitoringMessage);
         assertTrue(messageId.equals(value(monitoringMessage, "messageId"))
                         || messageId.equals(value(monitoringMessage, "requestIdIn")),
                 "В мониторинге не найден исходный messageId/requestIdIn=" + messageId
@@ -92,9 +99,16 @@ final class SplitterConfigLoadMonitoring2399Assertions {
         assertEquals(expectedResult, normalized(monitoringMessage, "result"), monitoringMessage.toPrettyString());
         assertEquals(config.getMessageId(), valueAny(monitoringMessage, "messageId", "requestIdIn"), monitoringMessage.toPrettyString());
         assertEquals(String.valueOf(config.getConfigVersion()), value(monitoringMessage, "newConfigVersion"), monitoringMessage.toPrettyString());
-        assertEquals(config.getSplittingPointCode(), valueAny(monitoringMessage, "splittingPointCode", "splittingPoing", "splittingPoint"), monitoringMessage.toPrettyString());
-        assertEquals("splitter-service", value(monitoringMessage, "service"), monitoringMessage.toPrettyString());
+        assertEquals(config.getSplittingPointCode(), valueAny(monitoringMessage, "splittingPointCode", "splittingPoing"), monitoringMessage.toPrettyString());
+        assertServiceName(monitoringMessage);
         assertPresent(monitoringMessage, "currentConfigVersion");
+        assertKafkaMetadata(monitoringMessage);
+    }
+
+    private static void assertServiceName(JsonNode monitoringMessage) {
+        String service = value(monitoringMessage, "service");
+        assertTrue(SUPPORTED_SERVICE_NAMES.contains(service),
+                "Неожиданное service=" + service + "\n" + monitoringMessage.toPrettyString());
     }
 
     private static void assertKafkaMetadata(JsonNode monitoringMessage) {
@@ -121,11 +135,6 @@ final class SplitterConfigLoadMonitoring2399Assertions {
 
     private static void assertPresent(JsonNode node, String field) {
         assertFalse(node.path(field).isMissingNode() || node.path(field).isNull(),
-                "Ожидали поле " + field + "\n" + node.toPrettyString());
-    }
-
-    private static void assertFieldExists(JsonNode node, String field) {
-        assertFalse(node.path(field).isMissingNode(),
                 "Ожидали поле " + field + "\n" + node.toPrettyString());
     }
 

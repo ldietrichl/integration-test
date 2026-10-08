@@ -6,7 +6,7 @@
 
 ## Предусловия
 
-- По умолчанию не задавайте `GRADLE_USER_HOME`: wrapper должен использовать корпоративный Gradle cache пользователя. Если wrapper не может скачать `gradle-7.3.3-bin.zip` и distribution cache был отдельно скопирован в проект, задайте `$env:GRADLE_USER_HOME = "C:\Work\IdeaProjects\integration-test\.gradle"` только для этого запуска.
+- Используйте общий пользовательский кеш: `$env:GRADLE_USER_HOME = Join-Path $env:USERPROFILE '.gradle'`. Wrapper загружает Gradle 8.4 из корпоративного Nexus; не задавайте кеш внутри проекта. [Настройка Nexus и кеша](../../../project/GRADLE_NEXUS.md).
 - `env` указывает на нужный стенд в `src/test/resources/test.properties`, Gradle `-Denv` или CI-переменных.
 - Для общего ingress задан `rest.<env>.gateway.base-uri`.
 - Если MAPPER и REACTIONS опубликованы как разные splitter-сервисы или версии SDK, заданы отдельные URI:

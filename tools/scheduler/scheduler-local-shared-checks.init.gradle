@@ -1,0 +1,34 @@
+// Offline pure-policy checks, never the corporate JUnit task graph.
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.testing.Test
+
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    def compileName = 'schedulerCompileSharedChecks'
+    def runName = 'schedulerLocalSharedChecks'
+    if (!gradle.startParameter.offline ||
+        gradle.startParameter.taskNames.any { it != runName && it != ':' + runName })
+        throw new GradleException('Use --offline and only schedulerLocalSharedChecks.')
+    def main = p.sourceSets.getByName('main')
+    def output = p.layout.buildDirectory.dir('classes/scheduler-local-shared-checks')
+    def compile = p.tasks.register(compileName, JavaCompile) {
+        source = p.fileTree('tools/scheduler/local-shared-checks/java') { include '**/*.java' }
+        classpath = main.output + main.compileClasspath
+        destinationDirectory.set(output)
+        options.encoding = 'UTF-8'
+        options.release.set(17)
+        dependsOn p.tasks.named('classes')
+    }
+    p.tasks.register(runName, JavaExec) {
+        dependsOn compile
+        classpath = p.files(output) + main.output + main.compileClasspath
+        mainClass.set('scheduler.localchecks.SchedulerSharedStandChecks')
+        jvmArgs '-Dfile.encoding=UTF-8'
+    }
+    gradle.taskGraph.whenReady { graph ->
+        def allowed = ['compileJava','processResources','classes',compileName,runName] as Set
+        if (graph.allTasks.any { it.project != p || !allowed.contains(it.name) || it instanceof Test })
+            throw new GradleException('Unexpected task graph: no corporate tests may run.')
+    }
+}

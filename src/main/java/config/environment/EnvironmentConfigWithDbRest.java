@@ -29,6 +29,7 @@ public class EnvironmentConfigWithDbRest extends DefaultEnvironmentConfiguration
     @Override
     public @NotNull ServiceConfigurationManager getServiceConfigurations() {
         return super.getServiceConfigurations()
+                .put(ConfiguredServiceHolder.of(infrastructure.kubernetes.KubernetesWorkloadService.class))
                 // Служебные сервисы
                 .put(ConfiguredServiceHolder.of(
                         ConfigurationService.class,

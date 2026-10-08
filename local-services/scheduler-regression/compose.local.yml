@@ -1,0 +1,63 @@
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: scheduler
+      POSTGRES_USER: scheduler
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD:?Run prepare-local.ps1 first}
+    ports:
+      - "127.0.0.1:55439:5432"
+    volumes:
+      - scheduler-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scheduler -d scheduler"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  scheduler:
+    image: eclipse-temurin:17-jre
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:18089:8080"
+    volumes:
+      - ${SCHEDULER_JAR:?Run prepare-local.ps1 first}:/app/app.jar:ro
+    environment:
+      SCHEDULER_SERVICE_HOST: http://scheduler
+      SCHEDULER_SERVICE_PORT: "8080"
+      SCHEDULER_SERVICE_DATABASE_URL: jdbc:postgresql://database:5432/scheduler
+      SCHEDULER_SERVICE_DEFAULT_SCHEME: scheduler
+      SCHEDULER_SERVICE_DATABASE_AS_TUZ_USERNAME: scheduler
+      SCHEDULER_SERVICE_DATABASE_AS_TUZ_PASSWORD: ${LOCAL_DB_PASSWORD}
+      SCHEDULER_SERVICE_DATABASE_AS_ADMIN_USERNAME: scheduler
+      SCHEDULER_SERVICE_DATABASE_AS_ADMIN_PASSWORD: ${LOCAL_DB_PASSWORD}
+      SCHEDULER_SERVICE_EXPERIMENT_HOST: http://unprepared-dependency.invalid
+      SCHEDULER_SERVICE_EXPERIMENT_PORT: "8080"
+      SCHEDULER_SERVICE_COMMUNICATION_HOST: http://unprepared-dependency.invalid
+      SCHEDULER_SERVICE_COMMUNICATION_PORT: "8080"
+      SCHEDULER_SERVICE_USER_HOST: http://unprepared-dependency.invalid
+      SCHEDULER_SERVICE_USER_PORT: "8080"
+      SCHEDULER_SERVICE_DICTIONARY_URL: http://unprepared-dependency.invalid:8080
+      SCHEDULER_SERVICE_USER_V2_URL: http://unprepared-dependency.invalid:8080
+      SCHEDULER_SERVICE_TASK_SCHEDULER_ENABLED: "false"
+      SCHEDULER_SERVICE_TASK_SCHEDULER_V2_ENABLED: "false"
+      SCHEDULER_SERVICE_TASK_JOB_ENABLED: "false"
+      SCHEDULER_SERVICE_TASK_JOB_V2_ENABLED: "false"
+      SCHEDULER_SERVICE_CLEAR_HUNG_TASKS_JOB_ENABLED: "false"
+      SCHEDULER_SERVICE_CLEAR_HUNG_TASKS_JOB_V2_ENABLED: "false"
+      SCHEDULER_SERVICE_CLEAR_OUTDATED_TASKS_JOB_ENABLED: "false"
+      SCHEDULER_SERVICE_CLEAR_OUTDATED_TASKS_JOB_V2_ENABLED: "false"
+      SCHEDULER_SERVICE_DB_REFRESH_ENABLED: "false"
+      SCHEDULER_SERVICE_DB_REFRESH_FIXED_DELAY_MS: "60000"
+      SCHEDULER_SERVICE_DB_REFRESH_POOL_CHECK_DELAY_MS: "60000"
+      SCHEDULER_SERVICE_DB_REFRESH_TUZ_LOGIN_FILE: /tmp/db-login
+      SCHEDULER_SERVICE_DB_REFRESH_ADMIN_LOGIN_FILE: /tmp/db-login
+      SCHEDULER_SERVICE_DB_REFRESH_TUZ_PASSWORD_FILE: /tmp/db-password
+      SCHEDULER_SERVICE_DB_REFRESH_ADMIN_PASSWORD_FILE: /tmp/db-password
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - 'umask 077; printf %s scheduler > /tmp/db-login; printf %s "$$SCHEDULER_SERVICE_DATABASE_AS_TUZ_PASSWORD" > /tmp/db-password; exec java -Xmx512m -jar /app/app.jar'
+volumes:
+  scheduler-data:

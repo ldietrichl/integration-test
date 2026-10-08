@@ -27,7 +27,7 @@ com.sbt.security.ignite:security-ldap:17.6.0
 
 Достаточно указать путь к папке с артефактами. Для передачи подготовлен каталог:
 
-`A:/Codex/Functional/BACK/01_reference_sources/data_operator_service/EXPLAB-2974-dependencies/`
+`<workspace>/BACK/01_reference_sources/data_operator_service/EXPLAB-2974-dependencies/`
 
 Полезно приложить список версий или исходных commit/image digest. Один `.jar` без транзитивных зависимостей может оказаться недостаточным. Файлы секретов не требуется добавлять в Git; используем существующий механизм локальных настроек.
 

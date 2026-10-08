@@ -1,6 +1,6 @@
 # EXPLAB-2974: параметры dev из Pod YAML и ConfigMap
 
-Источники: [yaml.txt](A:/Codex/Functional/BACK/07_issue_tracking/jira/EXPLAB-2974/yaml.txt) и [config_map.txt](A:/Codex/Functional/BACK/07_issue_tracking/jira/EXPLAB-2974/config_map.txt), прочитаны 08.09.2026. Первый файл — снимок объекта **Pod**, не Deployment или Service. Значения секретов не извлекались из работающего стенда.
+Источники: [yaml.txt](<workspace>/BACK/07_issue_tracking/jira/EXPLAB-2974/yaml.txt) и [config_map.txt](<workspace>/BACK/07_issue_tracking/jira/EXPLAB-2974/config_map.txt), прочитаны 08.09.2026. Первый файл — снимок объекта **Pod**, не Deployment или Service. Значения секретов не извлекались из работающего стенда.
 
 | Параметр | Значение из файлов |
 |---|---|

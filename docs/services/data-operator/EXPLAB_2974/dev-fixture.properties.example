@@ -4,7 +4,7 @@
 links.fixture.dev.enabled=true
 links.fixture.dev.ignite.addresses=tsled-mvp000384.esrt.sber.ru:10800,tsled-mvp000385.esrt.sber.ru:10800,tsled-mvp000386.esrt.sber.ru:10800
 links.fixture.dev.ignite.ssl.enabled=false
-links.fixture.dev.ignite.username=ise_client
+links.fixture.dev.ignite.username=${SECURE_FIXTURE_PASSWORD}
 links.fixture.dev.ignite.password=${SECURE_EXPLAB2974_DEV_IGNITE_PASSWORD}
 
 # The fixed client bundle in tools/data-operator-explab-2974 is included in the patch.

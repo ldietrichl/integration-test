@@ -24,7 +24,7 @@ import ru.sber.qa.containers.services.DefaultContainerServiceConfiguration;
 import ru.sber.qa.services.configuration.ConfigurationService;
 import ru.sber.qa.services.configuration.DefaultConfigurationServiceConfiguration;
 import ru.sber.qa.services.db.DatabaseService;
-import ru.sber.qa.services.kafka.DefaultKafkaServiceConfiguration;
+import config.services.core.ProjectKafkaConfiguration;
 import ru.sber.qa.services.kafka.KafkaService;
 import ru.sber.qa.services.rest.RestService;
 
@@ -47,7 +47,7 @@ public class EnvironmentConfigurationExample extends DefaultEnvironmentConfigura
                         DataConverterService.class, new DefaultDataConverterServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(RestService.class, new CustomAllure2RestServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(DatabaseService.class, new CustomDatabaseServiceConfiguration()))
-                .put(ConfiguredServiceHolder.of(KafkaService.class, new DefaultKafkaServiceConfiguration()))
+                .put(ConfiguredServiceHolder.of(KafkaService.class, new ProjectKafkaConfiguration()))
                 .put(ConfiguredServiceHolder.of(ContainerService.class, new DefaultContainerServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(TimeoutsService.class, new DefaultTimeoutsServiceConfiguration()))
                 .put(ConfiguredServiceHolder.of(

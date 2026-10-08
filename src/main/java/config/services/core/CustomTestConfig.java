@@ -4,14 +4,11 @@ import org.aeonbits.owner.Config;
 import org.aeonbits.owner.Config.LoadPolicy;
 import org.aeonbits.owner.Config.Sources;
 import org.aeonbits.owner.Reloadable;
-import ru.sber.qa.services.configuration.converters.SecretPropertyConverter;
 
+// Preserve secret references for SecurePropertyResolver instead of expanding them in Owner.
+@Config.DisableFeature(Config.DisableableFeature.VARIABLE_EXPANSION)
 @LoadPolicy(Config.LoadType.MERGE)
 @Sources({
-        "system:properties",
-        "system:env",
-        "file:secure.local.override.properties",
-        "file:secure.local.properties",
         "file:src/test/resources/test.properties",
         "classpath:test.properties"
 })
@@ -21,18 +18,14 @@ public interface CustomTestConfig extends Reloadable {
 
 
     @Key("keystore.pass")
-    @ConverterClass(SecretPropertyConverter.class)
     String keystorePass();
 
     @Key("truststore.pass")
-    @ConverterClass(SecretPropertyConverter.class)
     String truststorePass();
 
     @Key("rest.configuration-service.token")
-    @ConverterClass(SecretPropertyConverter.class)
     String configurationServiceToken();
 
     @Key("rest.explab-gateway.token")
-    @ConverterClass(SecretPropertyConverter.class)
     String explabGatewayToken();
 }

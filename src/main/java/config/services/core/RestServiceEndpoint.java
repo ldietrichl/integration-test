@@ -9,6 +9,7 @@ package config.services.core;
  */
 public enum RestServiceEndpoint {
     EXPLAB_GATEWAY("gateway", false),
+    SCHEDULER("scheduler", true),
     EXPERIMENTS("experiments", true),
     DICTIONARIES("dictionaries", true),
     DATA_OPERATOR("data-operator", true),

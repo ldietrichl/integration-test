@@ -19,10 +19,10 @@
 Allure проверен по данным JUnit и фактическим HTTP-обменам: 173 result-файла, 186 container-файлов, 1067 вложений по ссылкам; потерянных результатов/вложений нет. Опубликованный HTML содержит те же 52 passed / 121 failed. Отдельно прошли 28 проверок генераторов/оракула, 12 проверок анализатора, компиляция 176 выбранных исходников поверх корпоративной копии и выбор согласованных REST/fixture-параметров пяти окружений. Полная Gradle-сборка вне корпоративной сети заблокирована недоступным Nexus.
 
 - [Allure текущего запуска](http://127.0.0.1:18086/).
-- [Сводка, очистка и целостность](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-functional-20260907-232855-095/functional-summary.json).
-- [JUnit и фактические HTTP-ответы](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-functional-20260907-232855-095/results-with-http.json).
-- [Анализ лога и сравнение запусков](A:/Codex/Functional/BACK/06_temp_work/explab-2974-compatible/run-functional-20260907-232855-095/analysis.json).
-- [Эксперимент REST-очистки, изоляция и восстановление](A:/Codex/Functional/BACK/06_temp_work/explab-2974-functional-experiments/experiment-results.json).
-- [Подтверждение запуска recovery main без активного Allure-теста](A:/Codex/Functional/BACK/06_temp_work/explab-2974-functional-unit/recovery-main.log).
+- [Сводка, очистка и целостность](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-functional-20260907-232855-095/functional-summary.json).
+- [JUnit и фактические HTTP-ответы](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-functional-20260907-232855-095/results-with-http.json).
+- [Анализ лога и сравнение запусков](<workspace>/BACK/06_temp_work/explab-2974-compatible/run-functional-20260907-232855-095/analysis.json).
+- [Эксперимент REST-очистки, изоляция и восстановление](<workspace>/BACK/06_temp_work/explab-2974-functional-experiments/experiment-results.json).
+- [Подтверждение запуска recovery main без активного Allure-теста](<workspace>/BACK/06_temp_work/explab-2974-functional-unit/recovery-main.log).
 
 В корпоративном пакете нет заглушек, Docker-стенда, сервиса, библиотек или секретов. Реальная возможность загрузки через service REST и доступ к thin-client Ignite корпоративного стенда остаются обязательными предусловиями; предоставленные ранее материалы не содержат их адресов/учётных данных. Все адреса выбираются по окружению проекта. Условия установки и восстановления указаны в архиве, автоматическая загрузка в TestOps не выполнялась.

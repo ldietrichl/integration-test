@@ -8,7 +8,7 @@
 
 Объём: входной/выходной JSON, расчёт и группировка связей, правила и фильтры, кэши, HTTP-ошибки, внутренний доступ/mTLS самого метода. Сквозной пересчёт experiments/CJ, БД потребителя, UI, КАП, регрессия других API и нагрузочный профиль относятся к расширенному плану. Ограничения operator_dict из полной ФП сюда не перенесены как утверждённые требования.
 
-[Исходная спецификация](<A:/Codex/Functional/BACK/07_issue_tracking/jira/EXPLAB-2974/06. (Разработка) v2.0.0 POST _splitting-objects-links Получить связи объектов сплиттования-v7-20260907_131903.pdf>). [Jira-таблица](<A:/Codex/Functional/BACK/07_issue_tracking/jira/EXPLAB-2974/EXPLAB-2974_SPLITTING_OBJECTS_LINKS_V7_JIRA_COMMENT.txt>).
+[Исходная спецификация](<<workspace>/BACK/07_issue_tracking/jira/EXPLAB-2974/06. (Разработка) v2.0.0 POST _splitting-objects-links Получить связи объектов сплиттования-v7-20260907_131903.pdf>). [Jira-таблица](<<workspace>/BACK/07_issue_tracking/jira/EXPLAB-2974/EXPLAB-2974_SPLITTING_OBJECTS_LINKS_V7_JIRA_COMMENT.txt>).
 
 ## Предусловия и общие проверки
 

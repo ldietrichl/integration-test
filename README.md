@@ -80,3 +80,7 @@ resolver использует `rest.<env>.gateway.base-uri`. Абсолютны�
 ```
 
 Канонические tags формируются централизованно: задача, сервис, regress/critical-regress и manual/automated. Подробности приведены в `docs/reporting/TAGGING_AND_REPORTING_POLICY.md`.
+
+## Объединённая сборка
+
+[Состав, требования и локальные проверки](docs/project/CONSOLIDATED_BUILD.md).

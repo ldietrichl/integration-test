@@ -20,7 +20,16 @@ public final class TestConfigurationFiles {
         Path source = projectDirectory.resolve("src/test/resources").resolve(resource);
         try (InputStream input = Files.isRegularFile(source)
                 ? Files.newInputStream(source) : loader.getResourceAsStream(resource)) {
-            if (input == null) throw new IllegalStateException("Test configuration is missing: " + source);
+            if (input == null) {
+                // Попробовать загрузить из classpath (IDEA, gradle test)
+                InputStream cpInput = loader.getResourceAsStream(resource);
+                if (cpInput != null) {
+                    Properties properties = new Properties();
+                    properties.load(cpInput);
+                    return properties;
+                }
+                throw new IllegalStateException("Test configuration is missing: " + source + " and classpath resource not found: " + resource);
+            }
             Properties properties = new Properties();
             properties.load(input);
             return properties;

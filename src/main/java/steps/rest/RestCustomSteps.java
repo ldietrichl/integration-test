@@ -12,8 +12,45 @@ import steps.rest.experiments.v2.layers.LayerV2Steps;
 import steps.rest.pilot.PilotSteps;
 import steps.rest.splitter.SplitterRestSteps;
 import steps.rest.dataoperator.v2.DataOperatorV2Steps;
+import steps.rest.user.UserServiceRegressionSteps;
 
 public class RestCustomSteps {
+    public steps.flow.scheduler.SchedulerRealStandRegressionSteps schedulerRealStandRegressionSteps() {
+        return new steps.flow.scheduler.SchedulerRealStandRegressionSteps();
+    }
+
+    public steps.flow.scheduler.SchedulerApiRegressionSteps schedulerApiRegressionSteps() {
+        return new steps.flow.scheduler.SchedulerApiRegressionSteps();
+    }
+
+    public steps.flow.scheduler.SchedulerAutonomousRegressionSteps schedulerAutonomousRegressionSteps() {
+        return new steps.flow.scheduler.SchedulerAutonomousRegressionSteps();
+    }
+
+    public steps.flow.scheduler.SchedulerWorkloadRegressionSteps schedulerWorkloadRegressionSteps() {
+        return new steps.flow.scheduler.SchedulerWorkloadRegressionSteps();
+    }
+
+    public steps.flow.scheduler.SchedulerReadOnlyRegressionSteps schedulerReadOnlyRegressionSteps() {
+        return new steps.flow.scheduler.SchedulerReadOnlyRegressionSteps();
+    }
+
+    public steps.flow.scheduler.SchedulerPreflightSteps schedulerPreflightSteps() {
+        return new steps.flow.scheduler.SchedulerPreflightSteps();
+    }
+
+    public steps.rest.scheduler.SchedulerSteps schedulerSteps() {
+        return new steps.rest.scheduler.SchedulerSteps(this.client);
+    }
+
+    public steps.rest.scheduler.SchedulerRegistrySteps schedulerRegistrySteps() {
+        return infrastructure.kubernetes.SchedulerRegressionSession.registrySteps(this.client);
+    }
+
+    public UserServiceRegressionSteps schedulerIdentityUserSteps() {
+        return infrastructure.kubernetes.SchedulerRegressionSession.userSteps(this.client);
+    }
+
     RestClient client;
 
     public RestCustomSteps(RestClient client) {
@@ -62,5 +99,9 @@ public class RestCustomSteps {
 
     public PilotSteps pilotSteps() {
         return new PilotSteps(this.client);
+    }
+
+    public UserServiceRegressionSteps userServiceSteps() {
+        return new UserServiceRegressionSteps(this.client);
     }
 }

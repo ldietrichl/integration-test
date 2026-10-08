@@ -1,0 +1,29 @@
+plugins { id 'java' }
+
+if (gradle.gradleVersion != '8.4') {
+    throw new GradleException('Scheduler container runner requires Gradle 8.4 with JDK 17')
+}
+
+tasks.register('schedulerContainerRegression', Test) {
+    testClassesDirs = files('/project-build/classes/java/test')
+    classpath = files('/project-build/classes/java/test', '/project-build/classes/java/main',
+            '/project-build/resources/test', '/project-build/resources/main') + fileTree('/runtime/jars') { include '*.jar' }
+    workingDir = file('/runtime/test-work')
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching('ru.sber.qa.scheduler.regression.SchedulerApiRegressionFlowTest')
+        includeTestsMatching('ru.sber.qa.scheduler.regression.SchedulerPreflightFlowTest')
+    }
+    systemProperty 'env', 'local'
+    systemProperty 'includeManualTests', 'false'
+    systemProperty 'file.encoding', 'UTF-8'
+    systemProperty 'user.timezone', project.findProperty('testTimezone') ?: 'UTC'
+    systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'
+    def run = project.findProperty('runId') ?: 'initial'
+    systemProperty 'allure.results.directory', '/runtime/results/' + run + '/allure-results'
+    reports.junitXml.outputLocation.set(file('/runtime/results/' + run + '/junit'))
+    reports.html.outputLocation.set(file('/runtime/results/' + run + '/test-report'))
+    maxParallelForks = 1
+    testLogging { events 'passed', 'failed', 'skipped'; exceptionFormat 'full' }
+    outputs.upToDateWhen { false }
+}

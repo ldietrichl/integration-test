@@ -2,6 +2,7 @@ package util.dataoperator;
 
 import config.services.core.RestEndpointResolver;
 import config.services.core.RestServiceEndpoint;
+import config.services.core.BuildArtifacts;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -28,8 +29,7 @@ public final class LinksFixtureConfiguration {
     public Path output() {
         String directory = fixtureSetting("output.directory");
         // Existing lease manifests and recovery paths remain valid after the connection rename.
-        return Path.of(directory == null ? "build/explab-2974-fixtures/" + environment : directory)
-                .toAbsolutePath().normalize();
+        return BuildArtifacts.directory(directory == null ? "build/explab-2974-fixtures/" + environment : directory);
     }
 
     private String fixtureSetting(String suffix) {

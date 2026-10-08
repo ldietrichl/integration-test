@@ -139,4 +139,5 @@ tasks.register<Test>("propertyLayoutTest") {
     }
     systemProperty("junit.jupiter.execution.parallel.enabled", "false")
     systemProperty("secure.placeholders.fail-on-unresolved", "true")
+    systemProperty("allure.results.directory", layout.buildDirectory.dir("reports/property-layout/allure-results").get().asFile.absolutePath)
 }

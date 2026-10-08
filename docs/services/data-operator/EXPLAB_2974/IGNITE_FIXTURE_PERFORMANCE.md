@@ -153,7 +153,7 @@ $igniteProbe | Select-Object sessionProtocol, schemaCompatible, mutations, stora
 
 Для нестандартного fixture output подставьте его в `$igniteSelectedFixtureRoot`. Probe проверяет подключение и чтение; права записи/удаления проверяются только следующим lifecycle.
 
-Первый smoke удобно сделать в IDEA: `DataOperatorLinksFunctionalFlowTest.shouldCalculateExactLinks`, выбранная invocation `SL-01: Базовый расчёт; SP2 исключена`. Если дерево invocation ещё не сформировано, запустите весь функциональный класс следующей командой. Перед новым selected прогоном можно отдельно очистить стандартные raw Allure через `cleanTestOpsResults`; эта задача сохраняет fixture и `regression-results`:
+Первый smoke удобно сделать в IDEA: `DataOperatorLinksFunctionalFlowTest.shouldCalculateExactLinks`, выбранная invocation `SL-01: Базовый расчёт; SP2 исключена`. Если дерево invocation ещё не сформировано, запустите весь функциональный класс следующей командой. Перед новым selected прогоном можно отдельно очистить стандартные raw Allure через `cleanTestOpsResults`; эта задача сохраняет fixture и `build/regression-results`. Обычный `clean` удаляет все сгенерированные артефакты внутри `build`:
 
 ```powershell
 .\gradlew.bat cleanTestOpsResults -x testOpsUpload --console=plain
@@ -181,7 +181,7 @@ Write-Output "Functional run exit=$igniteValidationExit; wallSeconds=$($igniteVa
 .\gradlew.bat dataOperatorRegression -x testOpsUpload --console=plain
 ```
 
-Среда по-прежнему берётся из `test.properties`. Эта команда выполняет весь настроенный regression scope дата-оператора и складывает raw результаты в `regression-results/<env>/data-operator/runs/<id>/allure-results`; время этого более широкого набора не следует сравнивать с одним функциональным классом.
+Среда по-прежнему берётся из `test.properties`. Эта команда выполняет весь настроенный regression scope дата-оператора и складывает raw результаты в `build/regression-results/<env>/data-operator/runs/<id>/allure-results`; время этого более широкого набора не следует сравнивать с одним функциональным классом.
 
 ## Что сохранить для сравнения и диагностики
 
