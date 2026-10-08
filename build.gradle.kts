@@ -269,7 +269,7 @@ fun resolveRegressionUploadResultsDirectory(): File =
 
 plugins {
     java
-    id("io.qameta.allure") version "2.11.2"
+    id("io.qameta.allure") version "2.11.2" apply false
 }
 
 // Задаем координаты проекта - группу и версию
@@ -307,6 +307,11 @@ repositories {
 }
 
 dependencies {
+    testImplementation("io.qameta.allure:allure-junit5:2.29.0")
+    if (!useLocalLibs) {
+        implementation("io.fabric8:kubernetes-client:6.13.4")
+        runtimeOnly("io.fabric8:kubernetes-httpclient-okhttp:6.13.4")
+    }
     if (useLocalLibs) {
         implementation(localLibJars)
     } else {
@@ -678,8 +683,12 @@ val splitterKafkaDebug by tasks.registering(Test::class) {
     )
 }
 
-// Настраиваем Allure-plugin для локальных отчетов
-allure {
+// Shared raw results must not become outputs of every Test task: Gradle may clean them.
+apply<io.qameta.allure.gradle.base.AllureBasePlugin>()
+apply<io.qameta.allure.gradle.adapter.AllureAdapterBasePlugin>()
+apply<io.qameta.allure.gradle.report.AllureReportPlugin>()
+artifacts.add("allureRawResultElements", allureResultsDirectory)
+configure<io.qameta.allure.gradle.base.AllureExtension> {
     // Версия генератора отчетов
     report {
         // Версия должна быть той же, что тянется транзитивно из фреймворка
@@ -1212,3 +1221,6 @@ tasks.withType<Test>().configureEach { mustRunAfter("cleanTestOpsResults") }
 listOf("auditReportingTags", "generateReportEligibility", "generateBypassTests", "bypassTests",
     "prepareSplitterRegressionLogs", "splitterRestDebug", "splitterKafkaDebug", "validateTestOpsUploadConfig"
 ).forEach { taskName -> tasks.named(taskName) { group = null } }
+
+// Shared workload lifecycle and ticket entry points.
+apply(from = "gradle/architecture/task-catalog.gradle")

@@ -15,6 +15,8 @@ import ru.sber.qa.services.kafka.KafkaConsumerClient;
 import ru.sber.qa.services.kafka.KafkaService;
 import ru.sber.qa.services.rest.validation.DefaultValidatableResponseWrapper;
 import ru.sber.qa.services.rest.validation.ValidatableResponseWrapper;
+import util.SplitterKafkaConsumerGroupOverride;
+import util.SplitterKafkaProperties;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -28,7 +30,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static config.services.core.CustomTestConfigScope.TEST_CONFIG;
 import static util.KafkaAllureLog.waitForTopic;
 
 final class SplitterKafkaConfigLoadClient {
@@ -41,8 +42,6 @@ final class SplitterKafkaConfigLoadClient {
     private static final String DEFAULT_MONITORING_TOPIC = "omon_explab_splitter_log";
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(45);
     private static final Duration DEFAULT_CONSUMER_WARMUP = Duration.ZERO;
-    private static final String KAFKA_CONSUMER_GROUP_PROPERTY_PREFIX = "kafka_consumer.";
-    private static final String KAFKA_CONSUMER_GROUP_PROPERTY_SUFFIX = ".group.id";
 
     private SplitterKafkaConfigLoadClient() {
     }
@@ -147,7 +146,8 @@ final class SplitterKafkaConfigLoadClient {
         String observeTopic = statusRequired() ? statusTopic() : monitoringTopic();
         String env = kafkaEnv();
         Duration timeout = timeout();
-        ConsumerGroupOverride consumerGroupOverride = ConsumerGroupOverride.apply(env, messageKey);
+        SplitterKafkaConsumerGroupOverride consumerGroupOverride =
+                SplitterKafkaConsumerGroupOverride.apply(env, messageKey);
 
         try {
             KafkaConsumerClient<String, String> consumer = kafkaService.consumerClient(env, timeout);
@@ -163,7 +163,9 @@ final class SplitterKafkaConfigLoadClient {
             } finally {
                 try {
                     consumer.unsubscribe();
-                } catch (Throwable ignored) {
+                } catch (RuntimeException ignored) {
+                } finally {
+                    consumer.clear();
                 }
             }
         } finally {
@@ -174,14 +176,14 @@ final class SplitterKafkaConfigLoadClient {
     private static void warmUpConsumer(KafkaConsumerClient<String, String> consumer, String env, String topic) {
         Duration warmup = consumerWarmup();
         if (warmup.isZero() || warmup.isNegative()) {
-            consumer.poll(Duration.ofMillis(300));
+            BoundedKafkaObservation.batch(consumer, Duration.ofMillis(300), () -> null);
             return;
         }
 
         waitForTopic(env, topic, warmup, "инициализируем consumer перед отправкой splitter config");
         long deadline = System.currentTimeMillis() + warmup.toMillis();
         while (System.currentTimeMillis() < deadline) {
-            consumer.poll(Duration.ofMillis(300));
+            BoundedKafkaObservation.batch(consumer, Duration.ofMillis(300), () -> null);
         }
     }
 
@@ -194,40 +196,32 @@ final class SplitterKafkaConfigLoadClient {
                                                 boolean badRequestByRequestContract) {
         Duration timeout = timeout();
         long deadline = System.currentTimeMillis() + timeout.toMillis();
-        List<String> observedPayloads = new ArrayList<>();
+        BoundedKafkaObservation observation = new BoundedKafkaObservation();
         waitForTopic(env, topic, timeout, "ищем splitter config load signal, messageId/requestId=" + messageKey);
-
         while (System.currentTimeMillis() < deadline) {
-            consumer.poll(Duration.ofMillis(300));
-            List<KafkaLoadOutcome> matched = new ArrayList<>();
-            consumer.records().forEach(recordWrapper -> {
-                ConsumerRecord<?, ?> record = recordWrapper.toConsumerRecord();
-                Object value = record.value();
-                if (value == null) {
-                    return;
+            Optional<KafkaLoadOutcome> matched = BoundedKafkaObservation.batch(consumer, Duration.ofMillis(300), () -> {
+                var records = consumer.records().iterator();
+                while (records.hasNext()) {
+                    ConsumerRecord<?, ?> record = records.next().toConsumerRecord();
+                    if (record.value() == null) continue;
+                    String value = String.valueOf(record.value());
+                    if (!observation.record(recordInfo(record), value)) continue;
+                    String raw = unescapeUnicode(value);
+                    for (JsonNode node : extractObjectNodes(raw)) {
+                        Optional<KafkaLoadOutcome> outcome = outcomeFromNode(node, payload, messageKey, badRequestByRequestContract);
+                        if (outcome.isPresent()) return outcome;
+                    }
                 }
-
-                String raw = unescapeUnicode(String.valueOf(value));
-                observedPayloads.add(recordInfo(record) + System.lineSeparator() + raw);
-                extractObjectNodes(raw).stream()
-                        .map(node -> outcomeFromNode(node, payload, messageKey, badRequestByRequestContract))
-                        .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .forEach(matched::add);
+                return Optional.empty();
             });
-            if (!matched.isEmpty()) {
-                KafkaLoadOutcome outcome = matched.get(0);
+            if (matched.isPresent()) {
+                KafkaLoadOutcome outcome = matched.get();
                 Allure.addAttachment("Kafka matched payload / " + topic,
-                        "application/json",
-                        pretty(outcome.sourceNode()),
-                        ".json");
+                        "application/json", pretty(outcome.sourceNode()), ".json");
                 return outcome;
             }
         }
-
-        String sample = observedPayloads.stream()
-                .limit(10)
-                .collect(Collectors.joining("\n---\n"));
+        String sample = observation.summary();
         Allure.addAttachment("Kafka observed sample / " + topic,
                 "text/plain",
                 sample.isBlank() ? "No messages after since=" + sinceEpochMillis : sample,
@@ -235,7 +229,7 @@ final class SplitterKafkaConfigLoadClient {
         throw new AssertionError("Не найден Kafka-сигнал загрузки splitter config"
                 + "\nTopic=" + topic
                 + "\nEnv=" + kafkaEnv()
-                + "\nConsumerGroup=" + ConsumerGroupOverride.currentGroupId(env)
+                + "\nConsumerGroup=" + SplitterKafkaConsumerGroupOverride.currentGroupId(env)
                 + "\nmessageId/requestId=" + messageKey
                 + "\nSince=" + sinceEpochMillis
                 + "\nObserved sample:\n" + sample);
@@ -331,11 +325,12 @@ final class SplitterKafkaConfigLoadClient {
     }
 
     private static String recordInfo(ConsumerRecord<?, ?> record) {
+        String key = String.valueOf(record.key());
         return "topic=" + record.topic()
                 + ", partition=" + record.partition()
                 + ", offset=" + record.offset()
                 + ", timestamp=" + record.timestamp()
-                + ", key=" + record.key();
+                + ", key=" + key.substring(0, Math.min(key.length(), 256));
     }
 
     private static Response response(KafkaLoadOutcome outcome) {
@@ -379,55 +374,31 @@ final class SplitterKafkaConfigLoadClient {
     }
 
     private static String kafkaEnv() {
-        return SplitterConfigProperties.string("splitter.config.kafka.env", TEST_CONFIG.env());
+        return SplitterKafkaProperties.kafkaEnv("splitter.config.kafka.env");
     }
 
     private static String inputTopic() {
-        return SplitterConfigProperties.string("splitter.config.kafka.input.topic", DEFAULT_INPUT_TOPIC);
+        return SplitterKafkaProperties.string("splitter.config.kafka.input.topic", DEFAULT_INPUT_TOPIC);
     }
 
     private static String statusTopic() {
-        return SplitterConfigProperties.string("splitter.config.kafka.status.topic", DEFAULT_STATUS_TOPIC);
+        return SplitterKafkaProperties.string("splitter.config.kafka.status.topic", DEFAULT_STATUS_TOPIC);
     }
 
     private static String monitoringTopic() {
-        return SplitterConfigProperties.string("splitter.config.kafka.monitoring.topic", DEFAULT_MONITORING_TOPIC);
+        return SplitterKafkaProperties.string("splitter.config.kafka.monitoring.topic", DEFAULT_MONITORING_TOPIC);
     }
 
     private static boolean statusRequired() {
-        return SplitterConfigProperties.bool("splitter.config.kafka.status.required", false);
+        return SplitterKafkaProperties.bool("splitter.config.kafka.status.required", false);
     }
 
     private static Duration timeout() {
-        return SplitterConfigProperties.durationSeconds("splitter.config.kafka.timeout.seconds", DEFAULT_TIMEOUT);
+        return SplitterKafkaProperties.durationSeconds("splitter.config.kafka.timeout.seconds", DEFAULT_TIMEOUT);
     }
 
     private static Duration consumerWarmup() {
-        return SplitterConfigProperties.durationSeconds("splitter.config.kafka.consumer.warmup.seconds", DEFAULT_CONSUMER_WARMUP);
-    }
-
-    private static boolean uniqueConsumerGroupEnabled() {
-        return SplitterConfigProperties.bool("splitter.config.kafka.unique.consumer.group.enabled", true);
-    }
-
-    private static String observerGroupPrefix() {
-        return SplitterConfigProperties.string("splitter.config.kafka.consumer.group.prefix",
-                "integration-test-splitter-config-load");
-    }
-
-    private static String kafkaConsumerGroupProperty(String env) {
-        return KAFKA_CONSUMER_GROUP_PROPERTY_PREFIX + env + KAFKA_CONSUMER_GROUP_PROPERTY_SUFFIX;
-    }
-
-    private static String observerGroupId(String env, String messageKey) {
-        return observerGroupPrefix()
-                + "-" + safeGroupIdPart(env)
-                + "-" + safeGroupIdPart(messageKey);
-    }
-
-    private static String safeGroupIdPart(String raw) {
-        String value = raw == null ? "unknown" : raw.replaceAll("[^a-zA-Z0-9._-]", "-");
-        return value.length() <= 64 ? value : value.substring(0, 64);
+        return SplitterKafkaProperties.durationSeconds("splitter.config.kafka.consumer.warmup.seconds", DEFAULT_CONSUMER_WARMUP);
     }
 
     private static String toJson(Object object) {
@@ -450,46 +421,7 @@ final class SplitterKafkaConfigLoadClient {
     }
 
     private static List<JsonNode> extractObjectNodes(String payload) {
-        List<JsonNode> result = new ArrayList<>();
-        try {
-            JsonNode root = OBJECT_MAPPER.readTree(payload);
-            collectCandidateJsonRoots(root).forEach(candidate -> collectObjectNodes(candidate, result));
-        } catch (JsonProcessingException ignored) {
-            // Broken Kafka payloads are ignored while polling for the matching service signal.
-        }
-        return result;
-    }
-
-    private static List<JsonNode> collectCandidateJsonRoots(JsonNode root) {
-        List<JsonNode> roots = new ArrayList<>();
-        roots.add(root);
-        if (root != null && root.isTextual()) {
-            parseJson(root.asText()).ifPresent(roots::add);
-        }
-        if (root != null && root.isObject()) {
-            JsonNode message = root.path("message");
-            if (message.isTextual()) {
-                parseJson(message.asText()).ifPresent(roots::add);
-            } else if (message.isObject()) {
-                roots.add(message);
-            }
-        }
-        return roots;
-    }
-
-    private static void collectObjectNodes(JsonNode node, List<JsonNode> result) {
-        if (node == null || node.isNull()) {
-            return;
-        }
-        if (node.isObject()) {
-            result.add(node);
-            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-            while (fields.hasNext()) {
-                collectObjectNodes(fields.next().getValue(), result);
-            }
-        } else if (node.isArray()) {
-            node.forEach(child -> collectObjectNodes(child, result));
-        }
+        return BoundedKafkaObservation.objects(payload);
     }
 
     private static String text(JsonNode node, String field) {
@@ -576,58 +508,6 @@ final class SplitterKafkaConfigLoadClient {
             i++;
         }
         return out.toString();
-    }
-
-    private static final class ConsumerGroupOverride implements AutoCloseable {
-        private final String propertyName;
-        private final String previousValue;
-        private final boolean hadPreviousValue;
-        private final String currentValue;
-
-        private ConsumerGroupOverride(String propertyName,
-                                      String previousValue,
-                                      boolean hadPreviousValue,
-                                      String currentValue) {
-            this.propertyName = propertyName;
-            this.previousValue = previousValue;
-            this.hadPreviousValue = hadPreviousValue;
-            this.currentValue = currentValue;
-        }
-
-        static ConsumerGroupOverride apply(String env, String messageKey) {
-            String propertyName = kafkaConsumerGroupProperty(env);
-            String previousValue = System.getProperty(propertyName);
-            boolean hadPreviousValue = previousValue != null;
-
-            if (!uniqueConsumerGroupEnabled()) {
-                Allure.parameter("splitter.config.kafka.consumer.group.property", propertyName);
-                Allure.parameter("splitter.config.kafka.consumer.group.id", currentGroupId(env));
-                return new ConsumerGroupOverride(propertyName, previousValue, hadPreviousValue, previousValue);
-            }
-
-            String groupId = observerGroupId(env, messageKey);
-            System.setProperty(propertyName, groupId);
-            Allure.parameter("splitter.config.kafka.consumer.group.property", propertyName);
-            Allure.parameter("splitter.config.kafka.consumer.group.id", groupId);
-            Allure.step("Наблюдаем ответ splitter config load из Kafka через consumer group " + groupId);
-            return new ConsumerGroupOverride(propertyName, previousValue, hadPreviousValue, groupId);
-        }
-
-        static String currentGroupId(String env) {
-            return System.getProperty(kafkaConsumerGroupProperty(env), "");
-        }
-
-        @Override
-        public void close() {
-            if (propertyName == null || currentValue == null) {
-                return;
-            }
-            if (hadPreviousValue) {
-                System.setProperty(propertyName, previousValue);
-            } else {
-                System.clearProperty(propertyName);
-            }
-        }
     }
 
     private record Payload(String raw, JsonNode root, boolean malformedJson) {

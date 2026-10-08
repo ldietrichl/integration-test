@@ -1,0 +1,8 @@
+# EXPLAB-2984: REACTIONS rules applied by the managed workload profile.
+rules:
+  final-exp-rule:
+    rule-code: MAIN
+    proc-code: finalExpByLayerAndId
+    proc-params:
+      max-layer-priority: true
+      max-id: false

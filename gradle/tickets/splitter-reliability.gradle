@@ -1,0 +1,103 @@
+import java.nio.file.Files
+import java.nio.file.attribute.*
+
+// No cluster mutations or uploads during configuration. Applied by the shared task catalog.
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    def sources = p.extensions.getByName('sourceSets')
+    def checks = sources.create('splitterReliabilityChecks') {
+        java.srcDir 'src/workloadChecks/java'
+        java.include 'steps/rest/splitter/BoundedKafkaObservationTest.java', 'infrastructure/kubernetes/WorkloadArtifactsTest.java'
+        java.include 'steps/flow/splitter/workedgroup/WorkedGroupNoMainTest.java'
+        compileClasspath = sources.main.output + p.configurations.testCompileClasspath
+        runtimeClasspath = output + compileClasspath + p.configurations.testRuntimeClasspath
+    }
+    p.tasks.register('splitterReliabilityCheck', org.gradle.api.tasks.testing.Test) {
+        group = 'tickets'
+        description = 'Local Kafka memory bounds and durable journal checks; no stand access'
+        testClassesDirs = checks.output.classesDirs
+        classpath = checks.runtimeClasspath
+        useJUnitPlatform()
+        systemProperty 'allure.results.directory', p.file('build/reports/reliability/allure-results').absolutePath
+    }
+    def forwards = { task ->
+        def forward = { k, v ->
+            if (k.toString().startsWith('stand.') || k == 'scheduler.infrastructure.enabled') task.systemProperty(k.toString(), v.toString())
+        }
+        p.properties.each(forward)
+        System.properties.each(forward)
+    }
+    def gateNames = ['reactions': 'explab2885StandCheck', 'mapper': 'explab2891StandCheck']
+    gateNames.each { target, taskName ->
+        p.tasks.register(taskName, JavaExec) {
+            group = 'tickets'
+            description = "Read-only Fabric8 lease check for splitter-$target before starting tests"
+            dependsOn p.tasks.named('classes')
+            classpath = sources.main.runtimeClasspath + p.files('src/test/resources')
+            mainClass = 'infrastructure.kubernetes.WorkloadLeaseRecoveryMain'
+            workingDir p.projectDir
+            doFirst {
+                def deployment = p.findProperty("workload.${target}.deployment") ?: "splitter-$target-service"
+                def maps = p.findProperty("workload.${target}.configmaps") ?: "splitter-$target-service,splitter-$target-service-lib"
+                args = ['check', deployment, maps, p.file('.workload-recovery/unused-check.json').absolutePath, 'false']
+                forwards(delegate)
+            }
+        }
+    }
+    p.tasks.withType(org.gradle.api.tasks.testing.Test).configureEach { t ->
+        boolean standard = t.name in ['splitterRestRegression', 'splitterKafkaRegression', 'test']
+        boolean ticket = t.name.startsWith('explab2690') || (t.name.startsWith('explab2984') && t.name != 'explab2984LocalChecks') || (t.name.startsWith('explab3056') && t.name != 'explab3056LocalChecks') || t.name in ['exlab2891MapperRest', 'exlab2891MapperKafka', 'exlab2891MapperFresh']
+        if (!standard && !ticket) return
+        def targets = {
+            // Gradle intersects --tests with configured filters. Prefer the narrower command-line selection.
+            def patterns = t.filter.commandLineIncludePatterns ?: t.filter.includePatterns
+            if (t.name.startsWith('exlab2891')) return ['mapper']
+            if (t.name.startsWith('explab3056')) return [t.name.contains('Reactions') ? 'reactions' : 'mapper']
+            if (t.name.startsWith('explab2984')) return t.name.contains('Mapper') ? ['mapper'] : ['reactions']
+            if (t.name.startsWith('explab2690')) return t.name.contains('Mapper') ? ['mapper'] : t.name.contains('Reactions') ? ['reactions'] : ['mapper', 'reactions']
+            if (patterns.isEmpty()) return t.name == 'test' ? [] : ['mapper', 'reactions']
+            def result = [] as Set
+            patterns.each { pattern ->
+                if (pattern.contains('Harness') || pattern.contains('SdkTest') || pattern.contains('Oracle')) return
+                if (pattern.contains('EXPLAB_2885')) result.add('reactions')
+                else if (pattern.contains('EXLAB_2891')) result.add('mapper')
+                else if (pattern.contains('EXPLAB_3056')) {
+                    if (pattern.contains('Mapper')) result.add('mapper')
+                    else if (pattern.contains('Reactions')) result.add('reactions')
+                    else result.addAll(['mapper', 'reactions'])
+                }
+                else if (pattern.contains('EXPLAB_2690')) {
+                    if (pattern.contains('Mapper')) result.add('mapper')
+                    if (pattern.contains('Reactions')) result.add('reactions')
+                    if (!pattern.contains('Mapper') && !pattern.contains('Reactions')) result.addAll(['mapper','reactions'])
+                } else if (pattern.contains('splitter') || pattern == '*') result.addAll(['mapper','reactions'])
+            }
+            return result
+        }
+        t.dependsOn { targets().collect { gateNames[it] } }
+        t.doFirst {
+            if (targets().isEmpty()) return
+            t.maxHeapSize = (p.findProperty('splitterTestHeap') ?: '1024m').toString()
+            if (!(t.maxHeapSize ==~ /[1-9][0-9]*[mMgG]/)) throw new GradleException('splitterTestHeap must be a positive size such as 1024m or 2g')
+            def path = p.file(".workload-recovery/jvm/${t.name}-${UUID.randomUUID()}").toPath().toAbsolutePath().normalize()
+            for (def c = path; c != null; c = c.parent) {
+                if (Files.exists(c) && (Files.isSymbolicLink(c) || c.toRealPath() != c)) throw new GradleException('Redirected JVM diagnostics path')
+            }
+            Files.createDirectories(path)
+            def acl = Files.getFileAttributeView(path, AclFileAttributeView)
+            if (acl != null) {
+                def user = path.fileSystem.userPrincipalLookupService.lookupPrincipalByName(System.getProperty('user.name'))
+                acl.setAcl([AclEntry.newBuilder().setType(AclEntryType.ALLOW).setPrincipal(user)
+                    .setPermissions(EnumSet.allOf(AclEntryPermission)).setFlags(AclEntryFlag.FILE_INHERIT, AclEntryFlag.DIRECTORY_INHERIT).build()])
+            } else if (Files.getFileAttributeView(path, PosixFileAttributeView) != null) {
+                Files.setPosixFilePermissions(path, PosixFilePermissions.fromString('rwx------'))
+            } else throw new GradleException('Private JVM diagnostics ACL unsupported')
+            t.jvmArgs '-XX:+HeapDumpOnOutOfMemoryError', "-XX:HeapDumpPath=${path.resolve('heap.hprof')}"
+            // Relative path avoids the colon in a Windows drive letter inside -Xlog syntax.
+            def gcPath = p.projectDir.toPath().toAbsolutePath().relativize(path.resolve('gc.log')).toString().replace('\\','/')
+            t.workingDir = p.projectDir
+            t.jvmArgs "-Xlog:gc*:file=$gcPath:time,uptime,level,tags:filecount=3,filesize=8M"
+            t.logger.lifecycle("Test JVM heap=${t.maxHeapSize}; private diagnostics=$path; never upload these files")
+        }
+    }
+}

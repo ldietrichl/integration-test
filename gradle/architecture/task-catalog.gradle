@@ -1,0 +1,4 @@
+// Register shared lifecycle checks and ticket tasks in one catalog.
+apply from: 'gradle/tickets/EXPLAB_2885-recovery.gradle'
+apply from: 'gradle/tickets/splitter-reliability.gradle'
+apply from: 'gradle/tickets/EXPLAB_2984.gradle'
