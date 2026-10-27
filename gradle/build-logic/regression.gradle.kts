@@ -188,7 +188,7 @@ fun configureRebuiltRegression(taskName: String, stage: String, mode: String, pa
                 effective["data-operator.fixture.$regressionEnvironment.output.directory"] =
                     layout.buildDirectory.dir("regression-fixtures/$regressionEnvironment/$regressionRunId").get().asFile.absolutePath
             }
-            if (stage == "experiment") {
+            if (stage == "experiment" && taskName == "experimentServiceRegression") {
                 val toggle = optionalTestRuntimeProperty("EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED") ?: "false"
                 if (toggle !in setOf("true", "false")) throw GradleException("EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED must be true/false in test.properties")
                 effective["EXPERIMENT_SERVICE_V2_CJ_EXPERIMENTS_ENABLED"] = toggle
@@ -249,7 +249,7 @@ fun configureRebuiltRegression(taskName: String, stage: String, mode: String, pa
                 val kind = when {
                     result.resultType == TestResult.ResultType.SUCCESS -> "PASSED"
                     message.contains("PHASE_NOT_SELECTED") -> "NOT_SELECTED"
-                    Regex("FOREIGN_RUNNABLE_TASKS|DEPENDENCY_BLOCKED|MUTATION_WINDOW_REQUIRED|KUBECONFIG_USER_AUTH_REJECTED|KUBECONFIG_AUTH|WORKLOAD_READ_AUTH_REQUIRED").containsMatchIn(message) -> "BLOCKED_ENVIRONMENT"
+                    Regex("BLOCKED_ENVIRONMENT|FOREIGN_RUNNABLE_TASKS|DEPENDENCY_BLOCKED|MUTATION_WINDOW_REQUIRED|KUBECONFIG_USER_AUTH_REJECTED|KUBECONFIG_AUTH|WORKLOAD_READ_AUTH_REQUIRED").containsMatchIn(message) -> "BLOCKED_ENVIRONMENT"
                     result.resultType == TestResult.ResultType.SKIPPED -> "SKIPPED"
                     result.exceptions.any { it is AssertionError || it.javaClass.name.contains("MultipleFailures") }
                         || message.contains("AssertionFailedError") || message.contains("AssertionError") -> "ASSERTION_FAILURE"
@@ -345,3 +345,8 @@ buildContext["regressionEnvironment"] = regressionEnvironment
 buildContext["regressionResultsRoot"] = regressionResultsRoot
 buildContext["schedulerTestTaskNames"] = schedulerTestTaskNames
 buildContext["regressionTaskNames"] = regressionTaskNames
+
+// Ticket tasks reuse the same run isolation, discovery and reporting as service regressions.
+buildContext["configureTicketRegression"] = { name: String, stage: String, mode: String, patterns: List<String>, profile: String ->
+    configureRebuiltRegression(name, stage, mode, patterns, splitterTestProfile = profile)
+}

@@ -1,0 +1,71 @@
+h1. EXPLAB-3109 — исправление выбора штатного REST-профиля V1
+
+h2. Сравнение с существующими тестами
+
+Все HTTP-операции3109 относятся к /api/v1: objects/formats, создание и удаление
+своих экспериментов, POST cj_links/update и GET его status. Campaign вызывается
+отдельно по своим V1-маршрутам.
+
+|| Набор || Environment / REST-конфигурация || Способ доступа ||
+| ExperimentApiTest, ExperimentsV1GetTest | EnvironmentConfigWithRest / CustomAllure2RestServiceConfiguration | mTLS без добавления Bearer |
+| CreateGetChangeDeleteLayerTest | EnvironmentConfigWithDbRest / та же V1 REST-конфигурация плюс DB/workload | mTLS без добавления Bearer |
+| V2-наборы, CompleteAction2929FlowTest | EnvironmentConfigWithRestV2 либо EnvironmentConfigWIthRestDbV2 / CustomAllure2RestV2ServiceConfiguration | mTLS плюс rest.explab-gateway.token |
+| StatusChange2972, LaunchPlan | Специализированные Environment / ExperimentStatusChangeRestConfiguration, users/control-профили | Собственные scoped JWT для отдельного пользовательского контракта |
+
+V1/V2 здесь — существующие классы конфигурации проекта. Общий ingress не требует
+одинакового Bearer для разных контрактов. Адрес Experiment Service по-прежнему
+разрешает RestEndpointResolver: rest.ift.experiments.base-uri либо штатный
+fallback rest.ift.gateway.base-uri. Проверка TLS, сертификаты и разрешённые hosts
+берутся из существующих настроек mTLS.
+
+h2. Ошибка3109 и факты прогона
+
+EnvironmentConfigWithExperimentLinks ошибочно наследовал EnvironmentConfigWIthRestDbV2.
+Поэтому V1-запрос дополнительно получал gateway Bearer. В прогоне
+20261023-160030-602-6e567df8 пять таких запросов вернули401; exp JWT был от02.03.2026.
+Но требовать обновления этого JWT для V1-набора было преждевременно: штатный
+V1-профиль его не использует.
+
+В том же прогоне stdout содержит восемь успешных readiness GET с status=200.
+Это /api/v1/experiments/formats через тот же ingress: WorkloadHttpReadinessProbe
+явно не передаёт Authorization/Cookie, сохраняет mTLS и принимает только200.
+Следовательно, доступ к V1-справочнику с текущим mTLS без gateway JWT работал.
+Последующий прогон20261023-163327-878-5727b11c подтвердил исправленный профиль:
+24 запроса без Authorization,23 ответа200 и1 ответ400, ни одного401.18/60 прошли;
+01/09/61 создали свои задачи и остановились позже на неверном ожидании формата
+времени GET. Четыре собственных эксперимента созданы и удалены. Полное прохождение
+пяти API после отдельного исправления времени и девяти тестов пока не подтверждено.
+
+Во вчерашнем прогоне22.10 четыре успешных WORKING id-list запроса Campaign также
+были без Bearer. Они не доказывают успешность POST/GET3109 с gateway JWT.
+
+h2. Изменение и проверки
+
+Environment3109 теперь наследует существующий EnvironmentConfigWithDbRest:
+REST, DB, штатный workload и восстановление берутся из общего слоя. В дочернем
+классе остаётся только настройка Kafka-наблюдателя. Новый REST-клиент или ручное
+снятие Bearer в бизнес-методах не добавляются. Это тот же V1-профиль, что используют
+существующие тесты проекта. Остальные V2/пользовательские профили не изменяются.
+
+mTLS, проверка сертификатов/hostname, URL и двухузловая БД, размеры чанка/страницы,
+lease и assertions HTTP200/400 сохраняются. Обновление gateway JWT не является
+предусловием3109. Токены/секреты в пакет не включаются.
+
+Локально JDK17 скомпилировал изменённый Environment и существующие V1 DB/REST-классы.
+Проверка реального каталога сервисов подтвердила V1 REST, прежние DB/workload,
+одну регистрацию Kubernetes и специализацию только Kafka; V2-каталог сохранён.
+Environment/клиенты не инициализировались, сетевых вызовов не было.
+Полная локальная сборка requestSpecification ИФТ ограничена отсутствием корпоративного
+PKCS12 по заданному пути. mTLS не отключался; этот этап не объявлен пройденным.
+
+h2. Установка и запуск
+
+Малый патч поверх V7 меняет только Environment-класс и эту заметку. Ранее исправленное
+подключение БД сохраняется. Проверка хешей, backup и rollback — в INSTALL_CORP.md.
+После установки:
+
+.\gradlew.bat testClasses
+.\gradlew.bat explab3109Api
+
+При успехе отдельно выполнить explab3109Kafka; между наборами не выполнять clean.
+Новый успешный ИФТ-прогон девяти методов пока не подтверждён.

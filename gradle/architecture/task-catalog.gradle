@@ -88,3 +88,5 @@ apply from: 'gradle/tickets/EXPLAB_2984.gradle'
 apply from: 'gradle/tickets/EXPLAB_3056.gradle'
 
 apply from: 'gradle/tickets/EXLAB_2891.gradle'
+
+apply from: 'gradle/tickets/EXPLAB_3109.gradle.kts'

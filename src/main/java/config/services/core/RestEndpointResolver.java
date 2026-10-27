@@ -48,6 +48,14 @@ public final class RestEndpointResolver {
         return validateAndNormalize(configuredUri, endpointKey);
     }
 
+    /** Explicit service route without gateway fallback (for separately published services). */
+    public static String requiredBaseUri(String service) {
+        if (service == null || !service.matches("[a-z][a-z0-9-]*"))
+            throw new IllegalArgumentException("REST service name required");
+        String key = propertyKey(currentEnvironment(), service);
+        return validateAndNormalize(TestPropertiesLoader.required(key), key);
+    }
+
     public static void validateCurrentEnvironment() {
         for (RestServiceEndpoint endpoint : RestServiceEndpoint.values()) {
             baseUri(endpoint);

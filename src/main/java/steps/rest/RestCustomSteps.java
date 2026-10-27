@@ -15,6 +15,9 @@ import steps.rest.dataoperator.v2.DataOperatorV2Steps;
 import steps.rest.user.UserServiceRegressionSteps;
 
 public class RestCustomSteps {
+    public steps.rest.experiments.links.ExperimentLinksRestSteps experimentLinksSteps() {
+        return new steps.rest.experiments.links.ExperimentLinksRestSteps(this.client);
+    }
     public steps.flow.scheduler.SchedulerRealStandRegressionSteps schedulerRealStandRegressionSteps() {
         return new steps.flow.scheduler.SchedulerRealStandRegressionSteps();
     }
