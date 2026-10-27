@@ -8,6 +8,24 @@ import java.util.List;
 import static io.qameta.allure.Allure.step;
 
 public class ExperimentsV1PostRequestDtoBuilder {
+    /** Fresh owned draft; never carries IDs from the historical default example. */
+    public static ExperimentsV1PostRequestDto linksFixture(String name, List<String> cjIds, int configCount) {
+        if (configCount < 0 || configCount > 8) throw new IllegalArgumentException("Fixture config count 0..8 required");
+        java.util.ArrayList<ExperimentsV1PostRequestDto.ExperimentGroup> groups = new java.util.ArrayList<>();
+        for (int i = 0; i < configCount; i++) {
+            var query = configQueryDefault().toBuilder().filters(List.of(filterDefault().toBuilder()
+                    .operatorCode(OperatorCodeExpression.IN).values(cjIds).build())).build();
+            groups.add(groupADefault().toBuilder().id(null).symbolName(Character.toString((char) ('A' + i)))
+                    .name("Links fixture " + i).size(1000).shareFrom(i * 1000).shareTo((i + 1) * 1000)
+                    .groupConfig(groupConfigADefault().toBuilder().id(null).configQuery(query).build()).build());
+        }
+        groups.add(groupBDefault().toBuilder().id(null).symbolName("Z").name("Links control")
+                .size(1000).shareFrom(9000).shareTo(10000).build());
+        long now = System.currentTimeMillis();
+        return buildDtoDefault().toBuilder().name(name).salt(java.util.UUID.randomUUID().toString())
+                .startDt(now + 86400000L).endDt(now + 172800000L).experimentGroups(groups)
+                .autoStart(false).autoStop(false).startCampaigns(false).build();
+    }
     // ---- фильтр cjId ----
     static public ExperimentsV1PostRequestDto.Filter filterDefault() {
         return step("Формирование дефолтных параметров фильтра для конфигурационного запроса", () ->

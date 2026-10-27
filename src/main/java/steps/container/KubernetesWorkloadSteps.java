@@ -24,6 +24,10 @@ public final class KubernetesWorkloadSteps {
     public void checkReady(KubernetesWorkloadControl session) {
         step("Check workload readiness without mutations", () -> session.requireStableReadyWorkload("readiness"));
     }
+    public java.util.Map<String, String> readConfiguredEnvironment(KubernetesWorkloadControl session, Set<String> names) {
+        return step("Read selected non-secret environment bindings from current owned Ready pods without changes",
+                () -> session.readConfiguredEnvironment(names));
+    }
     public void applyState(KubernetesWorkloadControl session, List<ConfigMapState> states) {
         step("Validate, lock and apply the explicit ConfigMap state", () -> session.applyState(states));
     }

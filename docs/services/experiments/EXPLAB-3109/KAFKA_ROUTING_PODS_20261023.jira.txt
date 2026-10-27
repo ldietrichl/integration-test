@@ -1,0 +1,105 @@
+h1. EXPLAB-3109 — observer Kafka ExpLab ИФТ9092/PLAINTEXT
+
+h2. Подтверждено на ИФТ19:51
+
+Run20261023-195116-225-89c727e6: Kafka22/23/26/27 —4/4 PASS,
+prepare/cleanup4/4 PASS. Consumer9092/PLAINTEXT получил metadata и реальные
+события собственных задач. API5 PASS подтверждены отдельным прогоном19:18.
+Подробные свидетельства и границы покрытия: RUN_20261023_195116.jira.txt.
+
+h2. Текущее изменение23.10.2026
+
+По согласованному выбору consumer журнала exp-cj-links-update-log переводится
+на listener9092/PLAINTEXT, как в соседних тестах сплиттера. В нативном профиле:
+
+kafka_consumer.explab_ift.bootstrap.servers=tsleq-mvp000273.esrt.sber.ru:9092,tsleq-mvp000275.esrt.sber.ru:9092
+kafka_consumer.explab_ift.security.protocol=PLAINTEXT
+
+experiment.links.ift.kafka.profile остаётся explab_ift. Другие профили, group/offset
+политика, сериализаторы, таймауты, имена топиков, БД, REST, credentials, stand и
+ConfigMap этим патчем не меняются. Клиент создаётся через общий KafkaService и
+ProjectKafkaConfiguration. JKS/SSL-пароли профиля ООД не подключаются.
+
+h2. Основание и границы подтверждения
+
+В предыдущей сборке API191820 прошли5/5, prepare и cleanup5/5 успешны.
+Kafka191945:4 остановки prepare до бизнес-операции. Actual ConsumerConfig и
+routing-вложения показывали273/275:9093PLAINTEXT, но API_VERSIONS235 раз
+отменялся вследствие disconnect bootstrap. Metadata и начальные offsets не получены.
+Это не доказало отсутствие топика, проблему ACL или ошибку отправки события.
+
+2399/2400 и KAP2984 используют общий KafkaService с native splitter_ift:
+те же273/275, listener9092PLAINTEXT. Его настройки переиспользуются как основание
+для согласованной проверки другого listener. Сами соседние профили не меняются.
+2972 выбирает общийift, направленный в ООД; он не является эталоном журнала3109.
+Новый listener подтверждён успешным Kafka-прогоном19:51 из корпоративной сети.
+
+h2. Явное соответствие listener, без изменения producer
+
+EXPERIMENT_SERVICE_KAFKA_EXPLAB_BOOTSTRAP_SERVER у Ready workload остаётся
+tsleq-mvp000273.esrt.sber.ru:9093,tsleq-mvp000275.esrt.sber.ru:9093.
+Патч не изменяет эту привязку или настройки Kafka producer сервиса.
+
+Прежнее требование полного равенства consumer/producer host:port не подходит
+для согласованного выбора разных listener. В существующем
+ExperimentLinksKafkaConfiguration.requireProducerBootstrap явно разрешено только:
+consumer9092 → configured producer9093, на точном одинаковом наборе broker hosts.
+Сначала consumer endpoints нормализуются и каждый проверяется на9092; затем
+строится ожидаемый producer-набор с9093 и сравнивается с реальной привязкой.
+Смешанные порты, producer9092/9094, пропущенный/лишний/другой host и некорректные
+адреса блокируют подготовку. Произвольное игнорирование портов не применяется.
+Порядок адресов, регистр DNS и внешние пробелы несущественны.
+
+В routing-вложении отдельно сохраняются consumerBootstrap, configuredProducerBootstrap,
+consumerSecurityProtocol и listenerMapping. Совпадение broker hosts при явном
+соответствии портов не доказывает идентичность clusterId или effective JVM/Vault
+конфигурацию producer. Эти ограничения указаны в evidence, а доставка по реальному
+taskId проверяется функциональными тестами.
+
+Явный именованный security.protocol=PLAINTEXT обязателен, общего default недостаточно.
+После ConfigurationService resolved consumer bootstrap должен точно соответствовать
+выбранному native9092, а protocol оставаться PLAINTEXT. Здесь преобразование9092→9093
+не разрешено: неожиданное resolved переопределение блокируется до создания consumer.
+
+h2. Управление pod и порядок наблюдения
+
+ExperimentLinksProfile, ExperimentLinksScenarioSteps и общая инфраструктура не меняются.
+Сохраняются WorkloadScenarioSteps/KubernetesWorkloadSteps через Environment и общий
+Fabric8, проверка ConfigMap, lease, ownership/UID, readiness, штатный restart только
+при необходимости, диагностика и восстановление. Нового клиента Kubernetes,
+shell/exec/kubectl/oc, tunnel или отдельного pod lifecycle нет.
+
+Подготовка Ready workload → read-only чтение producer binding → сверка listener →
+Kafka observer/metadata/assign/seekToEnd/начальные offsets → собственный барьер и
+фикстуры → POST/taskId → снятие барьера и чтение событий. При отказе metadata
+собственные фикстуры ещё не создаются. Kafka использует broker advertised listeners;
+HTTP port-forward pod не заменяет доступ к Kafka.
+
+Управляемые job bindings и их восстановление сохраняются. Размеры чанка и страницы
+тесты не назначают. Все9 test IDs/имён, business assertions и taskId-корреляция сохранены.
+
+h2. Проверки и установка
+
+JDK17 скомпилировал4 связанных main-класса и2 существующих тестовых потребителя.
+Пройдены68 локальных проверок: разрешённое соответствие портов, неправильные/mixed
+listener, точный набор hosts, некорректный bootstrap, обязательный профиль/протокол,
+отказ общего fallback, resolved bootstrap/protocol. Локальные проверки не создавали
+Environment, сетевые consumer, pod или функциональные результаты Allure.
+Сохранность stand/database, неизменность Profile/Scenario/Settings и всех других
+consumer profiles проверена по фактическим байтам. Общая инфраструктура не менялась.
+
+Мини-пакет предназначен для уже установленного исправления Kafka/pod v2 и содержит
+только3 полных replacement-файла: KafkaConfiguration, kafka-consumers.properties и
+эту заметку. Установка проверяет известные исходные SHA, выполняет backup и CAS;
+откат восстанавливает точные исходные байты. Неизвестные изменения не перезаписываются.
+Stand, секреты, JKS и настройки pod в пакет не входят.
+
+После установки отдельными вызовами:
+.\gradlew.bat testClasses
+.\gradlew.bat explab3109Kafka
+
+API5 PASS подтверждён на ИФТ в19:18, Kafka4 PASS на9092 — в19:51 отдельным запуском.
+Не выполнять clean между сохранённым API, Kafka и подготовкой общих результатов.
+Проверить listenerMapping, consumer9092, metadata/offsets, реальные события по
+taskId/topic/partition/offset и успешный cleanup. Сбой подготовки не означает, что
+недостигнутые проверки отправки/полей события выполнены.

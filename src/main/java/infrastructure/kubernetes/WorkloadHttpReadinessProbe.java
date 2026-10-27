@@ -21,6 +21,36 @@ public final class WorkloadHttpReadinessProbe implements WorkloadAvailabilityPro
         return new WorkloadHttpReadinessProbe(baseUri, path, RestMtlsConfiguration.apply(new RestAssuredConfig()));
     }
 
+    /** Only a framework-owned loopback forward may use plaintext without mTLS. */
+    public static boolean loopbackHealth(String origin, String path) {
+        var uri = URI.create(origin);
+        if (!"http".equals(uri.getScheme()) || !"127.0.0.1".equals(uri.getHost()) || uri.getPort() < 1)
+            throw new IllegalArgumentException("WORKLOAD_READINESS_OWNED_LOOPBACK_REQUIRED");
+        var probe = new WorkloadHttpReadinessProbe(origin, path, new RestAssuredConfig());
+        return probe.healthSample();
+    }
+
+    private boolean healthSample() {
+        try {
+            var response = request().get(path);
+            if (!successfulSample(response.statusCode())) return false;
+            return "UP".equals(response.jsonPath().getString("status"));
+        } catch (KubernetesDiagnosticException failure) { throw failure; }
+        catch (Exception failure) {
+            throw new KubernetesDiagnosticException("WORKLOAD_READINESS_HEALTH_OR_TRANSPORT", "READ_ONLY_GET", failure);
+        }
+    }
+
+    private FilterableRequestSpecification request() {
+        var request = (FilterableRequestSpecification) io.restassured.RestAssured.given()
+                .config(config).baseUri(baseUri).basePath("")
+                .port(URI.create(baseUri).getPort() < 0
+                        ? ("https".equals(URI.create(baseUri).getScheme()) ? 443 : 80) : URI.create(baseUri).getPort());
+        request.noFilters(); request.removeHeader("Authorization"); request.removeHeader("Cookie");
+        request.removeCookies(); request.auth().none();
+        return request;
+    }
+
     WorkloadHttpReadinessProbe(String baseUri, String path, RestAssuredConfig config) {
         URI uri = URI.create(baseUri);
         if (uri.getHost() == null || uri.getRawUserInfo() != null || uri.getRawQuery() != null
@@ -46,16 +76,7 @@ public final class WorkloadHttpReadinessProbe implements WorkloadAvailabilityPro
     @Override public boolean ready() {
         int status;
         try {
-            var request = (FilterableRequestSpecification) io.restassured.RestAssured.given()
-                    .config(config).baseUri(baseUri).basePath("")
-                    .port(URI.create(baseUri).getPort() < 0
-                            ? ("https".equals(URI.create(baseUri).getScheme()) ? 443 : 80) : URI.create(baseUri).getPort());
-            request.noFilters();
-            request.removeHeader("Authorization");
-            request.removeHeader("Cookie");
-            request.removeCookies();
-            request.auth().none();
-            status = request.get(path).statusCode();
+            status = request().get(path).statusCode();
         } catch (Exception failure) {
             throw new KubernetesDiagnosticException("WORKLOAD_READINESS_HTTP_TRANSPORT", "READ_ONLY_GET", failure);
         }

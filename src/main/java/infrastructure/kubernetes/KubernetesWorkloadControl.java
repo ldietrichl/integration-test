@@ -100,6 +100,73 @@ public final class KubernetesWorkloadControl implements AutoCloseable {
 
     public int configurationWrites() { return configWritesConfirmed; }
 
+    /** Read selected configured bindings only; JVM arguments and effective property sources are not inspected. */
+    public Map<String, String> readConfiguredEnvironment(Set<String> names) {
+        if (closed || names == null || names.isEmpty() || names.stream().anyMatch(n -> n == null
+                || !n.matches("[A-Z][A-Z0-9_]+") || n.matches(".*(PASSWORD|SECRET|TOKEN|CREDENTIAL|PRIVATE|KEY).*")))
+            throw new IllegalArgumentException("Explicit non-secret environment names required");
+        settings.requireNativeManagement();
+        State current = state();
+        int desired = current.deployment().at("/spec/replicas").asInt(1);
+        if (!deploymentReady(current.deployment()) || desired < 1 || current.pods().size() != desired
+                || current.pods().stream().anyMatch(p -> !podReady(p)))
+            throw new IllegalStateException("BLOCKED_ENVIRONMENT: WORKLOAD_CONFIG_READY_PODS_REQUIRED");
+        Map<String, String> expected = configuredEnvironment(
+                current.deployment().at("/spec/template/spec/containers"), names);
+        for (JsonNode pod : current.pods()) {
+            Map<String, String> actual = configuredEnvironment(pod.at("/spec/containers"), names);
+            if (!expected.equals(actual))
+                throw new IllegalStateException("BLOCKED_ENVIRONMENT: WORKLOAD_CONFIG_PODS_DISAGREE");
+        }
+        return Map.copyOf(expected);
+    }
+
+    private Map<String, String> configuredEnvironment(JsonNode containers, Set<String> names) {
+        JsonNode container = null;
+        for (JsonNode item : containers) if (settings.logsContainer.equals(item.path("name").asText())) {
+            if (container != null) throw new IllegalStateException("BLOCKED_ENVIRONMENT: WORKLOAD_CONFIG_AMBIGUOUS_CONTAINER");
+            container = item;
+        }
+        if (container == null) throw new IllegalStateException("BLOCKED_ENVIRONMENT: WORKLOAD_CONFIG_CONTAINER_NOT_FOUND");
+        Map<String, String> result = new TreeMap<>();
+        for (String name : names) {
+            JsonNode explicit = null;
+            for (JsonNode env : container.path("env")) if (name.equals(env.path("name").asText())) {
+                if (explicit != null) throw new IllegalStateException("BLOCKED_ENVIRONMENT: WORKLOAD_CONFIG_AMBIGUOUS_BINDING");
+                explicit = env;
+            }
+            String value = null;
+            if (explicit != null) {
+                if (explicit.has("value") && !explicit.has("valueFrom") && explicit.path("value").isTextual())
+                    value = explicit.path("value").asText();
+                else {
+                    JsonNode from = explicit.path("valueFrom");
+                    JsonNode ref = from.path("configMapKeyRef");
+                    if (explicit.has("value") || !from.isObject() || from.size() != 1 || !ref.isObject())
+                        throw new IllegalStateException("BLOCKED_ENVIRONMENT: WORKLOAD_CONFIG_UNSUPPORTED_BINDING");
+                    JsonNode field = read("configmap", resourceName(ref.path("name").asText(), "configmap"))
+                            .path("data").path(ref.path("key").asText());
+                    if (field.isTextual()) value = field.asText();
+                }
+            } else for (JsonNode source : container.path("envFrom")) {
+                String envPrefix = source.path("prefix").asText("");
+                if (!name.startsWith(envPrefix)) continue;
+                // A Secret may contain the selected key; never inspect it or guess its absence.
+                if (source.has("secretRef") || !source.path("configMapRef").isObject())
+                    throw new IllegalStateException("BLOCKED_ENVIRONMENT: WORKLOAD_CONFIG_UNSUPPORTED_BINDING");
+                JsonNode field = read("configmap", resourceName(source.at("/configMapRef/name").asText(), "configmap"))
+                        .path("data").path(name.substring(envPrefix.length()));
+                if (!field.isTextual()) continue;
+                if (value != null) throw new IllegalStateException("BLOCKED_ENVIRONMENT: WORKLOAD_CONFIG_AMBIGUOUS_BINDING");
+                value = field.asText();
+            }
+            if (value == null) throw new IllegalStateException("BLOCKED_ENVIRONMENT: WORKLOAD_CONFIG_BINDING_MISSING: " + name);
+            if (value.contains("$(")) throw new IllegalStateException("BLOCKED_ENVIRONMENT: WORKLOAD_CONFIG_UNSUPPORTED_EXPANSION");
+            result.put(name, value);
+        }
+        return result;
+    }
+
     /** Resolve an existing consumed environment key, never invent a key in an arbitrary ConfigMap. */
     public List<ConfigMapState> environmentState(Map<String, String> desired) {
         if (closed) throw new IllegalStateException("Mutation session closed");
@@ -1396,6 +1463,13 @@ public final class KubernetesWorkloadControl implements AutoCloseable {
     }
     /** IFT/LT without ingress: select the current owned Ready pod and resolve the actual Service targetPort. */
     private void verifyRootThroughOwnedTunnel() {
+        serviceHttpSample(origin -> { rootProbe.verify(origin); return true; });
+    }
+
+    /** Read-only sample on a fresh loopback forward to this workload's current Ready pod. */
+    public boolean serviceHttpSample(java.util.function.Function<String, Boolean> sample) {
+        Objects.requireNonNull(sample);
+        if (closed) throw new IllegalStateException("Mutation session closed");
         State current = state();
         JsonNode selected = current.pods().stream().filter(KubernetesWorkloadControl::podReady)
                 .findFirst().orElseThrow(() -> new IllegalStateException("ROOT_HTTP_NO_READY_POD"));
@@ -1427,7 +1501,7 @@ public final class KubernetesWorkloadControl implements AutoCloseable {
                 .withName(selected.at("/metadata/name").asText())
                 .portForward(target, java.net.InetAddress.getByName("127.0.0.1"), 0)) {
             if (!forward.isAlive()) throw new IllegalStateException("ROOT_HTTP_FORWARD_NOT_ALIVE");
-            rootProbe.verify("http://127.0.0.1:" + forward.getLocalPort());
+            return Boolean.TRUE.equals(sample.apply("http://127.0.0.1:" + forward.getLocalPort()));
         } catch (java.io.IOException failure) {
             throw new IllegalStateException("ROOT_HTTP_TUNNEL_IO: type=" + failure.getClass().getSimpleName());
         }

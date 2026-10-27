@@ -65,6 +65,34 @@ JUnit Params не стал зависимостью основного кода.
 
 ## Границы ответственности
 
+Experiment-service использует общий lifecycle через `ExperimentLinksProfile` (общий профиль сервиса `experiment`)
+с WorkloadTarget `experiment`. Бизнес-очередь, данные связей и taskId-корреляция
+остаются в предметных шагах; набор использует именованный профиль Kafka Эксплаб. ConfigMap, lease, рестарты, восстановление и логи pod выполняет
+существующий Workload-слой. Настройки и ограничения набора описаны в
+`docs/services/experiments/EXPLAB-3109/README.md`.
+
+Компактный набор EXPLAB-3109 содержит двенадцать сценариев только ИФТ с чанком 1 и
+независимым чтением реальных данных campaign-service. Чанк и страница только читаются
+из фактических Kafka-запросов/событий; эти параметры тесты не изменяют. До собственных
+DB/HTTP фикстур Kafka-сценарии завершают общую подготовку Ready pod, сверяют нативный
+профиль observer с одним nonsensitive configured producer bootstrap binding и
+фиксируют offsets. Kafka-specific read не расширяет управляемое состояние ConfigMap.
+Observer использует KafkaService; HTTP pod port-forward не подменяет Kafka metadata
+или advertised listeners. Диагностика различает configured binding и непрочитанные
+эффективные настройки JVM/внешнего YAML. Подробности:
+`docs/services/experiments/EXPLAB-3109/KAFKA_ROUTING_PODS_20261023.jira.txt`.
+`explab3109ExistingData` выбирает пять сценариев без специальных условий страниц/5xx;
+остальные семь проверяют Kafka; три расширенных сценария покрывают повтор после
+завершения, удаление и две задачи с разными данными. Задача `explab3109Core`
+переиспользует общий `configureTicketRegression` через `gradle/tickets/EXPLAB_3109.gradle.kts` и стадию `experiment`, включая
+отдельный каталог каждого запуска и общий сборщик TestOps. Специфичные настройки
+кэша EXPLAB-2696 применяются только полным регрессом experiment-service.
+Тонкие методы тестов связаны с одноимёнными предметными шагами существующей
+аннотацией `UsesScenarioSteps`; scanner проверяет наличие настоящих assertions
+в исходниках этих шагов. Ошибки с маркером `BLOCKED_ENVIRONMENT` отражаются в
+summary как недоступные предусловия, отдельно от assertion failures.
+
+
 EXPLAB-3056 использует тот же WorkedGroupProfile с собственным каталогом правил
 и пространством explab3056. MapperAlternativeMarkupSteps отвечает только за
 прямую разметку/откат и последовательности бизнес-запросов; DTO расширяет
@@ -187,3 +215,16 @@ public abstract class BillingSteps extends Flows implements WorkloadFlow {
 .\gradlew.bat testClasses
 .\gradlew.bat -I gradle/workload-architecture.init.gradle workloadArchitectureCheck
 ```
+
+## Readiness без публикации actuator
+
+`KubernetesWorkloadControl.serviceHttpSample` переиспользует механизм временного
+Fabric8 forward, применяемый при проверке восстановления Scheduler. Каждая проба
+выбирает текущий Ready pod с проверкой владельца Deployment, selector Service и
+числового/именованного targetPort. Listener привязан к 127.0.0.1 и закрывается
+через try-with-resources при любом исходе. Новый клиент и отдельный lifecycle не нужны.
+`WorkloadHttpReadinessProbe.loopbackHealth` проверяет HTTP 200 и `status=UP`;
+502/503/504 означают ожидание, остальные неуспешные ответы останавливают проверку.
+Проба не передаёт глобальные cookies/auth/filters и не следует redirects.
+Профиль сервиса объединяет внутреннюю health-пробу с существующим ingress GET.
+Повторы и восстановление остаются в общем Workload; требуются права pods/portforward.
